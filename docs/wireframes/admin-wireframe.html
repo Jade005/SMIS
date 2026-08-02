@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMIS — Admin Portal Wireframe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --sidebar: #1e2330;
+      --sidebar-text: #a8b2c8;
+      --sidebar-active: #ffffff;
+      --sidebar-active-bg: #3b5bdb;
+      --card: #ffffff;
+      --border: #dde1ea;
+      --text: #1a1d27;
+      --text-muted: #6b7280;
+      --accent: #3b5bdb;
+      --accent-soft: #edf2ff;
+      --danger: #e53e3e;
+      --danger-soft: #fff5f5;
+      --warning: #d97706;
+      --warning-soft: #fffbeb;
+      --success: #16a34a;
+      --success-soft: #f0fdf4;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px; min-width: 220px; background: var(--sidebar);
+      display: flex; flex-direction: column; padding: 0; overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 20px 16px 16px; border-bottom: 1px solid #2d3348;
+    }
+    .sidebar-logo .badge {
+      background: var(--accent); color: #fff; font-size: 10px;
+      font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px;
+    }
+    .sidebar-logo h2 { color: #fff; font-size: 15px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+
+    .sidebar-section { padding: 12px 10px 4px; }
+    .sidebar-section-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+      color: #4a5278; text-transform: uppercase; padding: 0 6px 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 6px; cursor: pointer;
+      color: var(--sidebar-text); font-size: 13px; font-weight: 500;
+      transition: background .15s, color .15s; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: #2d3348; color: #fff; }
+    .nav-item.active { background: var(--sidebar-active-bg); color: var(--sidebar-active); }
+    .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 14px 16px; border-top: 1px solid #2d3348;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .sidebar-footer-info { overflow: hidden; }
+    .sidebar-footer-name { color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-footer-role { color: #4a5278; font-size: 10px; }
+
+    /* ── MAIN ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-pill { background: var(--accent-soft); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+    .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── SCREENS ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── COMMON COMPONENTS ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    .kpi-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow);
+    }
+    .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .kpi-value { font-size: 26px; font-weight: 800; color: var(--text); line-height: 1; }
+    .kpi-sub { font-size: 11px; color: var(--success); margin-top: 6px; font-weight: 600; }
+    .kpi-sub.warn { color: var(--warning); }
+    .kpi-sub.danger { color: var(--danger); }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-title { font-size: 13px; font-weight: 700; color: var(--text); }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn:hover { opacity: .85; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { text-align: left; padding: 8px 12px; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1.5px solid var(--border); }
+    tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8f9fb; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+    .badge-success { background: var(--success-soft); color: var(--success); }
+    .badge-warning { background: var(--warning-soft); color: var(--warning); }
+    .badge-danger  { background: var(--danger-soft);  color: var(--danger);  }
+    .badge-info    { background: var(--accent-soft);   color: var(--accent);  }
+    .badge-gray    { background: #f1f3f5; color: #6b7280; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+    /* chart placeholder */
+    .chart-placeholder {
+      background: repeating-linear-gradient(135deg, #f0f2f5 0, #f0f2f5 2px, transparent 2px, transparent 12px);
+      border: 1.5px dashed var(--border); border-radius: 6px; height: 160px;
+      display: flex; align-items: flex-end; justify-content: space-around; padding: 12px 16px 0;
+    }
+    .chart-bar { background: var(--accent); border-radius: 4px 4px 0 0; width: 28px; opacity: .7; }
+
+    /* search bar */
+    .search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .search-bar input {
+      flex: 1; padding: 8px 12px; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: 12px; outline: none; color: var(--text);
+    }
+    .search-bar select {
+      padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text); background: #fff;
+    }
+
+    /* alert strip */
+    .alert-strip {
+      padding: 10px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    }
+    .alert-warning { background: var(--warning-soft); color: var(--warning); border-left: 3px solid var(--warning); }
+    .alert-danger  { background: var(--danger-soft);  color: var(--danger);  border-left: 3px solid var(--danger);  }
+
+    /* form group */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text); background: #fff; outline: none;
+    }
+    .form-group textarea { resize: vertical; min-height: 64px; }
+    .form-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+    /* tabs */
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* progress */
+    .progress-bar-wrap { background: #e5e7eb; border-radius: 4px; height: 6px; flex: 1; }
+    .progress-bar-fill { background: var(--accent); border-radius: 4px; height: 6px; }
+
+    /* report period selector */
+    .period-tabs { display: flex; gap: 4px; }
+    .period-tab { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); color: var(--text-muted); background: #fff; }
+    .period-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════ SIDEBAR ════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span class="badge">ADMIN</span>
+    <h2>Slaughterhouse MIS</h2>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Main</div>
+    <div class="nav-item active" onclick="showScreen('dashboard', this)">
+      <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showScreen('products', this)">
+      <span class="icon">🥩</span> Products
+    </div>
+    <div class="nav-item" onclick="showScreen('inventory', this)">
+      <span class="icon">📦</span> Inventory
+    </div>
+    <div class="nav-item" onclick="showScreen('suppliers', this)">
+      <span class="icon">🚛</span> Suppliers
+    </div>
+    <div class="nav-item" onclick="showScreen('orders', this)">
+      <span class="icon">🛒</span> Orders
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Management</div>
+    <div class="nav-item" onclick="showScreen('users', this)">
+      <span class="icon">👥</span> User Management
+    </div>
+    <div class="nav-item" onclick="showScreen('reports', this)">
+      <span class="icon">📋</span> Reports
+    </div>
+    <div class="nav-item" onclick="showScreen('analytics', this)">
+      <span class="icon">📈</span> Analytics
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="avatar">A</div>
+    <div class="sidebar-footer-info">
+      <div class="sidebar-footer-name">Admin SMIS</div>
+      <div class="sidebar-footer-role">Administrator</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ════════════════════════ MAIN ════════════════════════ -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">Dashboard</h1>
+    <div class="topbar-right">
+      <span style="font-size:11px;color:var(--text-muted);">Sun, Aug 2 2026</span>
+      <div class="topbar-pill">⚠️ 3 Alerts</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Today's Revenue</div>
+          <div class="kpi-value">₱24,850</div>
+          <div class="kpi-sub">↑ 12% vs yesterday</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Transactions Today</div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-sub">↑ 5 more than avg</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Active Inventory Batches</div>
+          <div class="kpi-value">38</div>
+          <div class="kpi-sub warn">⚠️ 4 low stock</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Pending Orders</div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-sub danger">❌ 2 expiring soon</div>
+        </div>
+      </div>
+
+      <div class="alert-strip alert-danger">❌ 2 inventory batches expired today — review required</div>
+      <div class="alert-strip alert-warning">⚠️ 4 products are below low-stock threshold</div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Weekly Revenue</span>
+            <span style="font-size:11px;color:var(--text-muted);">Mon–Sun</span>
+          </div>
+          <div class="chart-placeholder">
+            <div class="chart-bar" style="height:60%"></div>
+            <div class="chart-bar" style="height:80%"></div>
+            <div class="chart-bar" style="height:50%"></div>
+            <div class="chart-bar" style="height:90%"></div>
+            <div class="chart-bar" style="height:70%"></div>
+            <div class="chart-bar" style="height:100%"></div>
+            <div class="chart-bar" style="height:85%"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Transactions</span>
+            <span class="btn btn-outline btn-sm" onclick="showScreen('reports', document.querySelector('[onclick*=reports]'))">View All</span>
+          </div>
+          <table>
+            <thead><tr><th>Receipt</th><th>Cashier</th><th>Amount</th><th>Time</th></tr></thead>
+            <tbody>
+              <tr><td>#RCP-0047</td><td>Juan D.</td><td>₱1,240.00</td><td>5:42 PM</td></tr>
+              <tr><td>#RCP-0046</td><td>Maria S.</td><td>₱890.50</td><td>5:31 PM</td></tr>
+              <tr><td>#RCP-0045</td><td>Juan D.</td><td>₱2,100.00</td><td>5:14 PM</td></tr>
+              <tr><td>#RCP-0044</td><td>Maria S.</td><td>₱560.00</td><td>4:58 PM</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Stock Levels</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Beef Liempo</span><span style="color:var(--success)">48 kg</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:80%;background:var(--success)"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Pork Kasim</span><span style="color:var(--warning)">8 kg</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:16%;background:var(--warning)"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Chicken Breast</span><span style="color:var(--success)">32 kg</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:64%;background:var(--success)"></div></div>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Beef Buto</span><span style="color:var(--danger)">3 kg</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:6%;background:var(--danger)"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top Products Today</span></div>
+          <table>
+            <thead><tr><th>#</th><th>Product</th><th>Sold (kg)</th><th>Revenue</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Pork Liempo</td><td>42.5 kg</td><td>₱8,500</td></tr>
+              <tr><td>2</td><td>Beef Kenchi</td><td>28.0 kg</td><td>₱6,160</td></tr>
+              <tr><td>3</td><td>Chicken Leg</td><td>35.0 kg</td><td>₱4,900</td></tr>
+              <tr><td>4</td><td>Pork Pigue</td><td>19.5 kg</td><td>₱3,120</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PRODUCTS ═══ -->
+    <div class="screen" id="screen-products">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Product List</span>
+          <button class="btn btn-primary btn-sm">+ Add Product</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" placeholder="Search products…" value="">
+          <select><option>All Categories</option><option>Beef</option><option>Pork</option><option>Chicken</option><option>Goat</option></select>
+          <select><option>All Status</option><option>Active</option><option>Inactive</option></select>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Meat Type</th><th>Meat Cut</th><th>Price/kg</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#001</td><td>Beef Liempo</td><td>Beef</td><td>Beef</td><td>Liempo</td><td>₱220/kg</td><td>48 kg</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#002</td><td>Pork Kasim</td><td>Pork</td><td>Pork</td><td>Kasim</td><td>₱200/kg</td><td>8 kg ⚠️</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#003</td><td>Chicken Breast</td><td>Chicken</td><td>Chicken</td><td>Breast</td><td>₱140/kg</td><td>32 kg</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#004</td><td>Beef Buto</td><td>Beef</td><td>Beef</td><td>Buto</td><td>₱160/kg</td><td>3 kg ❌</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#005</td><td>Goat Ribs</td><td>Goat</td><td>Goat</td><td>Ribs</td><td>₱280/kg</td><td>0 kg</td><td><span class="badge badge-gray">Inactive</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Add New Product</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Product Name</label><input type="text" placeholder="e.g. Beef Liempo"></div>
+          <div class="form-group"><label>Category</label><select><option>Select category…</option><option>Beef</option><option>Pork</option><option>Chicken</option><option>Goat</option></select></div>
+          <div class="form-group"><label>Meat Type</label><input type="text" placeholder="e.g. Beef"></div>
+          <div class="form-group"><label>Meat Cut</label><input type="text" placeholder="e.g. Liempo"></div>
+          <div class="form-group"><label>Base Price per kg (₱)</label><input type="number" placeholder="0.00"></div>
+          <div class="form-group"><label>Description</label><textarea placeholder="Optional description…"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">Save Product</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ INVENTORY ═══ -->
+    <div class="screen" id="screen-inventory">
+      <div class="alert-strip alert-danger">❌ Batch #B-0021 (Pork Kasim) expired on Aug 1 — please review</div>
+
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi-card"><div class="kpi-label">Total Batches</div><div class="kpi-value">38</div></div>
+        <div class="kpi-card"><div class="kpi-label">Available</div><div class="kpi-value" style="color:var(--success)">30</div></div>
+        <div class="kpi-card"><div class="kpi-label">Low Stock</div><div class="kpi-value" style="color:var(--warning)">4</div></div>
+        <div class="kpi-card"><div class="kpi-label">Expired</div><div class="kpi-value" style="color:var(--danger)">4</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Inventory Batches</span>
+          <button class="btn btn-primary btn-sm">+ Add Batch</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" placeholder="Search batches…">
+          <select><option>All Products</option><option>Beef Liempo</option><option>Pork Kasim</option></select>
+          <select><option>All Status</option><option>Available</option><option>Low</option><option>Expired</option><option>Depleted</option></select>
+        </div>
+        <table>
+          <thead><tr><th>Batch No.</th><th>Product</th><th>Supplier</th><th>Weight (kg)</th><th>Available (kg)</th><th>Price/kg</th><th>Date Processed</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>B-0038</td><td>Beef Liempo</td><td>Santos Farm</td><td>60 kg</td><td>48 kg</td><td>₱220</td><td>Aug 1, 2026</td><td>Aug 7, 2026</td><td><span class="badge badge-success">Available</span></td><td><span class="btn btn-outline btn-sm">Edit</span></td></tr>
+            <tr><td>B-0037</td><td>Pork Kasim</td><td>Dela Cruz Hog</td><td>50 kg</td><td>8 kg</td><td>₱200</td><td>Jul 30, 2026</td><td>Aug 5, 2026</td><td><span class="badge badge-warning">Low</span></td><td><span class="btn btn-outline btn-sm">Edit</span></td></tr>
+            <tr><td>B-0036</td><td>Chicken Breast</td><td>Avian Fresh</td><td>40 kg</td><td>32 kg</td><td>₱140</td><td>Aug 2, 2026</td><td>Aug 8, 2026</td><td><span class="badge badge-success">Available</span></td><td><span class="btn btn-outline btn-sm">Edit</span></td></tr>
+            <tr><td>B-0021</td><td>Pork Kasim</td><td>Dela Cruz Hog</td><td>30 kg</td><td>3 kg</td><td>₱198</td><td>Jul 24, 2026</td><td>Aug 1, 2026</td><td><span class="badge badge-danger">Expired</span></td><td><span class="btn btn-danger btn-sm">Remove</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Add Inventory Batch</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Product</label><select><option>Select product…</option><option>Beef Liempo</option><option>Pork Kasim</option><option>Chicken Breast</option></select></div>
+          <div class="form-group"><label>Supplier</label><select><option>Select supplier…</option><option>Santos Farm</option><option>Dela Cruz Hog</option><option>Avian Fresh</option></select></div>
+          <div class="form-group"><label>Weight Delivered (kg)</label><input type="number" placeholder="0.000"></div>
+          <div class="form-group"><label>Price per kg (₱)</label><input type="number" placeholder="0.00"></div>
+          <div class="form-group"><label>Date Processed</label><input type="date"></div>
+          <div class="form-group"><label>Expiration Date</label><input type="date"></div>
+          <div class="form-group"><label>Notes</label><textarea placeholder="Optional batch notes…"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">Add Batch</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SUPPLIERS ═══ -->
+    <div class="screen" id="screen-suppliers">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Supplier Directory</span>
+          <button class="btn btn-primary btn-sm">+ Add Supplier</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" placeholder="Search suppliers…">
+          <select><option>All Status</option><option>Active</option><option>Inactive</option></select>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Contact Person</th><th>Phone</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#S01</td><td>Santos Farm</td><td>Roberto Santos</td><td>09171234567</td><td>santos@farm.com</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#S02</td><td>Dela Cruz Hog</td><td>Pedro Dela Cruz</td><td>09289876543</td><td>pdc@hog.com</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#S03</td><td>Avian Fresh</td><td>Lina Reyes</td><td>09354567890</td><td>avian@fresh.ph</td><td><span class="badge badge-success">Active</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+            <tr><td>#S04</td><td>Goat Pro PH</td><td>Marco Bautista</td><td>09161112222</td><td>goatpro@ph.com</td><td><span class="badge badge-gray">Inactive</span></td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Del</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Add / Edit Supplier</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Supplier Name</label><input type="text" placeholder="e.g. Santos Farm"></div>
+          <div class="form-group"><label>Contact Person</label><input type="text" placeholder="Full name"></div>
+          <div class="form-group"><label>Phone</label><input type="tel" placeholder="09XX-XXX-XXXX"></div>
+          <div class="form-group"><label>Email</label><input type="email" placeholder="email@domain.com"></div>
+          <div class="form-group" style="grid-column:1/-1"><label>Address</label><textarea placeholder="Full address…"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">Save Supplier</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ORDERS ═══ -->
+    <div class="screen" id="screen-orders">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Customer Orders</span>
+          <div class="period-tabs">
+            <div class="period-tab active">All</div>
+            <div class="period-tab">Pending</div>
+            <div class="period-tab">Confirmed</div>
+            <div class="period-tab">Ready</div>
+            <div class="period-tab">Completed</div>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Order No.</th><th>Customer</th><th>Items</th><th>Total</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#ORD-0012</td><td>Ana Reyes</td><td>3 items</td><td>₱980.00</td><td>Aug 2, 5:10 PM</td><td><span class="badge badge-warning">Pending</span></td><td><span class="btn btn-primary btn-sm">Confirm</span> <span class="btn btn-danger btn-sm">Cancel</span></td></tr>
+            <tr><td>#ORD-0011</td><td>Jose Garcia</td><td>2 items</td><td>₱1,340.00</td><td>Aug 2, 3:45 PM</td><td><span class="badge badge-info">Confirmed</span></td><td><span class="btn btn-outline btn-sm">Ready</span></td></tr>
+            <tr><td>#ORD-0010</td><td>Maria Santos</td><td>4 items</td><td>₱2,100.00</td><td>Aug 2, 1:20 PM</td><td><span class="badge badge-success">Completed</span></td><td><span class="btn btn-outline btn-sm">View</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ USERS ═══ -->
+    <div class="screen" id="screen-users">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">User Accounts</span>
+          <button class="btn btn-primary btn-sm">+ Add User</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" placeholder="Search users…">
+          <select><option>All Roles</option><option>Admin</option><option>Cashier</option><option>Customer</option></select>
+          <select><option>All Status</option><option>Active</option><option>Inactive</option></select>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#U01</td><td>Admin SMIS</td><td>admin@smis.local</td><td><span class="badge badge-danger">Admin</span></td><td><span class="badge badge-success">Active</span></td><td>Aug 1, 2026</td><td><span class="btn btn-outline btn-sm">Edit</span></td></tr>
+            <tr><td>#U02</td><td>Juan Dela Cruz</td><td>juan@smis.local</td><td><span class="badge badge-info">Cashier</span></td><td><span class="badge badge-success">Active</span></td><td>Aug 1, 2026</td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Deactivate</span></td></tr>
+            <tr><td>#U03</td><td>Maria Santos</td><td>maria@smis.local</td><td><span class="badge badge-info">Cashier</span></td><td><span class="badge badge-success">Active</span></td><td>Aug 1, 2026</td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Deactivate</span></td></tr>
+            <tr><td>#U04</td><td>Ana Reyes</td><td>ana@email.com</td><td><span class="badge badge-gray">Customer</span></td><td><span class="badge badge-success">Active</span></td><td>Aug 2, 2026</td><td><span class="btn btn-outline btn-sm">Edit</span> <span class="btn btn-danger btn-sm">Deactivate</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Add / Edit User</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>First Name</label><input type="text" placeholder="First name"></div>
+          <div class="form-group"><label>Last Name</label><input type="text" placeholder="Last name"></div>
+          <div class="form-group"><label>Email</label><input type="email" placeholder="user@email.com"></div>
+          <div class="form-group"><label>Role</label><select><option>Select role…</option><option>Admin</option><option>Cashier</option><option>Customer</option></select></div>
+          <div class="form-group"><label>Password</label><input type="password" placeholder="••••••••"></div>
+          <div class="form-group"><label>Confirm Password</label><input type="password" placeholder="••••••••"></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">Save User</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REPORTS ═══ -->
+    <div class="screen" id="screen-reports">
+      <div class="tabs">
+        <div class="tab active">Sales Report</div>
+        <div class="tab">Inventory Report</div>
+        <div class="tab">Expiry Report</div>
+        <div class="tab">Supplier Report</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Sales Report</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="period-tabs">
+              <div class="period-tab active">Daily</div>
+              <div class="period-tab">Weekly</div>
+              <div class="period-tab">Monthly</div>
+            </div>
+            <input type="date" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;">
+            <button class="btn btn-outline btn-sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="three-col" style="margin-bottom:16px;">
+          <div style="text-align:center;padding:12px;background:#f8f9fb;border-radius:6px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">Total Revenue</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text);">₱24,850</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#f8f9fb;border-radius:6px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">Transactions</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text);">47</div>
+          </div>
+          <div style="text-align:center;padding:12px;background:#f8f9fb;border-radius:6px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;">Avg Transaction</div>
+            <div style="font-size:22px;font-weight:800;color:var(--text);">₱528.72</div>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Receipt No.</th><th>Cashier</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Time</th></tr></thead>
+          <tbody>
+            <tr><td>#RCP-0047</td><td>Juan D.</td><td>Walk-in</td><td>3</td><td>₱1,240.00</td><td>Cash</td><td>5:42 PM</td></tr>
+            <tr><td>#RCP-0046</td><td>Maria S.</td><td>Ana Reyes</td><td>2</td><td>₱890.50</td><td>GCash</td><td>5:31 PM</td></tr>
+            <tr><td>#RCP-0045</td><td>Juan D.</td><td>Walk-in</td><td>5</td><td>₱2,100.00</td><td>Cash</td><td>5:14 PM</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYTICS ═══ -->
+    <div class="screen" id="screen-analytics">
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Revenue This Month</div><div class="kpi-value">₱342,800</div><div class="kpi-sub">↑ 18% vs last month</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total kg Sold</div><div class="kpi-value">1,842 kg</div><div class="kpi-sub">↑ 11% vs last month</div></div>
+        <div class="kpi-card"><div class="kpi-label">Best Selling Cut</div><div class="kpi-value" style="font-size:18px;">Pork Liempo</div><div class="kpi-sub">420 kg this month</div></div>
+        <div class="kpi-card"><div class="kpi-label">Top Category</div><div class="kpi-value" style="font-size:20px;">Pork 🥇</div><div class="kpi-sub">52% of revenue</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Revenue Trend (Last 30 Days)</span></div>
+          <div class="chart-placeholder">
+            <div class="chart-bar" style="height:40%"></div>
+            <div class="chart-bar" style="height:55%"></div>
+            <div class="chart-bar" style="height:45%"></div>
+            <div class="chart-bar" style="height:70%"></div>
+            <div class="chart-bar" style="height:60%"></div>
+            <div class="chart-bar" style="height:85%"></div>
+            <div class="chart-bar" style="height:75%"></div>
+            <div class="chart-bar" style="height:90%"></div>
+            <div class="chart-bar" style="height:80%"></div>
+            <div class="chart-bar" style="height:100%"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Best-Selling Products</span></div>
+          <table>
+            <thead><tr><th>Rank</th><th>Product</th><th>kg Sold</th><th>Revenue</th></tr></thead>
+            <tbody>
+              <tr><td>🥇</td><td>Pork Liempo</td><td>420 kg</td><td>₱84,000</td></tr>
+              <tr><td>🥈</td><td>Beef Kenchi</td><td>280 kg</td><td>₱61,600</td></tr>
+              <tr><td>🥉</td><td>Chicken Leg</td><td>350 kg</td><td>₱49,000</td></tr>
+              <tr><td>4</td><td>Pork Pigue</td><td>195 kg</td><td>₱31,200</td></tr>
+              <tr><td>5</td><td>Beef Buto</td><td>160 kg</td><td>₱25,600</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  function showScreen(id, el) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    el.classList.add('active');
+    const titles = {
+      dashboard: 'Dashboard', products: 'Product Management',
+      inventory: 'Inventory Management', suppliers: 'Supplier Management',
+      orders: 'Orders', users: 'User Management',
+      reports: 'Reports', analytics: 'Analytics'
+    };
+    document.getElementById('pageTitle').textContent = titles[id] || id;
+  }
+</script>
+</body>
+</html>

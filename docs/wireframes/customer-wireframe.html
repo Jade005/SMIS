@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMIS — Customer Portal Wireframe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8fafc;
+      --nav-bg: #0f172a;
+      --nav-text: #94a3b8;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #10b981;
+      --accent-soft: #ecfdf5;
+      --success: #16a34a;
+      --success-soft: #f0fdf4;
+      --warning: #f59e0b;
+      --warning-soft: #fffbeb;
+      --danger: #ef4444;
+      --danger-soft: #fef2f2;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── TOP HEADER / NAVBAR ── */
+    .header {
+      background: var(--nav-bg); color: #fff; padding: 0 24px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand .logo-icon { font-size: 24px; }
+    .brand-title { font-size: 16px; font-weight: 700; color: #fff; }
+    .brand-subtitle { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .nav-links { display: flex; gap: 4px; }
+    .nav-btn {
+      padding: 8px 14px; border-radius: 6px; color: var(--nav-text); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .nav-btn:hover { color: #fff; background: #1e293b; }
+    .nav-btn.active { color: #fff; background: var(--accent); }
+
+    .user-profile { display: flex; align-items: center; gap: 12px; }
+    .cart-indicator {
+      position: relative; background: #1e293b; color: #fff; padding: 8px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    }
+    .cart-badge { background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+
+    /* ── MAIN CONTENT AREA ── */
+    .container { max-width: 1100px; width: 100%; margin: 24px auto; padding: 0 16px; flex: 1; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── HERO BANNER ── */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff;
+      padding: 32px; border-radius: var(--radius); margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .hero h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .hero p { font-size: 13px; color: #94a3b8; max-width: 480px; }
+
+    /* ── CATEGORY PILLS ── */
+    .categories { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+    .cat-pill {
+      padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+      background: #fff; border: 1.5px solid var(--border); color: var(--text-muted); transition: all .15s; white-space: nowrap;
+    }
+    .cat-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .cat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── PRODUCT CATALOG GRID ── */
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+    .product-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; display: flex; flex-direction: column;
+    }
+    .product-card:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+    .product-img {
+      height: 130px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 54px; position: relative;
+    }
+    .product-tag { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; color: var(--text-muted); }
+    .product-body { padding: 16px; display: flex; flex-direction: column; flex: 1; }
+    .product-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .product-cut { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+    .product-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+    .product-price { font-size: 16px; font-weight: 800; color: var(--accent); }
+    .product-price span { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn:hover { opacity: .88; }
+
+    /* ── CART & ORDERS ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-title { font-size: 14px; font-weight: 700; }
+
+    .cart-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+    .cart-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cart-table th { text-align: left; padding: 10px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid var(--border); }
+    .cart-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+    .summary-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+    .summary-row.total { font-size: 16px; font-weight: 800; border-top: 1.5px solid var(--border); padding-top: 12px; margin-top: 8px; }
+
+    /* ── ORDER HISTORY TABLE ── */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { text-align: left; padding: 10px; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid var(--border); }
+    tbody td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:hover { background: #f8fafc; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+    .badge-pending   { background: var(--warning-soft); color: var(--warning); }
+    .badge-confirmed { background: #e0f2fe; color: #0369a1; }
+    .badge-ready     { background: var(--accent-soft); color: var(--accent); }
+    .badge-completed { background: var(--success-soft); color: var(--success); }
+    .badge-cancelled { background: var(--danger-soft); color: var(--danger); }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════ HEADER ════════════════════════ -->
+<header class="header">
+  <div class="brand">
+    <span class="logo-icon">🥩</span>
+    <div>
+      <div class="brand-title">FreshMeat Direct</div>
+      <div class="brand-subtitle">Powered by SMIS</div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <div class="nav-btn active" onclick="showScreen('home', this)">🏠 Shop Catalog</div>
+    <div class="nav-btn" onclick="showScreen('orders', this)">📦 My Orders</div>
+  </div>
+
+  <div class="user-profile">
+    <div class="cart-indicator" onclick="showScreen('cart', document.querySelector('[onclick*=cart]'))">
+      🛒 Cart <span class="cart-badge" id="cartCount">2</span>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:#e2e8f0;">Ana Reyes</div>
+  </div>
+</header>
+
+<!-- ════════════════════════ MAIN CONTAINER ════════════════════════ -->
+<div class="container">
+
+  <!-- ═══ SCREEN 1: HOME CATALOG ═══ -->
+  <div class="screen active" id="screen-home">
+    <div class="hero">
+      <div>
+        <h2>Fresh Cut Meats Delivered or Reserved</h2>
+        <p>Browse today's slaughterhouse fresh inventory. Reserve online and pickup at your convenience.</p>
+      </div>
+      <div style="font-size:48px;">🍖</div>
+    </div>
+
+    <!-- Categories -->
+    <div class="categories">
+      <div class="cat-pill active">All Meats</div>
+      <div class="cat-pill">🥩 Beef</div>
+      <div class="cat-pill">🐷 Pork</div>
+      <div class="cat-pill">🍗 Chicken</div>
+      <div class="cat-pill">🐐 Goat</div>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="product-img">🥩<span class="product-tag">Fresh Batch</span></div>
+        <div class="product-body">
+          <div class="product-name">Premium Beef Liempo</div>
+          <div class="product-cut">Cut: Belly / Ribs • Stock: 48 kg</div>
+          <div class="product-footer">
+            <div class="product-price">₱220 <span>/ kg</span></div>
+            <button class="btn btn-primary btn-sm" onclick="addCartDemo(this)">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img">🐷<span class="product-tag">Popular</span></div>
+        <div class="product-body">
+          <div class="product-name">Fresh Pork Kasim</div>
+          <div class="product-cut">Cut: Shoulder • Stock: 8 kg</div>
+          <div class="product-footer">
+            <div class="product-price">₱200 <span>/ kg</span></div>
+            <button class="btn btn-primary btn-sm" onclick="addCartDemo(this)">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img">🍗<span class="product-tag">Lean Cut</span></div>
+        <div class="product-body">
+          <div class="product-name">Chicken Breast (Skinless)</div>
+          <div class="product-cut">Cut: Breast • Stock: 32 kg</div>
+          <div class="product-footer">
+            <div class="product-price">₱140 <span>/ kg</span></div>
+            <button class="btn btn-primary btn-sm" onclick="addCartDemo(this)">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img">🥓<span class="product-tag">Fresh Batch</span></div>
+        <div class="product-body">
+          <div class="product-name">Pork Liempo Slab</div>
+          <div class="product-cut">Cut: Pork Belly • Stock: 25 kg</div>
+          <div class="product-footer">
+            <div class="product-price">₱210 <span>/ kg</span></div>
+            <button class="btn btn-primary btn-sm" onclick="addCartDemo(this)">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 2: CART & CHECKOUT ═══ -->
+  <div class="screen" id="screen-cart">
+    <div class="card-title" style="margin-bottom:16px;font-size:18px;">🛒 Shopping Cart & Checkout</div>
+    <div class="cart-layout">
+      
+      <!-- Cart Table -->
+      <div class="card">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Price/kg</th>
+              <th>Weight (kg)</th>
+              <th>Subtotal</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div style="font-weight:700;">Premium Beef Liempo</div>
+                <div style="font-size:10px;color:var(--text-muted);">Fresh Cattle</div>
+              </td>
+              <td>₱220.00</td>
+              <td><input type="number" value="2.0" step="0.5" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px;"></td>
+              <td>₱440.00</td>
+              <td><span style="color:var(--danger);cursor:pointer;font-weight:700;">✕</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div style="font-weight:700;">Fresh Pork Kasim</div>
+                <div style="font-size:10px;color:var(--text-muted);">Pork Shoulder</div>
+              </td>
+              <td>₱200.00</td>
+              <td><input type="number" value="1.5" step="0.5" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px;"></td>
+              <td>₱300.00</td>
+              <td><span style="color:var(--danger);cursor:pointer;font-weight:700;">✕</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Checkout Summary -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px;">Order Summary</div>
+        <div class="summary-row"><span>Items (2)</span><span>₱740.00</span></div>
+        <div class="summary-row"><span>Estimated Weight</span><span>3.50 kg</span></div>
+        <div class="summary-row total"><span>Total Amount</span><span style="color:var(--accent)">₱740.00</span></div>
+
+        <div style="margin-top:16px;">
+          <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:4px;">Pickup / Delivery Notes</label>
+          <textarea placeholder="e.g. Please pack in 1kg separate bags" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:11px;height:60px;margin-bottom:12px;"></textarea>
+          <button class="btn btn-primary" style="width:100%;padding:10px;font-size:13px;" onclick="placeOrderDemo()">Place Pre-Order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SCREEN 3: MY ORDERS ═══ -->
+  <div class="screen" id="screen-orders">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">My Order History</span>
+        <button class="btn btn-outline btn-sm" onclick="showScreen('home', document.querySelectorAll('.nav-btn')[0])">+ New Order</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Order No.</th>
+            <th>Date</th>
+            <th>Items</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>#ORD-0012</td>
+            <td>Aug 2, 2026 5:10 PM</td>
+            <td>Beef Liempo (2kg), Pork Kasim (1.5kg)</td>
+            <td>₱740.00</td>
+            <td><span class="badge badge-pending">Pending Approval</span></td>
+            <td><button class="btn btn-danger btn-sm">Cancel Order</button></td>
+          </tr>
+          <tr>
+            <td>#ORD-0008</td>
+            <td>Jul 28, 2026 2:15 PM</td>
+            <td>Chicken Breast (3kg)</td>
+            <td>₱420.00</td>
+            <td><span class="badge badge-completed">Completed</span></td>
+            <td><button class="btn btn-outline btn-sm">Reorder</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function showScreen(id, el) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  function addCartDemo(btn) {
+    btn.textContent = '✓ Added';
+    btn.style.background = 'var(--success)';
+    setTimeout(() => {
+      btn.textContent = '+ Add';
+      btn.style.background = '';
+    }, 1000);
+  }
+
+  function placeOrderDemo() {
+    alert('Order #ORD-0013 placed successfully!');
+    showScreen('orders', document.querySelectorAll('.nav-btn')[1]);
+  }
+</script>
+</body>
+</html>

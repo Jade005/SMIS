@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMIS — Cashier Portal Wireframe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --sidebar: #1a2744;
+      --sidebar-text: #a8b2c8;
+      --sidebar-active: #ffffff;
+      --sidebar-active-bg: #e85d04;
+      --card: #ffffff;
+      --border: #dde1ea;
+      --text: #1a1d27;
+      --text-muted: #6b7280;
+      --accent: #e85d04;
+      --accent-soft: #fff3ea;
+      --success: #16a34a;
+      --success-soft: #f0fdf4;
+      --warning: #d97706;
+      --warning-soft: #fffbeb;
+      --danger: #e53e3e;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    .sidebar { width: 200px; min-width: 200px; background: var(--sidebar); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid #263154; }
+    .sidebar-logo .badge { background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .sidebar-logo h2 { color: #fff; font-size: 14px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: var(--sidebar-text); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; border-left: 3px solid transparent; margin: 2px 0; }
+    .nav-item:hover { background: #263154; color: #fff; }
+    .nav-item.active { background: #263154; color: var(--sidebar-active); border-left-color: var(--accent); }
+    .nav-item .icon { font-size: 16px; width: 18px; text-align: center; }
+
+    .sidebar-footer { margin-top: auto; padding: 14px 16px; border-top: 1px solid #263154; display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .sidebar-footer-name { color: #fff; font-size: 12px; font-weight: 600; }
+    .sidebar-footer-role { color: #4a6098; font-size: 10px; }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .topbar h1 { font-size: 16px; font-weight: 700; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-pill { background: var(--accent-soft); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+    .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* POS layout */
+    .pos-layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; height: calc(100vh - 56px - 40px); }
+    .pos-left { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+    .pos-right { display: flex; flex-direction: column; gap: 12px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .card-title { font-size: 13px; font-weight: 700; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-lg { padding: 12px 20px; font-size: 14px; font-weight: 700; width: 100%; justify-content: center; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn:hover { opacity: .85; }
+
+    /* Product search */
+    .product-search { display: flex; gap: 8px; }
+    .product-search input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; }
+    .product-search select { padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 12px; }
+
+    /* Product grid */
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; overflow-y: auto; flex: 1; }
+    .product-tile { background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; text-align: center; transition: border-color .15s, box-shadow .15s; }
+    .product-tile:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(232,93,4,.15); }
+    .product-tile .emoji { font-size: 28px; display: block; margin-bottom: 6px; }
+    .product-tile .name { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .product-tile .price { font-size: 11px; color: var(--accent); font-weight: 600; }
+    .product-tile .stock { font-size: 10px; color: var(--text-muted); }
+    .product-tile.low-stock { border-color: var(--warning); }
+    .product-tile.out-stock { opacity: .5; pointer-events: none; }
+
+    /* Cart */
+    .cart-items { flex: 1; overflow-y: auto; }
+    .cart-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-weight: 600; }
+    .cart-item-price { color: var(--text-muted); margin-top: 2px; }
+    .cart-item-qty { display: flex; align-items: center; gap: 6px; }
+    .qty-btn { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--border); background: #fff; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .qty-input { width: 50px; text-align: center; border: 1.5px solid var(--border); border-radius: 4px; padding: 2px 4px; font-size: 11px; }
+    .cart-remove { color: var(--danger); font-size: 14px; cursor: pointer; }
+
+    /* Totals */
+    .totals-section { border-top: 1.5px solid var(--border); padding-top: 12px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    .total-row.grand { font-weight: 800; font-size: 15px; color: var(--text); border-top: 1.5px solid var(--border); padding-top: 8px; margin-top: 4px; }
+
+    /* Payment modal overlay (simulated) */
+    .payment-panel { background: #f8f9fb; border-radius: 8px; padding: 14px; margin-top: 8px; }
+    .payment-methods { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin: 10px 0; }
+    .pay-method { border: 1.5px solid var(--border); border-radius: 6px; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer; background: #fff; }
+    .pay-method.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+    /* Dashboard KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+    .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .kpi-value { font-size: 24px; font-weight: 800; color: var(--text); }
+    .kpi-sub { font-size: 11px; color: var(--success); margin-top: 4px; font-weight: 600; }
+
+    /* Notification banner */
+    .notif-banner { background: var(--warning-soft); border-left: 3px solid var(--warning); border-radius: 6px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--warning); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th { text-align: left; padding: 8px 10px; color: var(--text-muted); font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid var(--border); }
+    tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8f9fb; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+    .badge-success { background: var(--success-soft); color: var(--success); }
+    .badge-warning { background: var(--warning-soft); color: var(--warning); }
+    .badge-cash { background: #f0fdf4; color: #16a34a; }
+    .badge-gcash { background: #e0f2fe; color: #0369a1; }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <span class="badge">CASHIER</span>
+    <h2>Slaughterhouse MIS</h2>
+  </div>
+
+  <div style="padding-top:12px;">
+    <div class="nav-item active" onclick="showScreen('dashboard', this)"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="showScreen('pos', this)"><span class="icon">🖥️</span> Point of Sale</div>
+    <div class="nav-item" onclick="showScreen('availability', this)"><span class="icon">📦</span> Product Availability</div>
+    <div class="nav-item" onclick="showScreen('transactions', this)"><span class="icon">🧾</span> Transaction History</div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="avatar">J</div>
+    <div>
+      <div class="sidebar-footer-name">Juan Dela Cruz</div>
+      <div class="sidebar-footer-role">Cashier</div>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">Cashier Dashboard</h1>
+    <div class="topbar-right">
+      <span style="font-size:11px;color:var(--text-muted);">Sun, Aug 2 2026</span>
+      <div class="topbar-pill">🕐 5:48 PM</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="notif-banner">⚠️ Pork Kasim (Batch B-0037) is running low — 8 kg remaining</div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Sales Today</div>
+          <div class="kpi-value">₱24,850</div>
+          <div class="kpi-sub">↑ 12% vs yesterday</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Transactions</div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-sub">Your shift: 23</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Transaction</div>
+          <div class="kpi-value">₱528</div>
+          <div class="kpi-sub">₱ per customer</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">My Recent Transactions</span>
+            <span class="btn btn-outline btn-sm" onclick="showScreen('transactions', document.querySelectorAll('.nav-item')[3])">View All</span>
+          </div>
+          <table>
+            <thead><tr><th>Receipt</th><th>Items</th><th>Amount</th><th>Payment</th></tr></thead>
+            <tbody>
+              <tr><td>#RCP-0047</td><td>3 items</td><td>₱1,240.00</td><td><span class="badge badge-cash">Cash</span></td></tr>
+              <tr><td>#RCP-0045</td><td>5 items</td><td>₱2,100.00</td><td><span class="badge badge-cash">Cash</span></td></tr>
+              <tr><td>#RCP-0043</td><td>2 items</td><td>₱640.00</td><td><span class="badge badge-gcash">GCash</span></td></tr>
+              <tr><td>#RCP-0041</td><td>4 items</td><td>₱1,800.00</td><td><span class="badge badge-cash">Cash</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Stock Alerts</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--warning-soft);border-radius:6px;">
+              <div><div style="font-weight:700;font-size:12px;">Pork Kasim</div><div style="font-size:10px;color:var(--text-muted);">Batch B-0037</div></div>
+              <span style="font-size:12px;font-weight:700;color:var(--warning);">8 kg left</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff5f5;border-radius:6px;">
+              <div><div style="font-weight:700;font-size:12px;">Beef Buto</div><div style="font-size:10px;color:var(--text-muted);">Batch B-0035</div></div>
+              <span style="font-size:12px;font-weight:700;color:var(--danger);">3 kg left</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--warning-soft);border-radius:6px;">
+              <div><div style="font-weight:700;font-size:12px;">Goat Ribs</div><div style="font-size:10px;color:var(--text-muted);">Batch B-0033</div></div>
+              <span style="font-size:12px;font-weight:700;color:var(--warning);">5 kg left</span>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="showScreen('pos', document.querySelectorAll('.nav-item')[1])">🖥️ Open POS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ POS SCREEN ═══ -->
+    <div class="screen" id="screen-pos" style="padding:0;height:calc(100vh - 56px);overflow:hidden;">
+      <div class="pos-layout" style="height:100%;padding:16px;gap:16px;">
+
+        <!-- LEFT: Product Search + Grid -->
+        <div class="pos-left">
+          <div class="card" style="flex-shrink:0;">
+            <div class="product-search">
+              <input type="text" placeholder="🔍 Search product by name or cut…" id="productSearch">
+              <select>
+                <option>All Categories</option>
+                <option>Beef</option>
+                <option>Pork</option>
+                <option>Chicken</option>
+                <option>Goat</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="product-grid" style="overflow-y:auto;flex:1;">
+            <div class="product-tile" onclick="addToCart('Beef Liempo','₱220/kg')">
+              <span class="emoji">🥩</span>
+              <div class="name">Beef Liempo</div>
+              <div class="price">₱220/kg</div>
+              <div class="stock">48 kg avail.</div>
+            </div>
+            <div class="product-tile low-stock" onclick="addToCart('Pork Kasim','₱200/kg')">
+              <span class="emoji">🐷</span>
+              <div class="name">Pork Kasim ⚠️</div>
+              <div class="price">₱200/kg</div>
+              <div class="stock">8 kg avail.</div>
+            </div>
+            <div class="product-tile" onclick="addToCart('Chicken Breast','₱140/kg')">
+              <span class="emoji">🍗</span>
+              <div class="name">Chicken Breast</div>
+              <div class="price">₱140/kg</div>
+              <div class="stock">32 kg avail.</div>
+            </div>
+            <div class="product-tile" onclick="addToCart('Pork Liempo','₱210/kg')">
+              <span class="emoji">🥓</span>
+              <div class="name">Pork Liempo</div>
+              <div class="price">₱210/kg</div>
+              <div class="stock">25 kg avail.</div>
+            </div>
+            <div class="product-tile" onclick="addToCart('Beef Kenchi','₱220/kg')">
+              <span class="emoji">🥩</span>
+              <div class="name">Beef Kenchi</div>
+              <div class="price">₱220/kg</div>
+              <div class="stock">18 kg avail.</div>
+            </div>
+            <div class="product-tile" onclick="addToCart('Chicken Leg','₱140/kg')">
+              <span class="emoji">🍗</span>
+              <div class="name">Chicken Leg</div>
+              <div class="price">₱140/kg</div>
+              <div class="stock">20 kg avail.</div>
+            </div>
+            <div class="product-tile low-stock" onclick="addToCart('Beef Buto','₱160/kg')">
+              <span class="emoji">🦴</span>
+              <div class="name">Beef Buto ❌</div>
+              <div class="price">₱160/kg</div>
+              <div class="stock">3 kg avail.</div>
+            </div>
+            <div class="product-tile" onclick="addToCart('Pork Pigue','₱160/kg')">
+              <span class="emoji">🐖</span>
+              <div class="name">Pork Pigue</div>
+              <div class="price">₱160/kg</div>
+              <div class="stock">22 kg avail.</div>
+            </div>
+            <div class="product-tile out-stock">
+              <span class="emoji">🐐</span>
+              <div class="name">Goat Ribs</div>
+              <div class="price">₱280/kg</div>
+              <div class="stock">0 kg — Out</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Cart + Payment -->
+        <div class="pos-right">
+          <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="card-header">
+              <span class="card-title">🛒 Current Cart</span>
+              <span class="btn btn-danger btn-sm" onclick="clearCart()">Clear</span>
+            </div>
+
+            <div class="cart-items" id="cartItems">
+              <div class="cart-item">
+                <div class="cart-item-info">
+                  <div class="cart-item-name">Beef Liempo</div>
+                  <div class="cart-item-price">₱220/kg × 1.500 kg = ₱330.00</div>
+                </div>
+                <div class="cart-item-qty">
+                  <button class="qty-btn">−</button>
+                  <input class="qty-input" type="number" value="1.500" step="0.001">
+                  <button class="qty-btn">+</button>
+                </div>
+                <span class="cart-remove">✕</span>
+              </div>
+              <div class="cart-item">
+                <div class="cart-item-info">
+                  <div class="cart-item-name">Pork Liempo</div>
+                  <div class="cart-item-price">₱210/kg × 2.000 kg = ₱420.00</div>
+                </div>
+                <div class="cart-item-qty">
+                  <button class="qty-btn">−</button>
+                  <input class="qty-input" type="number" value="2.000" step="0.001">
+                  <button class="qty-btn">+</button>
+                </div>
+                <span class="cart-remove">✕</span>
+              </div>
+              <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:11px;display:none" id="emptyCart">Cart is empty — tap a product to add</div>
+            </div>
+
+            <div class="totals-section">
+              <div class="total-row"><span>Subtotal</span><span>₱750.00</span></div>
+              <div class="total-row"><span>Discount</span><span style="display:flex;align-items:center;gap:4px;"><input type="number" style="width:50px;padding:2px 6px;border:1.5px solid var(--border);border-radius:4px;font-size:11px;" value="0" min="0"> %</span></div>
+              <div class="total-row grand"><span>TOTAL</span><span>₱750.00</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="margin-bottom:10px;">Payment Method</div>
+            <div class="payment-methods">
+              <div class="pay-method selected">💵 Cash</div>
+              <div class="pay-method">📱 GCash</div>
+              <div class="pay-method">💳 Card</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+                <span style="font-weight:600;">Amount Tendered (₱)</span>
+                <input type="number" style="width:110px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-weight:700;" value="1000.00">
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;">
+                <span>Change</span><span style="color:var(--success);">₱250.00</span>
+              </div>
+            </div>
+            <button class="btn btn-success btn-lg" style="margin-top:12px;">✅ Process Sale</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PRODUCT AVAILABILITY ═══ -->
+    <div class="screen" id="screen-availability">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Product Availability</span>
+          <input type="text" placeholder="Search…" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;">
+        </div>
+        <table>
+          <thead><tr><th>Product</th><th>Category</th><th>Price/kg</th><th>Available (kg)</th><th>Expiry</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Beef Liempo</td><td>Beef</td><td>₱220</td><td>48.000 kg</td><td>Aug 7, 2026</td><td><span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Available</span></td></tr>
+            <tr><td>Pork Kasim</td><td>Pork</td><td>₱200</td><td>8.000 kg</td><td>Aug 5, 2026</td><td><span style="background:var(--warning-soft);color:var(--warning);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">⚠️ Low</span></td></tr>
+            <tr><td>Chicken Breast</td><td>Chicken</td><td>₱140</td><td>32.000 kg</td><td>Aug 8, 2026</td><td><span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Available</span></td></tr>
+            <tr><td>Pork Liempo</td><td>Pork</td><td>₱210</td><td>25.000 kg</td><td>Aug 6, 2026</td><td><span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Available</span></td></tr>
+            <tr><td>Beef Kenchi</td><td>Beef</td><td>₱220</td><td>18.000 kg</td><td>Aug 7, 2026</td><td><span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Available</span></td></tr>
+            <tr><td>Beef Buto</td><td>Beef</td><td>₱160</td><td>3.000 kg</td><td>Aug 4, 2026</td><td><span style="background:#fff5f5;color:var(--danger);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">❌ Critical</span></td></tr>
+            <tr><td>Goat Ribs</td><td>Goat</td><td>₱280</td><td>0.000 kg</td><td>—</td><td><span style="background:#f1f3f5;color:#6b7280;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;">Out of Stock</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ TRANSACTION HISTORY ═══ -->
+    <div class="screen" id="screen-transactions">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Transaction History</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="date" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;">
+            <button class="btn btn-outline btn-sm">Export</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Receipt No.</th><th>Date & Time</th><th>Items</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Payment</th><th>Change</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr><td>#RCP-0047</td><td>Aug 2, 5:42 PM</td><td>3</td><td>₱1,240.00</td><td>₱0.00</td><td>₱1,240.00</td><td><span class="badge badge-cash">Cash</span></td><td>₱260.00</td><td><button class="btn btn-outline btn-sm">🖨 Reprint</button></td></tr>
+            <tr><td>#RCP-0046</td><td>Aug 2, 5:31 PM</td><td>2</td><td>₱890.50</td><td>₱0.00</td><td>₱890.50</td><td><span class="badge badge-gcash">GCash</span></td><td>₱0.00</td><td><button class="btn btn-outline btn-sm">🖨 Reprint</button></td></tr>
+            <tr><td>#RCP-0045</td><td>Aug 2, 5:14 PM</td><td>5</td><td>₱2,100.00</td><td>₱100.00</td><td>₱2,000.00</td><td><span class="badge badge-cash">Cash</span></td><td>₱0.00</td><td><button class="btn btn-outline btn-sm">🖨 Reprint</button></td></tr>
+            <tr><td>#RCP-0044</td><td>Aug 2, 4:58 PM</td><td>1</td><td>₱560.00</td><td>₱0.00</td><td>₱560.00</td><td><span class="badge badge-cash">Cash</span></td><td>₱440.00</td><td><button class="btn btn-outline btn-sm">🖨 Reprint</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Receipt preview -->
+      <div class="card" style="max-width:320px;margin:0 auto;font-family:monospace;">
+        <div style="text-align:center;margin-bottom:12px;">
+          <div style="font-weight:700;font-size:14px;">SMIS RECEIPT</div>
+          <div style="font-size:11px;color:var(--text-muted);">Slaughterhouse MIS</div>
+          <div style="font-size:11px;color:var(--text-muted);">Aug 2, 2026 — 5:42 PM</div>
+          <div style="font-size:11px;margin-top:4px;">Receipt #RCP-0047 | Cashier: Juan D.</div>
+        </div>
+        <div style="border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);padding:8px 0;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Beef Liempo 1.500 kg @ ₱220</span><span>₱330.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span>Pork Liempo 2.000 kg @ ₱210</span><span>₱420.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;"><span>Chicken Breast 0.500 kg @ ₱140</span><span>₱70.00</span></div>
+        </div>
+        <div style="font-size:11px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>Subtotal</span><span>₱820.00</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>Discount</span><span>₱0.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;margin-top:4px;"><span>TOTAL</span><span>₱820.00</span></div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px;"><span>Cash Tendered</span><span>₱1,000.00</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Change</span><span>₱180.00</span></div>
+        </div>
+        <div style="text-align:center;font-size:10px;margin-top:12px;color:var(--text-muted);">Thank you for your purchase!<br>— SMIS —</div>
+        <button class="btn btn-outline" style="width:100%;margin-top:10px;justify-content:center;">🖨️ Print Receipt</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function showScreen(id, el) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    el.classList.add('active');
+    const titles = { dashboard: 'Cashier Dashboard', pos: 'Point of Sale', availability: 'Product Availability', transactions: 'Transaction History' };
+    document.getElementById('pageTitle').textContent = titles[id] || id;
+  }
+
+  function addToCart(name, price) {
+    // Demo: just shows a visual cue
+    const tile = event.currentTarget;
+    tile.style.borderColor = 'var(--success)';
+    setTimeout(() => tile.style.borderColor = '', 600);
+  }
+
+  function clearCart() {
+    document.getElementById('cartItems').querySelectorAll('.cart-item').forEach(i => i.remove());
+    document.getElementById('emptyCart').style.display = 'block';
+  }
+
+  // Payment method toggle
+  document.querySelectorAll('.pay-method').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+</script>
+</body>
+</html>
