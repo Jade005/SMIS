@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createUserApi } from '../../api/userApi';
-import { UserPlus, CheckCircle, Clock, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, CheckCircle, Clock, Eye, EyeOff, UserCheck } from 'lucide-react';
 
 const RegisterCustomer = () => {
   const [formData, setFormData] = useState({
@@ -44,7 +44,7 @@ const RegisterCustomer = () => {
       const payload = { ...formData, role: 'customer' };
       const res = await createUserApi(payload);
       setSuccess(res.data);
-      // Reset form for next registration
+      // Reset form after successful registration
       setFormData({ first_name: '', last_name: '', email: '', password: '', phone: '', address: '' });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
@@ -55,37 +55,32 @@ const RegisterCustomer = () => {
 
   return (
     <div className="page-container">
-      <div style={{ maxWidth: '620px', margin: '0 auto' }}>
-
-        {/* Page Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', marginBottom: '4px' }}>
-            Register New Customer
-          </h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>
-            Create a customer account on behalf of a walk-in client. The account will require admin approval before the customer can log in.
-          </p>
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <UserCheck size={18} color="var(--primary-cashier)" />
+            Register Walk-in Customer Account
+          </span>
         </div>
 
         {/* Approval Notice Banner */}
-        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <Clock size={18} color="#d97706" style={{ marginTop: '1px', flexShrink: 0 }} />
-          <div style={{ fontSize: '12px', color: '#92400e' }}>
-            <strong>Pending Admin Approval Required</strong><br />
-            Accounts registered here will be <em>inactive</em> until an administrator approves them from the Admin Portal → User Management → Pending Approvals tab.
+        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+          <Clock size={20} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
+          <div style={{ fontSize: '13px', color: '#92400e', lineHeight: '1.5' }}>
+            <strong>Pending Admin Approval Required:</strong> Customer accounts registered by Cashiers will remain <em>inactive</em> until an administrator approves them under Admin Portal → Users tab.
           </div>
         </div>
 
         {/* Success Banner */}
         {success && (
           <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <CheckCircle size={24} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <CheckCircle size={22} color="#16a34a" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <div style={{ fontWeight: '700', color: '#166534', fontSize: '14px', marginBottom: '4px' }}>
+              <div style={{ fontWeight: '800', color: '#166534', fontSize: '14px', marginBottom: '2px' }}>
                 Customer Registered Successfully!
               </div>
-              <div style={{ fontSize: '12px', color: '#166534' }}>
-                Account for <strong>{success.user?.first_name} {success.user?.last_name}</strong> ({success.user?.email}) has been created and is pending admin approval.
+              <div style={{ fontSize: '13px', color: '#166534' }}>
+                Account for <strong>{success.user?.first_name} {success.user?.last_name}</strong> ({success.user?.email}) has been submitted and is pending admin approval.
               </div>
             </div>
           </div>
@@ -93,43 +88,44 @@ const RegisterCustomer = () => {
 
         {/* Error Banner */}
         {error && (
-          <div style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#b91c1c', padding: '10px 14px', borderRadius: '6px', fontSize: '12px', marginBottom: '16px' }}>
+          <div style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#b91c1c', padding: '12px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', marginBottom: '20px' }}>
             {error}
           </div>
         )}
 
-        {/* Registration Form Card */}
-        <div className="card" style={{ padding: '28px' }}>
-          <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginBottom: '16px' }}>
-              <div className="form-group">
-                <label>First Name <span style={{ color: '#ef4444' }}>*</span></label>
-                <input
-                  type="text"
-                  name="first_name"
-                  className="form-control"
-                  value={formData.first_name}
-                  onChange={(e) => handleNameChange('first_name', e.target.value)}
-                  placeholder="e.g. Juan"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
-                <input
-                  type="text"
-                  name="last_name"
-                  className="form-control"
-                  value={formData.last_name}
-                  onChange={(e) => handleNameChange('last_name', e.target.value)}
-                  placeholder="e.g. Dela Cruz"
-                  required
-                />
-              </div>
+        {/* Customer Registration Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="form-grid" style={{ marginBottom: '18px' }}>
+            <div className="form-group">
+              <label>First Name <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <input
+                type="text"
+                name="first_name"
+                className="form-control"
+                value={formData.first_name}
+                onChange={(e) => handleNameChange('first_name', e.target.value)}
+                placeholder="e.g. Juan"
+                required
+              />
             </div>
 
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Email Address <span style={{ color: '#ef4444' }}>*</span> <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(auto-filled)</span></label>
+            <div className="form-group">
+              <label>Last Name <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <input
+                type="text"
+                name="last_name"
+                className="form-control"
+                value={formData.last_name}
+                onChange={(e) => handleNameChange('last_name', e.target.value)}
+                placeholder="e.g. Dela Cruz"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-grid" style={{ marginBottom: '18px' }}>
+            <div className="form-group">
+              <label>Email Address <span style={{ color: 'var(--danger)' }}>*</span> <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(auto-filled)</span></label>
               <input
                 type="email"
                 name="email"
@@ -142,8 +138,8 @@ const RegisterCustomer = () => {
               />
             </div>
 
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Password <span style={{ color: '#ef4444' }}>*</span> <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(auto-filled)</span></label>
+            <div className="form-group">
+              <label>Password <span style={{ color: 'var(--danger)' }}>*</span> <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(auto-filled)</span></label>
               <div style={{ position: 'relative', width: '100%' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -152,7 +148,7 @@ const RegisterCustomer = () => {
                   style={{ width: '100%', paddingRight: '40px', background: formData.password ? '#f0fdf4' : undefined }}
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Set a password for the customer"
+                  placeholder="Set a password"
                   required
                 />
                 <button
@@ -164,8 +160,10 @@ const RegisterCustomer = () => {
                 </button>
               </div>
             </div>
+          </div>
 
-            <div className="form-group" style={{ marginBottom: '16px' }}>
+          <div className="form-grid" style={{ marginBottom: '24px' }}>
+            <div className="form-group">
               <label>Phone Number</label>
               <input
                 type="tel"
@@ -177,7 +175,7 @@ const RegisterCustomer = () => {
               />
             </div>
 
-            <div className="form-group" style={{ marginBottom: '24px' }}>
+            <div className="form-group">
               <label>Home / Delivery Address</label>
               <input
                 type="text"
@@ -188,22 +186,19 @@ const RegisterCustomer = () => {
                 placeholder="Street, Barangay, City"
               />
             </div>
+          </div>
 
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
             <button
               type="submit"
               className="btn btn-cashier btn-lg"
-              style={{ width: '100%', justifyContent: 'center' }}
               disabled={loading}
             >
               <UserPlus size={18} />
-              {loading ? 'Registering Customer...' : 'Register Customer Account'}
+              {loading ? 'Submitting Registration...' : 'Register Customer Account'}
             </button>
-          </form>
-        </div>
-
-        <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '12px' }}>
-          After registering, remind the admin to approve the account in the Admin Portal.
-        </p>
+          </div>
+        </form>
       </div>
     </div>
   );

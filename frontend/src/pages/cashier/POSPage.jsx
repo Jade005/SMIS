@@ -4,13 +4,13 @@ import { getCategoriesApi } from '../../api/productApi';
 import { createSaleApi } from '../../api/saleApi';
 import { useCart } from '../../context/CartContext';
 import ReceiptModal from '../../components/pos/ReceiptModal';
-import { Search, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, CheckCircle, RefreshCw } from 'lucide-react';
 
 const POSPage = () => {
   const [batches, setBatches] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
-  const [filterCat, setFilterCat] = useState('');
+  const [selectedCat, setSelectedCat] = useState('');
   const [loading, setLoading] = useState(true);
   const [lastSale, setLastSale] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -54,7 +54,8 @@ const POSPage = () => {
 
   const filteredBatches = batches.filter((b) => {
     const matchesSearch = b.product_name.toLowerCase().includes(search.toLowerCase()) || b.meat_cut.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
+    const matchesCat = selectedCat ? b.category_id === Number(selectedCat) : true;
+    return matchesSearch && matchesCat;
   });
 
   const handleTileClick = (batch) => {
@@ -105,124 +106,152 @@ const POSPage = () => {
   };
 
   return (
-    <div className="page-container" style={{ padding: '16px' }}>
+    <div className="page-container">
       <div className="pos-container">
-        {/* LEFT: Item Selection & Catalog Grid */}
-        <div style={{ display: 'flex', flexDirect: 'column', gap: '12px', overflow: 'hidden' }}>
-          <div className="card" style={{ marginBottom: 0, padding: '12px 16px' }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
+        
+        {/* LEFT COLUMN: Search, Filters & Product Grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Filter & Search Bar Card */}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="🔍 Search meat products by name or cut..."
+                  placeholder="Search meat products or cut..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  style={{ width: '100%', paddingLeft: '32px' }}
+                  style={{ paddingLeft: '38px' }}
                 />
-                <Search size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }} />
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               </div>
+
+              <select
+                className="form-control"
+                style={{ width: 'auto', minWidth: '150px' }}
+                value={selectedCat}
+                onChange={(e) => setSelectedCat(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+
+              <button className="btn btn-outline btn-sm" onClick={loadInventory} title="Refresh Inventory">
+                <RefreshCw size={14} /> Refresh
+              </button>
             </div>
           </div>
 
-          <div className="product-tile-grid" style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+          {/* Catalog Tiles Grid */}
+          <div className="product-tile-grid" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
             {filteredBatches.map((b) => (
               <div key={b.id} className="product-tile" onClick={() => handleTileClick(b)}>
-                <div style={{ fontSize: '28px', marginBottom: '4px' }}>🥩</div>
-                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#0f172a', lineHeight: '1.2' }}>{b.product_name}</div>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>Cut: {b.meat_cut}</div>
-                <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '13px', marginTop: '4px' }}>
-                  ₱{Number(b.price_per_kg).toFixed(2)}/kg
+                <div style={{ fontSize: '32px', marginBottom: '6px' }}>🥩</div>
+                <div style={{ fontWeight: '800', fontSize: '13px', color: '#0f172a', lineHeight: '1.2' }}>{b.product_name}</div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Cut: {b.meat_cut}</div>
+                <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '14px', marginTop: '6px' }}>
+                  ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '10px', color: '#64748b' }}>/kg</span>
                 </div>
-                <div style={{ fontSize: '10px', color: Number(b.available_stock_kg) <= 10 ? 'var(--warning)' : '#16a34a', fontWeight: 'bold', marginTop: '2px' }}>
-                  {Number(b.available_stock_kg).toFixed(3)} kg avail.
+                <div style={{ marginTop: '6px' }}>
+                  <span className={`badge ${Number(b.available_stock_kg) <= 10 ? 'badge-warning' : 'badge-success'}`}>
+                    {Number(b.available_stock_kg).toFixed(2)} kg avail.
+                  </span>
                 </div>
               </div>
             ))}
             {filteredBatches.length === 0 && (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '32px', color: '#64748b', fontSize: '13px' }}>
-                No active inventory batches match your search
+              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#64748b', marginBottom: 0 }}>
+                {loading ? 'Loading inventory...' : 'No available inventory batches found'}
               </div>
             )}
           </div>
         </div>
 
-        {/* RIGHT: Live Cart & Transaction Total */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflow: 'hidden' }}>
-          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginBottom: 0, padding: '16px', overflow: 'hidden' }}>
+        {/* RIGHT COLUMN: POS Cart & Checkout Terminal */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Shopping Cart Card */}
+          <div className="card" style={{ marginBottom: 0, padding: '20px' }}>
             <div className="card-header" style={{ marginBottom: '12px' }}>
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ShoppingCart size={18} /> POS Cart
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShoppingCart size={18} color="var(--primary-cashier)" /> Current Cart ({cart.length})
               </span>
               {cart.length > 0 && (
-                <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)' }} onClick={clearCart}>
+                <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: '#fca5a5' }} onClick={clearCart}>
                   Clear Cart
                 </button>
               )}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '12px', paddingRight: '4px' }}>
+            {/* Cart Items List */}
+            <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
               {cart.map((item) => (
-                <div key={item.inventory_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{item.product_name} ({item.meat_cut})</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>₱{item.price_per_kg}/kg</div>
+                <div key={item.inventory_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ flex: 1, paddingRight: '8px' }}>
+                    <div style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{item.product_name}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>{item.meat_cut} • ₱{item.price_per_kg}/kg</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input
                       type="number"
                       step="0.1"
+                      min="0.1"
                       className="form-control"
-                      style={{ width: '64px', padding: '4px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold' }}
+                      style={{ width: '70px', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: '800' }}
                       value={item.weight_kg}
                       onChange={(e) => updateWeight(item.inventory_id, parseFloat(e.target.value) || 0.1)}
                     />
-                    <span style={{ fontSize: '11px', fontWeight: 'bold' }}>kg</span>
-                    <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', padding: '4px 6px' }} onClick={() => removeFromCart(item.inventory_id)}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>kg</span>
+                    <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', padding: '6px 8px' }} onClick={() => removeFromCart(item.inventory_id)}>
                       <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
               ))}
               {cart.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8', fontSize: '12px' }}>
-                  Cart is empty. Tap a product tile to add items.
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '12px' }}>
+                  Cart is empty. Click any meat tile to add to sale.
                 </div>
               )}
             </div>
 
-            {/* Totals & Calculations */}
-            <div style={{ fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+            {/* Subtotal & Discount Calculation */}
+            <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                 <span>Subtotal:</span>
-                <span>₱{subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span>Discount (₱):</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748b' }}>Discount (₱):</span>
                 <input
                   type="number"
                   className="form-control"
-                  style={{ width: '80px', padding: '4px', textAlign: 'right', fontSize: '12px' }}
+                  style={{ width: '90px', padding: '6px 10px', textAlign: 'right', fontSize: '13px', fontWeight: '700' }}
                   value={discount}
                   onChange={(e) => setDiscount(Number(e.target.value))}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '16px', borderTop: '2px solid var(--border-color)', paddingTop: '8px', color: '#0f172a' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '18px', borderTop: '2px solid var(--border-color)', paddingTop: '10px', color: '#0f172a', marginTop: '4px' }}>
                 <span>TOTAL DUE:</span>
                 <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          {/* Payment Panel */}
-          <div className="card" style={{ padding: '16px', marginBottom: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#64748b' }}>Payment Details</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '12px' }}>
+          {/* Payment & Checkout Card */}
+          <div className="card" style={{ padding: '20px', marginBottom: 0 }}>
+            <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', color: '#64748b' }}>
+              Payment Method
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
               {['cash', 'gcash', 'card'].map((method) => (
                 <button
                   key={method}
                   className={`btn ${paymentMethod === method ? 'btn-cashier' : 'btn-outline'}`}
-                  style={{ fontSize: '11px', textTransform: 'uppercase', padding: '6px' }}
+                  style={{ fontSize: '12px', textTransform: 'uppercase', padding: '8px' }}
                   onClick={() => setPaymentMethod(method)}
                 >
                   {method}
@@ -231,18 +260,18 @@ const POSPage = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Tendered (₱):</span>
+              <span style={{ fontSize: '13px', fontWeight: '700' }}>Amount Tendered:</span>
               <input
                 type="number"
                 className="form-control"
-                style={{ width: '120px', fontSize: '14px', fontWeight: 'bold', textAlign: 'right' }}
+                style={{ width: '130px', fontSize: '15px', fontWeight: '800', textAlign: 'right' }}
                 value={amountTendered}
                 onChange={(e) => setAmountTendered(Number(e.target.value))}
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', marginBottom: '16px' }}>
-              <span>Change:</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '800', marginBottom: '18px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <span style={{ color: '#64748b' }}>Change:</span>
               <span style={{ color: 'var(--success)' }}>₱{change.toFixed(2)}</span>
             </div>
 
@@ -257,6 +286,7 @@ const POSPage = () => {
             </button>
           </div>
         </div>
+
       </div>
 
       <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} sale={lastSale} />

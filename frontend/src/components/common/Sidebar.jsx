@@ -26,7 +26,7 @@ const Sidebar = () => {
     { to: '/admin/inventory', label: 'Inventory', icon: Package },
     { to: '/admin/suppliers', label: 'Suppliers', icon: Truck },
     { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-    { to: '/admin/users', label: 'Users', icon: Users },
+    { to: '/admin/users', label: 'Users Management', icon: Users },
     { to: '/admin/reports', label: 'Reports', icon: FileText },
     { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp }
   ];

@@ -32,66 +32,68 @@ import RegisterCustomer from '../pages/cashier/RegisterCustomer';
 import CustomerCatalog from '../pages/customer/CustomerCatalog';
 import CustomerCart from '../pages/customer/CustomerCart';
 import OrderHistory from '../pages/customer/OrderHistory';
+import CustomerProfile from '../pages/customer/CustomerProfile';
 
 // Shell Layout for Authenticated Pages
 const AppLayout = ({ title }) => {
-  return (
-    <div className="app-layout">
-      <Sidebar />
-      <div className="main-content-area">
-        <Navbar title={title} />
-        <Outlet />
-      </div>
-    </div>
-  );
+    return (
+        <div className="app-layout">
+            <Sidebar />
+            <div className="main-content-area">
+                <Navbar title={title} />
+                <Outlet />
+            </div>
+        </div>
+    );
 };
 
 const AppRoutes = () => {
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    return (
+        <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-      {/* Admin Portal Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        <Route element={<AppLayout title="Admin Management Portal" />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/products" element={<ProductMgmt />} />
-          <Route path="/admin/inventory" element={<InventoryMgmt />} />
-          <Route path="/admin/suppliers" element={<SupplierMgmt />} />
-          <Route path="/admin/orders" element={<OrderMgmt />} />
-          <Route path="/admin/users" element={<UserMgmt />} />
-          <Route path="/admin/reports" element={<ReportsPage />} />
-          <Route path="/admin/analytics" element={<AnalyticsPage />} />
-        </Route>
-      </Route>
+            {/* Admin Portal Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route element={<AppLayout title="Admin Management Portal" />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/products" element={<ProductMgmt />} />
+                    <Route path="/admin/inventory" element={<InventoryMgmt />} />
+                    <Route path="/admin/suppliers" element={<SupplierMgmt />} />
+                    <Route path="/admin/orders" element={<OrderMgmt />} />
+                    <Route path="/admin/users" element={<UserMgmt />} />
+                    <Route path="/admin/reports" element={<ReportsPage />} />
+                    <Route path="/admin/analytics" element={<AnalyticsPage />} />
+                </Route>
+            </Route>
 
-      {/* Cashier Portal Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['cashier']} />}>
-        <Route element={<AppLayout title="Cashier POS Terminal" />}>
-          <Route path="/cashier" element={<CashierDashboard />} />
-          <Route path="/cashier/pos" element={<POSPage />} />
-          <Route path="/cashier/availability" element={<ProductAvailability />} />
-          <Route path="/cashier/transactions" element={<TransactionHistory />} />
-          <Route path="/cashier/register-customer" element={<RegisterCustomer />} />
-        </Route>
-      </Route>
+            {/* Cashier Portal Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['cashier']} />}>
+                <Route element={<AppLayout title="Cashier POS Terminal" />}>
+                    <Route path="/cashier" element={<CashierDashboard />} />
+                    <Route path="/cashier/pos" element={<POSPage />} />
+                    <Route path="/cashier/availability" element={<ProductAvailability />} />
+                    <Route path="/cashier/transactions" element={<TransactionHistory />} />
+                    <Route path="/cashier/register-customer" element={<RegisterCustomer />} />
+                </Route>
+            </Route>
 
-      {/* Customer Portal Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
-        <Route element={<AppLayout title="Customer Online Store" />}>
-          <Route path="/customer" element={<CustomerCatalog />} />
-          <Route path="/customer/cart" element={<CustomerCart />} />
-          <Route path="/customer/orders" element={<OrderHistory />} />
-        </Route>
-      </Route>
+            {/* Customer Portal Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
+                <Route element={<AppLayout title="Customer Online Store" />}>
+                    <Route path="/customer" element={<CustomerCatalog />} />
+                    <Route path="/customer/cart" element={<CustomerCart />} />
+                    <Route path="/customer/orders" element={<OrderHistory />} />
+                    <Route path="/customer/profile" element={<CustomerProfile />} />
+                </Route>
+            </Route>
 
-      {/* Default Catch-all */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
-  );
+            {/* Default Catch-all */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+    );
 };
 
 export default AppRoutes;
