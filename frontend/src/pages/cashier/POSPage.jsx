@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { getInventoryApi } from '../../api/inventoryApi';
 import { getCategoriesApi } from '../../api/productApi';
+import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/orderApi';
 import { createSaleApi } from '../../api/saleApi';
 import { useCart } from '../../context/CartContext';
 import ReceiptModal from '../../components/pos/ReceiptModal';
-import { Search, ShoppingCart, Trash2, CheckCircle, RefreshCw } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, CheckCircle, RefreshCw, CreditCard, Users } from 'lucide-react';
 
 const POSPage = () => {
   const [batches, setBatches] = useState([]);
@@ -12,6 +13,9 @@ const POSPage = () => {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('');
   const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
   const [lastSale, setLastSale] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -48,8 +52,27 @@ const POSPage = () => {
     }
   };
 
+  const loadOrders = async () => {
+    try {
+      const res = await getOrdersApi({ status: 'pending' });
+      setOrders(res.data || []);
+    } catch (err) {
+      console.error('Failed to load orders', err);
+    }
+  };
+
+  const loadOrderDetails = async (orderId) => {
+    try {
+      const res = await getOrderByIdApi(orderId);
+      setOrderDetails(res.data || null);
+    } catch (err) {
+      console.error('Failed to load order details', err);
+    }
+  };
+
   useEffect(() => {
     loadInventory();
+    loadOrders();
   }, []);
 
   const filteredBatches = batches.filter((b) => {
@@ -71,6 +94,35 @@ const POSPage = () => {
   };
 
   const handleProcessSale = async () => {
+    if (selectedOrder) {
+      if (!orderDetails) {
+        alert('Please wait until order details have loaded.');
+        return;
+      }
+
+      const dueAmount = Number(orderDetails.total_amount);
+      if (amountTendered < dueAmount && paymentMethod === 'cash') {
+        alert(`Amount tendered (₱${amountTendered}) is less than total amount due (₱${dueAmount.toFixed(2)})`);
+        return;
+      }
+
+      setProcessing(true);
+      try {
+        await updateOrderStatusApi(selectedOrder.id, 'completed');
+        alert(`Payment processed for ${orderDetails.customer_name}. Order #${orderDetails.order_no} is now completed.`);
+        setSelectedOrder(null);
+        setOrderDetails(null);
+        setAmountTendered(0);
+        setDiscount(0);
+        loadOrders();
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to process order payment');
+      } finally {
+        setProcessing(false);
+      }
+      return;
+    }
+
     if (cart.length === 0) {
       alert('Cart is empty');
       return;
@@ -98,6 +150,7 @@ const POSPage = () => {
       setShowReceipt(true);
       clearCart();
       loadInventory(); // Refresh stock after auto-deduction
+      loadOrders();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to process POS sale');
     } finally {
@@ -186,6 +239,69 @@ const POSPage = () => {
               )}
             </div>
 
+            {/* Pending Orders List */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '700' }}><Users size={16} /> Pending Customer Orders</span>
+              </div>
+              <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                {orders.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8', fontSize: '12px' }}>
+                    No pending customer orders.
+                  </div>
+                ) : orders.map((order) => (
+                  <button
+                    key={order.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      loadOrderDetails(order.id);
+                    }}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '12px 14px',
+                      marginBottom: '8px',
+                      borderRadius: '12px',
+                      border: selectedOrder?.id === order.id ? '2px solid var(--primary-cashier)' : '1px solid #e2e8f0',
+                      background: selectedOrder?.id === order.id ? '#fff7ed' : '#ffffff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>#{order.order_no}</strong>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>{new Date(order.created_at).toLocaleString()}</span>
+                    </div>
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#475569' }}>
+                      {order.customer_name} • ₱{Number(order.total_amount).toFixed(2)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Selected Order Details */}
+            {selectedOrder && orderDetails && (
+              <div style={{ marginBottom: '16px', padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '10px' }}>Order Details</div>
+                <div style={{ fontSize: '12px', marginBottom: '8px' }}><strong>Customer:</strong> {orderDetails.customer_name}</div>
+                <div style={{ fontSize: '12px', marginBottom: '8px' }}><strong>Email:</strong> {orderDetails.customer_email || 'N/A'}</div>
+                <div style={{ fontSize: '12px', marginBottom: '12px' }}><strong>Phone:</strong> {orderDetails.customer_phone || 'N/A'}</div>
+                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px' }}>Items</div>
+                <div style={{ maxHeight: '140px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {orderDetails.items.map((item) => (
+                    <div key={`${item.product_id}-${item.weight_kg}-${item.id}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '12px' }}>
+                      <div>
+                        <div style={{ fontWeight: '700' }}>{item.product_name}</div>
+                        <div style={{ color: '#64748b' }}>{item.meat_cut} • {item.weight_kg} kg</div>
+                      </div>
+                      <div style={{ fontWeight: '700' }}>₱{Number(item.subtotal).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Cart Items List */}
             <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
               {cart.map((item) => (
@@ -222,7 +338,7 @@ const POSPage = () => {
             <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                 <span>Subtotal:</span>
-                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{selectedOrder && orderDetails ? Number(orderDetails.subtotal || orderDetails.total_amount).toFixed(2) : subtotal.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#64748b' }}>Discount (₱):</span>
@@ -236,7 +352,7 @@ const POSPage = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '18px', borderTop: '2px solid var(--border-color)', paddingTop: '10px', color: '#0f172a', marginTop: '4px' }}>
                 <span>TOTAL DUE:</span>
-                <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
+                <span style={{ color: 'var(--primary-cashier)' }}>₱{selectedOrder && orderDetails ? Number(orderDetails.total_amount).toFixed(2) : total.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -279,10 +395,10 @@ const POSPage = () => {
               className="btn btn-cashier btn-lg"
               style={{ width: '100%', justifyContent: 'center' }}
               onClick={handleProcessSale}
-              disabled={processing || cart.length === 0}
+              disabled={processing || (!selectedOrder && cart.length === 0)}
             >
               <CheckCircle size={18} />
-              {processing ? 'Processing Sale...' : 'Process Sale & Print Receipt'}
+              {processing ? 'Processing...' : selectedOrder ? 'Process Payment' : 'Process Sale & Print Receipt'}
             </button>
           </div>
         </div>

@@ -25,7 +25,6 @@ const Sidebar = () => {
     { to: '/admin/products', label: 'Products', icon: Beef },
     { to: '/admin/inventory', label: 'Inventory', icon: Package },
     { to: '/admin/suppliers', label: 'Suppliers', icon: Truck },
-    { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
     { to: '/admin/users', label: 'Users Management', icon: Users },
     { to: '/admin/reports', label: 'Reports', icon: FileText },
     { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp }
@@ -34,6 +33,7 @@ const Sidebar = () => {
   const cashierLinks = [
     { to: '/cashier', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/cashier/pos', label: 'Point of Sale', icon: Monitor },
+    { to: '/cashier/orders', label: 'Orders', icon: ShoppingCart },
     { to: '/cashier/availability', label: 'Stock Lookup', icon: CheckCircle },
     { to: '/cashier/transactions', label: 'History', icon: History },
     { to: '/cashier/register-customer', label: 'Register Customer', icon: UserPlus }

@@ -136,6 +136,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
         <button
           type="button"
           onClick={onToggle}
+          onMouseDown={(e) => e.preventDefault()}
           style={{
             position: 'absolute',
             right: '12px',
@@ -153,7 +154,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
           }}
           onMouseEnter={(e) => e.currentTarget.style.color = '#475569'}
           onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-          tabIndex={-1}
         >
           {show ? <EyeOff size={17} /> : <Eye size={17} />}
         </button>
@@ -221,6 +221,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                 transition: 'all 0.2s ease',
                 backdropFilter: 'blur(4px)'
               }}
+              onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; }}
               title="Close"
@@ -395,6 +396,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                     fontSize: '14px',
                     transition: 'all 0.15s ease'
                   }}
+                  onMouseDown={(e) => e.preventDefault()}
                   onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
                 >
@@ -403,6 +405,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
                 <button
                   type="submit"
+                  onMouseDown={(e) => e.preventDefault()}
                   disabled={loading}
                   style={{
                     padding: '11px 26px',

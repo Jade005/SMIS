@@ -62,7 +62,6 @@ const AppRoutes = () => {
                     <Route path="/admin/products" element={<ProductMgmt />} />
                     <Route path="/admin/inventory" element={<InventoryMgmt />} />
                     <Route path="/admin/suppliers" element={<SupplierMgmt />} />
-                    <Route path="/admin/orders" element={<OrderMgmt />} />
                     <Route path="/admin/users" element={<UserMgmt />} />
                     <Route path="/admin/reports" element={<ReportsPage />} />
                     <Route path="/admin/analytics" element={<AnalyticsPage />} />
@@ -74,6 +73,7 @@ const AppRoutes = () => {
                 <Route element={<AppLayout title="Cashier POS Terminal" />}>
                     <Route path="/cashier" element={<CashierDashboard />} />
                     <Route path="/cashier/pos" element={<POSPage />} />
+                    <Route path="/cashier/orders" element={<OrderMgmt />} />
                     <Route path="/cashier/availability" element={<ProductAvailability />} />
                     <Route path="/cashier/transactions" element={<TransactionHistory />} />
                     <Route path="/cashier/register-customer" element={<RegisterCustomer />} />

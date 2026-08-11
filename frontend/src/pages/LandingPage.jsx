@@ -13,7 +13,12 @@ import {
   Award,
   CheckCircle2,
   Lock,
-  Monitor
+  Monitor,
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  Send
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -429,19 +434,122 @@ const LandingPage = () => {
 
       {/* --- FOOTER --- */}
       <footer style={{
-        background: '#090d16',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '40px 24px',
-        textAlign: 'center',
-        fontSize: '13px',
-        color: '#64748b'
+        background: '#080c14',
+        borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+        fontFamily: 'Inter, system-ui, sans-serif'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
-          <Beef size={20} color="#ef4444" />
-          <span style={{ fontSize: '15px', fontWeight: '800', color: '#f8fafc' }}>SMIS</span>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px 40px' }}>
+
+          {/* Row 1 — Brand + About (Centered) */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '10px',
+                background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)', flexShrink: 0
+              }}>
+                <Beef size={21} color="#fff" />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontSize: '20px', fontWeight: '900', color: '#f8fafc', letterSpacing: '-0.02em', lineHeight: 1 }}>SMIS</span>
+                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', letterSpacing: '0.06em' }}>SLAUGHTERHOUSE MIS</span>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: '1.6', maxWidth: '680px' }}>
+              A comprehensive slaughterhouse meat inventory and sales management platform — streamlining operations from supplier batch delivery to customer POS checkout, with FIFO tracking, role-based access, and real-time analytics.
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '28px' }} />
+
+          {/* Row 2 — Contact items in one landscape row (Centered) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '32px' }}>
+
+            {/* Address */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px', height: '32px', borderRadius: '8px',
+                background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <MapPin size={15} color="#10b981" />
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', marginBottom: '2px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Address</div>
+                <div style={{ fontSize: '13px', color: '#64748b' }}>Slaughterhouse District, City Municipal Area</div>
+              </div>
+            </div>
+
+            {/* Dot separator */}
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#334155', flexShrink: 0 }} />
+
+            {/* Phone */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px', height: '32px', borderRadius: '8px',
+                background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <Phone size={15} color="#10b981" />
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', marginBottom: '2px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Phone</div>
+                <a href="tel:+639158379629" style={{ fontSize: '13px', color: '#64748b', textDecoration: 'none' }}>+63 (0) 915-837-9629</a>
+              </div>
+            </div>
+
+            {/* Dot separator */}
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#334155', flexShrink: 0 }} />
+
+            {/* Email */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px', height: '32px', borderRadius: '8px',
+                background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <Mail size={15} color="#10b981" />
+              </div>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: '700', color: '#475569', marginBottom: '2px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Email</div>
+                <a href="mailto:slaughterhouse@gmail.com" style={{ fontSize: '13px', color: '#64748b', textDecoration: 'none' }}>slaughterhouse@gmail.com</a>
+              </div>
+            </div>
+
+          </div>
         </div>
-        <p style={{ margin: '0 0 12px 0' }}>Slaughterhouse Meat Inventory & Sales Management System</p>
-        <p style={{ fontSize: '12px', margin: 0, color: '#475569' }}>© {new Date().getFullYear()} SMIS. All rights reserved.</p>
+
+        {/* Bottom Bar */}
+        <div style={{
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          padding: '20px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}>
+          <p style={{ fontSize: '12px', color: '#334155', margin: 0 }}>
+            © {new Date().getFullYear()} <span style={{ color: '#475569', fontWeight: '700' }}>SMIS</span> — Slaughterhouse Meat Inventory & Sales Management System. All rights reserved.
+          </p>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {['Privacy Policy', 'Terms of Service', 'Support'].map((item) => (
+              <a
+                key={item}
+                href="#"
+                style={{ fontSize: '12px', color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#94a3b8'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#334155'; }}
+              >
+                {item}
+              </a>
+            ))}
+          </div>
+        </div>
       </footer>
     </div>
   );

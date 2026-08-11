@@ -10,6 +10,7 @@ const CustomerCatalog = () => {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('');
   const [addedIds, setAddedIds] = useState({});
+  const [quantities, setQuantities] = useState({});
 
   const { addToCart, cart } = useCart();
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const CustomerCatalog = () => {
       product_name: product.name,
       meat_cut: product.meat_cut,
       price_per_kg: Number(product.price_per_kg),
-      weight_kg: 1.000
+      weight_kg: Number(quantities[product.id] || 1)
     });
 
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
@@ -92,24 +93,36 @@ const CustomerCatalog = () => {
       {/* Product Catalog Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '20px' }}>
         {filteredProducts.map((p) => (
-          <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', padding: '16px', marginBottom: 0 }}>
+            <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', padding: '16px', marginBottom: 0 }}>
             <div style={{ height: '120px', background: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '48px', marginBottom: '12px' }}>
               🥩
             </div>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>{p.name}</h3>
             <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>Category: {p.category_name} • Cut: {p.meat_cut}</p>
-            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
               <div>
                 <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--primary-customer)' }}>₱{Number(p.price_per_kg).toFixed(2)}</span>
                 <span style={{ fontSize: '11px', color: '#64748b' }}> / kg</span>
               </div>
-              <button
-                className={`btn ${addedIds[p.id] ? 'btn-outline' : 'btn-customer'} btn-sm`}
-                onClick={() => handleAdd(p)}
-              >
-                {addedIds[p.id] ? <Check size={14} /> : <Plus size={14} />}
-                {addedIds[p.id] ? 'Added' : 'Add'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={quantities[p.id] ?? 1}
+                  onChange={(e) => setQuantities((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                  style={{ width: '80px', padding: '6px 8px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }}
+                  title="Weight (kg)"
+                />
+
+                <button
+                  className={`btn ${addedIds[p.id] ? 'btn-outline' : 'btn-customer'} btn-sm`}
+                  onClick={() => handleAdd(p)}
+                >
+                  {addedIds[p.id] ? <Check size={14} /> : <Plus size={14} />}
+                  {addedIds[p.id] ? 'Added' : 'Add'}
+                </button>
+              </div>
             </div>
           </div>
         ))}

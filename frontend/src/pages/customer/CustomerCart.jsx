@@ -61,7 +61,7 @@ const CustomerCart = () => {
                 </thead>
                 <tbody>
                   {cart.map((item) => (
-                    <tr key={item.product_id}>
+                    <tr key={item.cart_item_id || item.product_id}>
                       <td>
                         <strong>{item.product_name}</strong>
                         <div style={{ fontSize: '11px', color: '#64748b' }}>Cut: {item.meat_cut}</div>
@@ -74,12 +74,12 @@ const CustomerCart = () => {
                           className="form-control"
                           style={{ width: '70px', padding: '4px', textAlign: 'center' }}
                           value={item.weight_kg}
-                          onChange={(e) => updateWeight(item.product_id, parseFloat(e.target.value) || 0.1)}
+                          onChange={(e) => updateWeight(item.cart_item_id || item.product_id, parseFloat(e.target.value) || 0.1)}
                         />
                       </td>
                       <td style={{ fontWeight: 'bold' }}>₱{(item.price_per_kg * item.weight_kg).toFixed(2)}</td>
                       <td>
-                        <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)' }} onClick={() => removeFromCart(item.product_id)}>
+                        <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)' }} onClick={() => removeFromCart(item.cart_item_id || item.product_id)}>
                           <Trash2 size={14} />
                         </button>
                       </td>
