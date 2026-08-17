@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { updateCustomerProfileApi } from '../../api/customerApi';
+import { updateUserProfileApi } from '../../api/userApi';
 import { useAuth } from '../../context/AuthContext';
-import { User, Mail, Phone, Camera, X, Check, Loader2, AtSign, Trash2, Sparkles } from 'lucide-react';
+import { User, Mail, Phone, Camera, X, Check, Loader2, AtSign, Trash2 } from 'lucide-react';
 import Toast from '../common/Toast';
+
+const resolveAvatarUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) => {
   const { user, setUser } = useAuth();
@@ -14,7 +22,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
     username: '',
     email: '',
     contact_number: '',
-    profile_image: ''
+    profile_picture: ''
   });
 
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -37,15 +45,16 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
   useEffect(() => {
     if (isOpen) {
       const currentObj = initialData || user || {};
+      const imgPath = currentObj.profile_picture || currentObj.profile_image || '';
       setFormData({
         first_name: currentObj.first_name || '',
         last_name: currentObj.last_name || '',
         username: currentObj.username || (currentObj.email ? currentObj.email.split('@')[0] : ''),
         email: currentObj.email || '',
-        contact_number: currentObj.contact_number || currentObj.phone || '',
-        profile_image: currentObj.profile_image || ''
+        contact_number: currentObj.contact_number || currentObj.phone || '09000000000',
+        profile_picture: imgPath
       });
-      setAvatarPreview(currentObj.profile_image || null);
+      setAvatarPreview(resolveAvatarUrl(imgPath));
       setErrors({});
     }
   }, [isOpen, initialData, user]);
@@ -55,7 +64,6 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Contact number accepts only numbers
     if (name === 'contact_number') {
       const onlyNums = value.replace(/[^0-9]/g, '');
       setFormData((prev) => ({ ...prev, [name]: onlyNums }));
@@ -71,14 +79,20 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type.toLowerCase())) {
+        setToast({ message: 'Unsupported file format. Please upload JPG, JPEG, PNG, or WEBP.', type: 'error' });
+        return;
+      }
       if (file.size > 5 * 1024 * 1024) {
         setToast({ message: 'Image size should be less than 5MB', type: 'error' });
         return;
       }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result);
-        setFormData((prev) => ({ ...prev, profile_image: reader.result }));
+        setFormData((prev) => ({ ...prev, profile_picture: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -86,7 +100,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
 
   const handleRemoveAvatar = () => {
     setAvatarPreview(null);
-    setFormData((prev) => ({ ...prev, profile_image: '' }));
+    setFormData((prev) => ({ ...prev, profile_picture: '' }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -99,11 +113,6 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
       errs.email = 'Email address is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errs.email = 'Invalid email address format';
-    }
-    if (!formData.contact_number.trim()) {
-      errs.contact_number = 'Contact number is required';
-    } else if (!/^[0-9]+$/.test(formData.contact_number.trim())) {
-      errs.contact_number = 'Contact number accepts numbers only';
     }
 
     setErrors(errs);
@@ -119,31 +128,28 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
 
     try {
       setLoading(true);
-      const res = await updateCustomerProfileApi(formData);
-      const updated = res.data.profile;
+      const res = await updateUserProfileApi(formData);
+      const updated = res.data.profile || res.data.user;
 
-      // Update AuthContext so topbar immediately updates
+      // Update AuthContext so Navbar and all pages immediately update
       if (user) {
         setUser((prev) => ({
           ...prev,
-          first_name: updated.first_name,
-          last_name: updated.last_name,
-          username: updated.username,
-          email: updated.email,
-          contact_number: updated.contact_number,
-          profile_image: updated.profile_image
+          ...updated,
+          profile_picture: updated.profile_picture || updated.profile_image,
+          profile_image: updated.profile_picture || updated.profile_image
         }));
       }
 
-      setToast({ message: 'Profile updated successfully!', type: 'success' });
+      setToast({ message: 'Profile picture & details saved successfully!', type: 'success' });
       if (onProfileUpdated) onProfileUpdated(updated);
 
       setTimeout(() => {
         onClose();
       }, 700);
     } catch (err) {
-      console.error('Failed to update profile:', err);
-      const msg = err.response?.data?.message || 'Failed to update profile. Please try again.';
+      console.error('Failed to update profile picture:', err);
+      const msg = err.response?.data?.message || 'Failed to update profile picture. Please try again.';
       setToast({ message: msg, type: 'error' });
     } finally {
       setLoading(false);
@@ -157,7 +163,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
       <div className="customer-modal-overlay" onClick={onClose}>
         <div className="customer-modal-card" onClick={(e) => e.stopPropagation()} style={{ padding: '0', overflow: 'hidden' }}>
           
-          {/* Enhanced Modal Top Header Banner */}
+          {/* Modal Header Banner */}
           <div style={{
             background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
             padding: '24px 28px',
@@ -185,10 +191,10 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '19px', fontWeight: '800', letterSpacing: '-0.01em', color: '#ffffff' }}>
-                  Edit Profile
+                  Edit Profile & Avatar
                 </h3>
                 <p style={{ margin: '2px 0 0', fontSize: '13px', opacity: 0.9, color: '#f0fdf4' }}>
-                  Update your personal details, email & avatar
+                  Update your personal details & permanent profile picture
                 </p>
               </div>
             </div>
@@ -222,7 +228,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
           <div style={{ padding: '24px 28px', background: '#ffffff' }}>
             <form onSubmit={handleSubmit}>
               
-              {/* Enhanced Avatar Section */}
+              {/* Avatar Upload Section */}
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -286,7 +292,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
                     onChange={handleFileChange}
                     style={{ display: 'none' }}
                   />
@@ -302,12 +308,12 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                       color: '#16a34a',
                       background: '#dcfce7',
                       border: '1px solid #bbf7d0',
-                      padding: '4px 12px',
+                      padding: '6px 14px',
                       borderRadius: '100px',
                       cursor: 'pointer'
                     }}
                   >
-                    Upload New Photo
+                    Select Profile Picture (JPG, PNG)
                   </button>
                   {avatarPreview && (
                     <button
@@ -319,7 +325,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                         color: '#dc2626',
                         background: '#fef2f2',
                         border: '1px solid #fecaca',
-                        padding: '4px 12px',
+                        padding: '6px 14px',
                         borderRadius: '100px',
                         cursor: 'pointer',
                         display: 'flex',
@@ -334,7 +340,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                 </div>
               </div>
 
-              {/* Responsive 2-column grid for First Name & Last Name */}
+              {/* 2-column grid for First Name & Last Name */}
               <div className="profile-form-grid-2col" style={{ marginBottom: '18px' }}>
                 <div>
                   <label className="form-label" style={{ fontWeight: '700', fontSize: '13px', color: '#334155', marginBottom: '6px', display: 'block' }}>
@@ -450,7 +456,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
               {/* Contact Number */}
               <div style={{ marginBottom: '28px' }}>
                 <label className="form-label" style={{ fontWeight: '700', fontSize: '13px', color: '#334155', marginBottom: '6px', display: 'block' }}>
-                  Contact Number <span style={{ color: '#ef4444' }}>*</span>
+                  Contact Number
                 </label>
                 <div style={{ position: 'relative' }}>
                   <Phone size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
@@ -459,20 +465,19 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                     name="contact_number"
                     value={formData.contact_number}
                     onChange={handleChange}
-                    className={`form-input ${errors.contact_number ? 'is-invalid' : ''}`}
+                    className="form-input"
                     placeholder="Contact Number (numbers only)"
                     style={{
                       padding: '9px 12px 9px 38px',
                       borderRadius: '10px',
                       background: '#f8fafc',
-                      border: errors.contact_number ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                      border: '1px solid #cbd5e1',
                       fontSize: '13px',
                       width: '100%',
                       boxSizing: 'border-box'
                     }}
                   />
                 </div>
-                {errors.contact_number && <span style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'block', fontWeight: '600' }}>{errors.contact_number}</span>}
               </div>
 
               {/* Actions Footer */}
@@ -517,7 +522,7 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
                   }}
                 >
                   {loading ? <Loader2 className="spin" size={18} /> : <Check size={18} />}
-                  <span>Save Changes</span>
+                  <span>Save Profile</span>
                 </button>
               </div>
             </form>

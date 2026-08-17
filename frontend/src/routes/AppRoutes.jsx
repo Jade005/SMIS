@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import Navbar from '../components/common/Navbar';
 import Sidebar from '../components/common/Sidebar';
+import ForceChangePasswordModal from '../components/auth/ForceChangePasswordModal';
+import { useAuth } from '../context/AuthContext';
 
 // Public Landing Page
 import LandingPage from '../pages/LandingPage';
@@ -36,6 +38,9 @@ import CustomerProfile from '../pages/customer/CustomerProfile';
 
 // Shell Layout for Authenticated Pages
 const AppLayout = ({ title }) => {
+    const { user } = useAuth();
+    const isMustChange = Boolean(user && (user.must_change_password || user.is_temp_password));
+
     return (
         <div className="app-layout">
             <Sidebar />
@@ -43,6 +48,7 @@ const AppLayout = ({ title }) => {
                 <Navbar title={title} />
                 <Outlet />
             </div>
+            <ForceChangePasswordModal isOpen={isMustChange} />
         </div>
     );
 };

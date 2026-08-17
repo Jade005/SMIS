@@ -4,6 +4,16 @@ import { LogOut, User, Lock, ChevronDown } from 'lucide-react';
 import EditProfileModal from '../customer/EditProfileModal';
 import ChangePasswordModal from '../customer/ChangePasswordModal';
 
+const resolveAvatarUrl = (userObj) => {
+  if (!userObj) return null;
+  const path = userObj.profile_picture || userObj.profile_image;
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const Navbar = ({ title }) => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -41,6 +51,8 @@ const Navbar = ({ title }) => {
   const initials = user
     ? `${user.first_name?.[0] || 'U'}${user.last_name?.[0] || ''}`.toUpperCase()
     : 'U';
+
+  const avatarUrl = resolveAvatarUrl(user);
 
   return (
     <>
@@ -85,9 +97,9 @@ const Navbar = ({ title }) => {
                   overflow: 'hidden',
                   border: '2px solid rgba(255,255,255,0.8)'
                 }}>
-                  {user.profile_image ? (
+                  {avatarUrl ? (
                     <img
-                      src={user.profile_image}
+                      src={avatarUrl}
                       alt="User Avatar"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

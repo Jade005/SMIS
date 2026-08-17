@@ -3,6 +3,62 @@ import { changeCustomerPasswordApi } from '../../api/customerApi';
 import { Lock, Eye, EyeOff, X, ShieldCheck, Loader2, AlertCircle, KeyRound, CheckCircle2 } from 'lucide-react';
 import Toast from '../common/Toast';
 
+// Top-level component definition so React maintains DOM focus and cursor state across re-renders
+const PasswordField = ({ label, name, value, onChange, show, onToggle, placeholder }) => (
+  <div style={{ marginBottom: '18px' }}>
+    <label style={{ fontWeight: '700', fontSize: '13px', color: '#334155', marginBottom: '6px', display: 'block' }}>
+      {label} <span style={{ color: '#ef4444' }}>*</span>
+    </label>
+    <div style={{ position: 'relative' }}>
+      <Lock
+        size={16}
+        style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+      />
+      <input
+        type={show ? 'text' : 'password'}
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="form-input"
+        placeholder={placeholder}
+        style={{
+          padding: '9px 44px 9px 38px',
+          borderRadius: '10px',
+          background: '#f8fafc',
+          border: '1px solid #cbd5e1',
+          fontSize: '13px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        onMouseDown={(e) => e.preventDefault()}
+        style={{
+          position: 'absolute',
+          right: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'none',
+          border: 'none',
+          color: '#94a3b8',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '4px',
+          borderRadius: '6px',
+          transition: 'color 0.15s ease'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.color = '#475569'}
+        onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+      >
+        {show ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  </div>
+);
+
 const ChangePasswordModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     current_password: '',
@@ -106,61 +162,6 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const PasswordField = ({ label, name, show, onToggle, placeholder }) => (
-    <div style={{ marginBottom: '18px' }}>
-      <label style={{ fontWeight: '700', fontSize: '13px', color: '#334155', marginBottom: '6px', display: 'block' }}>
-        {label} <span style={{ color: '#ef4444' }}>*</span>
-      </label>
-      <div style={{ position: 'relative' }}>
-        <Lock
-          size={16}
-          style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
-        />
-        <input
-          type={show ? 'text' : 'password'}
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          className="form-input"
-          placeholder={placeholder}
-          style={{
-            padding: '9px 44px 9px 38px',
-            borderRadius: '10px',
-            background: '#f8fafc',
-            border: '1px solid #cbd5e1',
-            fontSize: '13px',
-            width: '100%',
-            boxSizing: 'border-box'
-          }}
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          onMouseDown={(e) => e.preventDefault()}
-          style={{
-            position: 'absolute',
-            right: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'none',
-            border: 'none',
-            color: '#94a3b8',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '4px',
-            borderRadius: '6px',
-            transition: 'color 0.15s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#475569'}
-          onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-        >
-          {show ? <EyeOff size={17} /> : <Eye size={17} />}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <div className="customer-modal-overlay" onClick={onClose}>
@@ -258,6 +259,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
               <PasswordField
                 label="Current Password"
                 name="current_password"
+                value={formData.current_password}
+                onChange={handleChange}
                 show={showCurrent}
                 onToggle={() => setShowCurrent((v) => !v)}
                 placeholder="Enter your current password"
@@ -267,6 +270,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
               <PasswordField
                 label="New Password"
                 name="new_password"
+                value={formData.new_password}
+                onChange={handleChange}
                 show={showNew}
                 onToggle={() => setShowNew((v) => !v)}
                 placeholder="Create a strong new password"
@@ -348,6 +353,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
               <PasswordField
                 label="Confirm New Password"
                 name="confirm_password"
+                value={formData.confirm_password}
+                onChange={handleChange}
                 show={showConfirm}
                 onToggle={() => setShowConfirm((v) => !v)}
                 placeholder="Re-enter your new password"

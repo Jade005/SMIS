@@ -65,13 +65,13 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label>Email Address</label>
+            <label>Email Address or Username</label>
             <div style={{ position: 'relative', width: '100%' }}>
               <input
-                type="email"
+                type="text"
                 className="form-control"
                 style={{ width: '100%', paddingLeft: '36px' }}
-                placeholder="user@smis.local"
+                placeholder="user@smis.local or username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

@@ -34,18 +34,21 @@ CREATE TABLE IF NOT EXISTS categories (
 --    Customers also have a dedicated `customers` profile table.
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
-  id            INT UNSIGNED      NOT NULL AUTO_INCREMENT,
-  first_name    VARCHAR(100)      NOT NULL,
-  last_name     VARCHAR(100)      NOT NULL,
-  email         VARCHAR(255)      NOT NULL,
-  password_hash VARCHAR(255)      NOT NULL,
-  role          ENUM('admin','cashier','customer') NOT NULL DEFAULT 'customer',
-  is_active     TINYINT(1)        NOT NULL DEFAULT 1,
-  created_at    TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id               INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  first_name       VARCHAR(100)      NOT NULL,
+  last_name        VARCHAR(100)      NOT NULL,
+  username         VARCHAR(100)      NULL,
+  email            VARCHAR(255)      NOT NULL,
+  password_hash    VARCHAR(255)      NOT NULL,
+  role             ENUM('admin','cashier','customer') NOT NULL DEFAULT 'customer',
+  is_active        TINYINT(1)        NOT NULL DEFAULT 1,
+  is_temp_password TINYINT(1)        NOT NULL DEFAULT 0,
+  created_at       TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_username (username),
   KEY idx_users_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

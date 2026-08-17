@@ -5,6 +5,16 @@ import { User, Mail, Phone, Edit2, Lock, AtSign, Clock } from 'lucide-react';
 import EditProfileModal from '../../components/customer/EditProfileModal';
 import ChangePasswordModal from '../../components/customer/ChangePasswordModal';
 
+const resolveAvatarUrl = (userObj) => {
+  if (!userObj) return null;
+  const path = userObj.profile_picture || userObj.profile_image;
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const CustomerProfile = () => {
   const { user } = useAuth();
 
@@ -37,7 +47,7 @@ const CustomerProfile = () => {
       <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
         <div style={{ textAlign: 'center', color: '#64748b' }}>
           <Clock size={32} className="spin" style={{ margin: '0 auto 12px', color: '#16a34a' }} />
-          <p style={{ fontWeight: '600' }}>Loading customer profile...</p>
+          <p style={{ fontWeight: '600' }}>Loading profile...</p>
         </div>
       </div>
     );
@@ -45,6 +55,7 @@ const CustomerProfile = () => {
 
   const activeProfile = profile || user || {};
   const initials = `${activeProfile.first_name?.[0] || 'C'}${activeProfile.last_name?.[0] || 'U'}`.toUpperCase();
+  const avatarUrl = resolveAvatarUrl(activeProfile);
 
   return (
     <div className="page-container" style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
@@ -83,9 +94,9 @@ const CustomerProfile = () => {
               border: '3px solid rgba(255,255,255,0.8)'
             }}
           >
-            {activeProfile.profile_image ? (
+            {avatarUrl ? (
               <img
-                src={activeProfile.profile_image}
+                src={avatarUrl}
                 alt="Profile Avatar"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
@@ -99,7 +110,7 @@ const CustomerProfile = () => {
             </h2>
             <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <AtSign size={14} />
-              <span>{activeProfile.username || (activeProfile.email ? activeProfile.email.split('@')[0] : 'customer')}</span>
+              <span>{activeProfile.username || (activeProfile.email ? activeProfile.email.split('@')[0] : 'user')}</span>
             </p>
           </div>
         </div>
@@ -205,7 +216,7 @@ const CustomerProfile = () => {
         </div>
       </div>
 
-      {/* Mutually Exclusive Modals - Only ONE can be open at a time */}
+      {/* Mutually Exclusive Modals */}
       <EditProfileModal
         isOpen={activeModal === 'edit_profile'}
         onClose={() => setActiveModal(null)}
