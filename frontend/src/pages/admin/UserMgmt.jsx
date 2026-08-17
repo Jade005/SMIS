@@ -31,18 +31,18 @@ const UserMgmt = () => {
   const handleNameChange = (field, value) => {
     const updated = { ...formData, [field]: value };
     const first = (field === 'first_name' ? value : formData.first_name).trim().toLowerCase();
-    const last  = (field === 'last_name'  ? value : formData.last_name).trim().toLowerCase();
-    
+    const last = (field === 'last_name' ? value : formData.last_name).trim().toLowerCase();
+
     if (first || last) {
       const cleanFirst = first.replace(/[^a-z0-9]/g, '');
-      const cleanLast  = last.replace(/[^a-z0-9]/g, '');
+      const cleanLast = last.replace(/[^a-z0-9]/g, '');
       const uname = `${cleanFirst}${cleanLast ? '.' + cleanLast : ''}`;
-      
+
       updated.username = uname;
-      updated.email    = `${uname}@smis.local`;
+      updated.email = `${uname}@smis.local`;
     } else {
       updated.username = '';
-      updated.email    = '';
+      updated.email = '';
     }
     setFormData(updated);
   };
@@ -236,7 +236,7 @@ const UserMgmt = () => {
                             {approvingId === u.id ? 'Approving...' : 'Approve'}
                           </button>
                         )}
-                        
+
                         <button
                           className="btn btn-outline btn-sm"
                           onClick={() => setResetModalUser(u)}
