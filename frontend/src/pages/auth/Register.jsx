@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { registerApi } from '../../api/authApi';
-import { UserPlus, Clock, CheckCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { UserPlus, Clock, CheckCircle, ArrowLeft } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
-    password: '',
     phone: '',
     address: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,11 +24,9 @@ const Register = () => {
     const first = (field === 'first_name' ? value : formData.first_name).trim().toLowerCase();
     const last  = (field === 'last_name'  ? value : formData.last_name).trim().toLowerCase();
     if (first || last) {
-      updated.email    = `${first}${last ? '.' + last : ''}@smis.local`;
-      updated.password = `${first}${last}123`;
+      updated.email = `${first}${last ? '.' + last : ''}@smis.local`;
     } else {
-      updated.email    = '';
-      updated.password = '';
+      updated.email = '';
     }
     setFormData(updated);
   };
@@ -159,28 +155,6 @@ const Register = () => {
               style={{ background: formData.email ? '#f0fdf4' : undefined }}
               required
             />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '12px' }}>
-            <label>Password <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(auto-filled)</span></label>
-            <div style={{ position: 'relative', width: '100%' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                className="form-control"
-                style={{ width: '100%', paddingRight: '40px', background: formData.password ? '#f0fdf4' : undefined }}
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, display: 'flex', alignItems: 'center' }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
           </div>
 
           <div className="form-group" style={{ marginBottom: '12px' }}>

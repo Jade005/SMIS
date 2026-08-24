@@ -5,6 +5,7 @@ import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/o
 import { createSaleApi } from '../../api/saleApi';
 import { useCart } from '../../context/CartContext';
 import ReceiptModal from '../../components/pos/ReceiptModal';
+import { getProductImage } from '../../utils/meatImages';
 import {
   Search, ShoppingCart, Trash2, CheckCircle, RefreshCw,
   Users, X, Tag, AlertTriangle, UserCheck
@@ -22,6 +23,7 @@ const POSPage = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [unresolvedItems, setUnresolvedItems] = useState([]);
+  const [imageErrors, setImageErrors] = useState({});
 
   const {
     cart,
@@ -233,21 +235,116 @@ const POSPage = () => {
 
           {/* Product Tiles */}
           <div className="product-tile-grid" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
-            {filteredBatches.map((b) => (
-              <div key={b.id} className="product-tile" onClick={() => handleTileClick(b)}>
-                <div style={{ fontSize: '32px', marginBottom: '6px' }}>🥩</div>
-                <div style={{ fontWeight: '800', fontSize: '13px', color: '#0f172a', lineHeight: '1.2' }}>{b.product_name}</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Cut: {b.meat_cut}</div>
-                <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '14px', marginTop: '6px' }}>
-                  ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '10px', color: '#64748b' }}>/kg</span>
+            {filteredBatches.map((b) => {
+              const imgSrc = imageErrors[b.id]
+                ? getProductImage({ ...b, name: b.product_name, image_url: null })
+                : getProductImage({ ...b, name: b.product_name });
+              const isLow = Number(b.available_stock_kg) <= 10;
+              const meatCategory = b.category_name || b.meat_type || 'Fresh Meat';
+
+              return (
+                <div
+                  key={b.id}
+                  className="product-tile"
+                  onClick={() => handleTileClick(b)}
+                  title={`Click to add ${b.product_name} (${b.meat_cut}) to cart`}
+                >
+                  {/* Meat Cut Photography Image Box */}
+                  <div style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '110px',
+                    background: '#f1f5f9',
+                    overflow: 'hidden'
+                  }}>
+                    <img
+                      src={imgSrc}
+                      alt={b.product_name}
+                      loading="lazy"
+                      onError={() => setImageErrors((prev) => ({ ...prev, [b.id]: true }))}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                        transition: 'transform 0.3s ease'
+                      }}
+                    />
+
+                    {/* Category Pill Tag */}
+                    <span style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'rgba(15, 23, 42, 0.82)',
+                      backdropFilter: 'blur(4px)',
+                      color: '#ffffff',
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      {meatCategory}
+                    </span>
+
+                    {/* Available Stock Tag Overlay */}
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '8px',
+                      right: '8px',
+                      background: isLow ? 'rgba(239, 68, 68, 0.92)' : 'rgba(22, 163, 74, 0.92)',
+                      backdropFilter: 'blur(4px)',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      padding: '2px 6px',
+                      borderRadius: '5px'
+                    }}>
+                      {Number(b.available_stock_kg).toFixed(1)} kg
+                    </span>
+                  </div>
+
+                  {/* Product Details Section */}
+                  <div style={{ padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+                    <div style={{
+                      fontWeight: '800',
+                      fontSize: '13px',
+                      color: '#0f172a',
+                      lineHeight: '1.25',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      minHeight: '32px'
+                    }}>
+                      {b.product_name}
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      Cut: <strong>{b.meat_cut}</strong>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      marginTop: '6px',
+                      paddingTop: '6px',
+                      borderTop: '1px solid #f1f5f9'
+                    }}>
+                      <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '14px' }}>
+                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>/kg</span>
+                      </div>
+                      <span style={{ fontSize: '10px', color: isLow ? 'var(--danger)' : '#16a34a', fontWeight: '700' }}>
+                        {isLow ? 'Low Stock' : 'In Stock'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ marginTop: '6px' }}>
-                  <span className={`badge ${Number(b.available_stock_kg) <= 10 ? 'badge-warning' : 'badge-success'}`}>
-                    {Number(b.available_stock_kg).toFixed(2)} kg avail.
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {filteredBatches.length === 0 && (
               <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#64748b', marginBottom: 0 }}>
                 {loading ? 'Loading inventory...' : 'No available inventory batches found'}
