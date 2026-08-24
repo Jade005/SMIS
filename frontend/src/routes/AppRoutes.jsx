@@ -20,6 +20,7 @@ import InventoryMgmt from '../pages/admin/InventoryMgmt';
 import SupplierMgmt from '../pages/admin/SupplierMgmt';
 import OrderMgmt from '../pages/admin/OrderMgmt';
 import UserMgmt from '../pages/admin/UserMgmt';
+import RegisterCustomer from '../pages/admin/RegisterCustomer';
 import ReportsPage from '../pages/admin/ReportsPage';
 import AnalyticsPage from '../pages/admin/AnalyticsPage';
 
@@ -28,7 +29,6 @@ import CashierDashboard from '../pages/cashier/CashierDashboard';
 import POSPage from '../pages/cashier/POSPage';
 import ProductAvailability from '../pages/cashier/ProductAvailability';
 import TransactionHistory from '../pages/cashier/TransactionHistory';
-import RegisterCustomer from '../pages/cashier/RegisterCustomer';
 
 // Customer Pages
 import CustomerCatalog from '../pages/customer/CustomerCatalog';
@@ -69,6 +69,7 @@ const AppRoutes = () => {
                     <Route path="/admin/inventory" element={<InventoryMgmt />} />
                     <Route path="/admin/suppliers" element={<SupplierMgmt />} />
                     <Route path="/admin/users" element={<UserMgmt />} />
+                    <Route path="/admin/register-customer" element={<RegisterCustomer />} />
                     <Route path="/admin/reports" element={<ReportsPage />} />
                     <Route path="/admin/analytics" element={<AnalyticsPage />} />
                 </Route>
@@ -82,7 +83,6 @@ const AppRoutes = () => {
                     <Route path="/cashier/orders" element={<OrderMgmt />} />
                     <Route path="/cashier/availability" element={<ProductAvailability />} />
                     <Route path="/cashier/transactions" element={<TransactionHistory />} />
-                    <Route path="/cashier/register-customer" element={<RegisterCustomer />} />
                 </Route>
             </Route>
 

@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getInventoryApi } from '../../api/inventoryApi';
 import { getCategoriesApi } from '../../api/productApi';
 import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/orderApi';
 import { createSaleApi } from '../../api/saleApi';
 import { useCart } from '../../context/CartContext';
 import ReceiptModal from '../../components/pos/ReceiptModal';
-import { Search, ShoppingCart, Trash2, CheckCircle, RefreshCw, CreditCard, Users } from 'lucide-react';
+import {
+  Search, ShoppingCart, Trash2, CheckCircle, RefreshCw,
+  Users, X, Tag, AlertTriangle, UserCheck
+} from 'lucide-react';
 
 const POSPage = () => {
   const [batches, setBatches] = useState([]);
@@ -14,11 +17,11 @@ const POSPage = () => {
   const [selectedCat, setSelectedCat] = useState('');
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [orderDetails, setOrderDetails] = useState(null);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [lastSale, setLastSale] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [unresolvedItems, setUnresolvedItems] = useState([]);
 
   const {
     cart,
@@ -34,10 +37,15 @@ const POSPage = () => {
     setAmountTendered,
     subtotal,
     total,
-    change
+    change,
+    activeOrder,
+    loadOrderIntoCart,
+    clearActiveOrder
   } = useCart();
 
-  const loadInventory = async () => {
+  // ─── Data loaders ────────────────────────────────────────────────────────
+
+  const loadInventory = useCallback(async () => {
     try {
       const [invRes, catRes] = await Promise.all([
         getInventoryApi({ status: 'available' }),
@@ -50,33 +58,31 @@ const POSPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
     try {
       const res = await getOrdersApi({ status: 'pending' });
       setOrders(res.data || []);
     } catch (err) {
       console.error('Failed to load orders', err);
+    } finally {
+      setOrdersLoading(false);
     }
-  };
-
-  const loadOrderDetails = async (orderId) => {
-    try {
-      const res = await getOrderByIdApi(orderId);
-      setOrderDetails(res.data || null);
-    } catch (err) {
-      console.error('Failed to load order details', err);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     loadInventory();
     loadOrders();
-  }, []);
+  }, [loadInventory, loadOrders]);
+
+  // ─── Tile grid ───────────────────────────────────────────────────────────
 
   const filteredBatches = batches.filter((b) => {
-    const matchesSearch = b.product_name.toLowerCase().includes(search.toLowerCase()) || b.meat_cut.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      b.product_name.toLowerCase().includes(search.toLowerCase()) ||
+      b.meat_cut.toLowerCase().includes(search.toLowerCase());
     const matchesCat = selectedCat ? b.category_id === Number(selectedCat) : true;
     return matchesSearch && matchesCat;
   });
@@ -89,47 +95,43 @@ const POSPage = () => {
       meat_cut: batch.meat_cut,
       price_per_kg: Number(batch.price_per_kg),
       available_stock_kg: Number(batch.available_stock_kg),
-      weight_kg: 1.000
+      weight_kg: 1.000,
+      source: 'walkin'
     });
   };
 
-  const handleProcessSale = async () => {
-    if (selectedOrder) {
-      if (!orderDetails) {
-        alert('Please wait until order details have loaded.');
-        return;
-      }
+  // ─── Customer order selection ─────────────────────────────────────────────
 
-      const dueAmount = Number(orderDetails.total_amount);
-      if (amountTendered < dueAmount && paymentMethod === 'cash') {
-        alert(`Amount tendered (₱${amountTendered}) is less than total amount due (₱${dueAmount.toFixed(2)})`);
-        return;
-      }
-
-      setProcessing(true);
-      try {
-        await updateOrderStatusApi(selectedOrder.id, 'completed');
-        alert(`Payment processed for ${orderDetails.customer_name}. Order #${orderDetails.order_no} is now completed.`);
-        setSelectedOrder(null);
-        setOrderDetails(null);
-        setAmountTendered(0);
-        setDiscount(0);
-        loadOrders();
-      } catch (err) {
-        alert(err.response?.data?.message || 'Failed to process order payment');
-      } finally {
-        setProcessing(false);
-      }
-      return;
+  const handleSelectOrder = async (order) => {
+    try {
+      const res = await getOrderByIdApi(order.id);
+      const details = res.data;
+      const unresolved = loadOrderIntoCart(details, batches);
+      setUnresolvedItems(unresolved);
+    } catch (err) {
+      console.error('Failed to load order details', err);
+      alert('Could not load order details. Please try again.');
     }
+  };
 
-    if (cart.length === 0) {
+  const handleClearActiveOrder = () => {
+    clearActiveOrder();
+    setUnresolvedItems([]);
+  };
+
+  // ─── Checkout ────────────────────────────────────────────────────────────
+
+  const handleProcessSale = async () => {
+    if (cart.length === 0 && !activeOrder) {
       alert('Cart is empty');
       return;
     }
-
+    if (cart.length === 0 && activeOrder) {
+      alert('No items in cart. Please add at least one item to process.');
+      return;
+    }
     if (amountTendered < total && paymentMethod === 'cash') {
-      alert(`Amount tendered (₱${amountTendered}) is less than total amount due (₱${total.toFixed(2)})`);
+      alert(`Amount tendered (₱${amountTendered}) is less than total due (₱${total.toFixed(2)})`);
       return;
     }
 
@@ -142,30 +144,63 @@ const POSPage = () => {
         })),
         discount: Number(discount),
         payment_method: paymentMethod,
-        amount_tendered: Number(amountTendered)
+        amount_tendered: Number(amountTendered),
+        ...(activeOrder ? { customer_id: activeOrder.customerId } : {})
       };
 
       const res = await createSaleApi(salePayload);
-      setLastSale(res.data.sale);
+
+      // If fulfilling a customer order, mark it completed
+      if (activeOrder) {
+        try {
+          await updateOrderStatusApi(activeOrder.orderId, 'completed');
+        } catch (statusErr) {
+          console.warn('Sale recorded but order status update failed:', statusErr);
+        }
+      }
+
+      // Attach order info to the sale for the receipt
+      const saleRecord = {
+        ...res.data.sale,
+        ...(activeOrder ? {
+          customer_name: activeOrder.customerName,
+          fulfilled_order_no: activeOrder.orderNo
+        } : {})
+      };
+
+      setLastSale(saleRecord);
       setShowReceipt(true);
-      clearCart();
-      loadInventory(); // Refresh stock after auto-deduction
+      clearActiveOrder();
+      setUnresolvedItems([]);
+      loadInventory();
       loadOrders();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to process POS sale');
+      alert(err.response?.data?.message || 'Failed to process sale');
     } finally {
       setProcessing(false);
     }
   };
 
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  const formatOrderTime = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const preorderCount = cart.filter((i) => i.source === 'preorder').length;
+  const walkinCount = cart.filter((i) => i.source === 'walkin').length;
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
     <div className="page-container">
       <div className="pos-container">
-        
-        {/* LEFT COLUMN: Search, Filters & Product Grid */}
+
+        {/* ── LEFT COLUMN: Product Grid ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* Filter & Search Bar Card */}
+
+          {/* Filter & Search */}
           <div className="card" style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
@@ -179,7 +214,6 @@ const POSPage = () => {
                 />
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               </div>
-
               <select
                 className="form-control"
                 style={{ width: 'auto', minWidth: '150px' }}
@@ -191,14 +225,13 @@ const POSPage = () => {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-
               <button className="btn btn-outline btn-sm" onClick={loadInventory} title="Refresh Inventory">
                 <RefreshCw size={14} /> Refresh
               </button>
             </div>
           </div>
 
-          {/* Catalog Tiles Grid */}
+          {/* Product Tiles */}
           <div className="product-tile-grid" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
             {filteredBatches.map((b) => (
               <div key={b.id} className="product-tile" onClick={() => handleTileClick(b)}>
@@ -223,92 +256,195 @@ const POSPage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: POS Cart & Checkout Terminal */}
+        {/* ── RIGHT COLUMN: Cart & Checkout ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
+
           {/* Shopping Cart Card */}
           <div className="card" style={{ marginBottom: 0, padding: '20px' }}>
-            <div className="card-header" style={{ marginBottom: '12px' }}>
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShoppingCart size={18} color="var(--primary-cashier)" /> Current Cart ({cart.length})
-              </span>
-              {cart.length > 0 && (
-                <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: '#fca5a5' }} onClick={clearCart}>
-                  Clear Cart
-                </button>
-              )}
-            </div>
 
-            {/* Pending Orders List */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '14px', fontWeight: '700' }}><Users size={16} /> Pending Customer Orders</span>
-              </div>
-              <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-                {orders.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8', fontSize: '12px' }}>
-                    No pending customer orders.
-                  </div>
-                ) : orders.map((order) => (
-                  <button
-                    key={order.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      loadOrderDetails(order.id);
-                    }}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '12px 14px',
-                      marginBottom: '8px',
-                      borderRadius: '12px',
-                      border: selectedOrder?.id === order.id ? '2px solid var(--primary-cashier)' : '1px solid #e2e8f0',
-                      background: selectedOrder?.id === order.id ? '#fff7ed' : '#ffffff',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong>#{order.order_no}</strong>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>{new Date(order.created_at).toLocaleString()}</span>
+            {/* ── Active Customer Strip (when order is selected) ── */}
+            {activeOrder ? (
+              <div style={{
+                marginBottom: '14px',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
+                border: '2px solid var(--primary-cashier)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <UserCheck size={22} color="var(--primary-cashier)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '14px', color: '#0f172a' }}>
+                      {activeOrder.customerName}
                     </div>
-                    <div style={{ marginTop: '6px', fontSize: '12px', color: '#475569' }}>
-                      {order.customer_name} • ₱{Number(order.total_amount).toFixed(2)}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Selected Order Details */}
-            {selectedOrder && orderDetails && (
-              <div style={{ marginBottom: '16px', padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '10px' }}>Order Details</div>
-                <div style={{ fontSize: '12px', marginBottom: '8px' }}><strong>Customer:</strong> {orderDetails.customer_name}</div>
-                <div style={{ fontSize: '12px', marginBottom: '8px' }}><strong>Email:</strong> {orderDetails.customer_email || 'N/A'}</div>
-                <div style={{ fontSize: '12px', marginBottom: '12px' }}><strong>Phone:</strong> {orderDetails.customer_phone || 'N/A'}</div>
-                <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '8px' }}>Items</div>
-                <div style={{ maxHeight: '140px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {orderDetails.items.map((item) => (
-                    <div key={`${item.product_id}-${item.weight_kg}-${item.id}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '12px' }}>
-                      <div>
-                        <div style={{ fontWeight: '700' }}>{item.product_name}</div>
-                        <div style={{ color: '#64748b' }}>{item.meat_cut} • {item.weight_kg} kg</div>
+                    {activeOrder.customerPhone && (
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                        📞 {activeOrder.customerPhone}
                       </div>
-                      <div style={{ fontWeight: '700' }}>₱{Number(item.subtotal).toFixed(2)}</div>
+                    )}
+                    <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '700', marginTop: '3px' }}>
+                      Order #{activeOrder.orderNo}
                     </div>
-                  ))}
+                    {preorderCount > 0 && walkinCount > 0 && (
+                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>
+                        {preorderCount} pre-ordered · {walkinCount} walk-in added
+                      </div>
+                    )}
+                  </div>
                 </div>
+                <button
+                  title="Clear customer order — switch to walk-in"
+                  onClick={handleClearActiveOrder}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#ef4444', padding: '2px', borderRadius: '6px',
+                    display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            ) : (
+              <div className="card-header" style={{ marginBottom: '12px' }}>
+                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShoppingCart size={18} color="var(--primary-cashier)" />
+                  Walk-in Cart ({cart.length})
+                </span>
+                {cart.length > 0 && (
+                  <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: '#fca5a5' }} onClick={clearCart}>
+                    Clear Cart
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Cart Items List */}
+            {/* Stock resolution warnings */}
+            {unresolvedItems.length > 0 && (
+              <div style={{
+                marginBottom: '12px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                background: '#fef9c3',
+                border: '1px solid #fde047',
+                fontSize: '12px',
+                color: '#713f12'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', marginBottom: '4px' }}>
+                  <AlertTriangle size={14} /> Stock not found for:
+                </div>
+                {unresolvedItems.map((name, i) => (
+                  <div key={i}>• {name}</div>
+                ))}
+                <div style={{ marginTop: '4px', color: '#92400e' }}>Add these items manually from the product grid.</div>
+              </div>
+            )}
+
+            {/* ── Pending Customer Orders List ── */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#374151' }}>
+                  <Users size={15} color="var(--primary-cashier)" /> Pending Customer Orders
+                </span>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={loadOrders}
+                  disabled={ordersLoading}
+                  title="Refresh pending orders"
+                  style={{ padding: '4px 8px' }}
+                >
+                  <RefreshCw size={12} />
+                </button>
+              </div>
+
+              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {ordersLoading && (
+                  <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: '12px' }}>
+                    Loading...
+                  </div>
+                )}
+                {!ordersLoading && orders.length === 0 && (
+                  <div style={{
+                    textAlign: 'center', padding: '20px 16px',
+                    background: '#f8fafc', borderRadius: '10px',
+                    border: '1px dashed #e2e8f0',
+                    color: '#94a3b8', fontSize: '12px'
+                  }}>
+                    <Users size={22} style={{ marginBottom: '6px', opacity: 0.4 }} />
+                    <div>No pending customer orders.</div>
+                  </div>
+                )}
+                {!ordersLoading && orders.map((order) => {
+                  const isActive = activeOrder?.orderId === order.id;
+                  return (
+                    <button
+                      key={order.id}
+                      type="button"
+                      onClick={() => handleSelectOrder(order)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: isActive ? '2px solid var(--primary-cashier)' : '1px solid #e2e8f0',
+                        background: isActive ? '#fff7ed' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'border 0.15s, background 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: '12px', color: '#0f172a' }}>
+                          {isActive && <CheckCircle size={12} color="var(--primary-cashier)" style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
+                          {order.customer_name}
+                        </strong>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>{formatOrderTime(order.created_at)}</span>
+                      </div>
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>#{order.order_no}</span>
+                        <span style={{ fontWeight: '700', color: 'var(--primary-cashier)' }}>₱{Number(order.total_amount).toFixed(2)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Cart Line Items ── */}
             <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
               {cart.map((item) => (
-                <div key={item.inventory_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div
+                  key={item.cart_item_id}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 0', borderBottom: '1px solid #f1f5f9'
+                  }}
+                >
                   <div style={{ flex: 1, paddingRight: '8px' }}>
-                    <div style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{item.product_name}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>{item.meat_cut} • ₱{item.price_per_kg}/kg</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{item.product_name}</span>
+                      {item.source === 'preorder' && (
+                        <span style={{
+                          fontSize: '9px', fontWeight: '700', padding: '1px 5px',
+                          borderRadius: '4px', background: '#fed7aa', color: '#c2410c',
+                          display: 'inline-flex', alignItems: 'center', gap: '2px'
+                        }}>
+                          <Tag size={8} /> Pre-order
+                        </span>
+                      )}
+                      {item.source === 'walkin' && activeOrder && (
+                        <span style={{
+                          fontSize: '9px', fontWeight: '700', padding: '1px 5px',
+                          borderRadius: '4px', background: '#d1fae5', color: '#065f46',
+                          display: 'inline-flex', alignItems: 'center', gap: '2px'
+                        }}>
+                          + Added
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>{item.meat_cut} · ₱{item.price_per_kg}/kg</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input
@@ -318,10 +454,14 @@ const POSPage = () => {
                       className="form-control"
                       style={{ width: '70px', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: '800' }}
                       value={item.weight_kg}
-                      onChange={(e) => updateWeight(item.inventory_id, parseFloat(e.target.value) || 0.1)}
+                      onChange={(e) => updateWeight(item.cart_item_id, parseFloat(e.target.value) || 0.1)}
                     />
                     <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>kg</span>
-                    <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', padding: '6px 8px' }} onClick={() => removeFromCart(item.inventory_id)}>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      style={{ color: 'var(--danger)', padding: '6px 8px' }}
+                      onClick={() => removeFromCart(item.cart_item_id)}
+                    >
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -329,16 +469,18 @@ const POSPage = () => {
               ))}
               {cart.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '12px' }}>
-                  Cart is empty. Click any meat tile to add to sale.
+                  {activeOrder
+                    ? 'No items loaded. Select an order or click a meat tile to add items.'
+                    : 'Cart is empty. Click any meat tile to add to sale.'}
                 </div>
               )}
             </div>
 
-            {/* Subtotal & Discount Calculation */}
+            {/* ── Totals ── */}
             <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                 <span>Subtotal:</span>
-                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{selectedOrder && orderDetails ? Number(orderDetails.subtotal || orderDetails.total_amount).toFixed(2) : subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#64748b' }}>Discount (₱):</span>
@@ -350,14 +492,19 @@ const POSPage = () => {
                   onChange={(e) => setDiscount(Number(e.target.value))}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '18px', borderTop: '2px solid var(--border-color)', paddingTop: '10px', color: '#0f172a', marginTop: '4px' }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontWeight: '800', fontSize: '18px',
+                borderTop: '2px solid var(--border-color)',
+                paddingTop: '10px', color: '#0f172a', marginTop: '4px'
+              }}>
                 <span>TOTAL DUE:</span>
-                <span style={{ color: 'var(--primary-cashier)' }}>₱{selectedOrder && orderDetails ? Number(orderDetails.total_amount).toFixed(2) : total.toFixed(2)}</span>
+                <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          {/* Payment & Checkout Card */}
+          {/* ── Payment & Checkout Card ── */}
           <div className="card" style={{ padding: '20px', marginBottom: 0 }}>
             <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', color: '#64748b' }}>
               Payment Method
@@ -386,7 +533,12 @@ const POSPage = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '800', marginBottom: '18px', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontSize: '14px', fontWeight: '800', marginBottom: '18px',
+              padding: '8px 12px', background: '#f8fafc',
+              borderRadius: '8px', border: '1px solid var(--border-color)'
+            }}>
               <span style={{ color: '#64748b' }}>Change:</span>
               <span style={{ color: 'var(--success)' }}>₱{change.toFixed(2)}</span>
             </div>
@@ -395,14 +547,17 @@ const POSPage = () => {
               className="btn btn-cashier btn-lg"
               style={{ width: '100%', justifyContent: 'center' }}
               onClick={handleProcessSale}
-              disabled={processing || (!selectedOrder && cart.length === 0)}
+              disabled={processing || cart.length === 0}
             >
               <CheckCircle size={18} />
-              {processing ? 'Processing...' : selectedOrder ? 'Process Payment' : 'Process Sale & Print Receipt'}
+              {processing
+                ? 'Processing...'
+                : activeOrder
+                  ? `Fulfill Order — ₱${total.toFixed(2)}`
+                  : 'Process Sale & Print Receipt'}
             </button>
           </div>
         </div>
-
       </div>
 
       <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} sale={lastSale} />

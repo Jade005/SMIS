@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getUsersApi, createUserApi, toggleUserStatusApi, getPendingUsersApi, approveUserApi, resetPasswordApi } from '../../api/userApi';
-import { Plus, ShieldCheck, Clock, CheckCircle, KeyRound, Mail, UserPlus, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, ShieldCheck, Clock, CheckCircle, KeyRound, Mail, UserPlus, UserCheck, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 
 const UserMgmt = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialTab = searchParams.get('tab') === 'pending' ? 'pending' : 'all';
 
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -175,13 +176,22 @@ const UserMgmt = () => {
       {/* ---- ALL USERS TAB ---- */}
       {activeTab === 'all' && (
         <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
               Admin Account & Password Management
             </span>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-              <UserPlus size={16} /> Create User / Cashier Account
-            </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-outline"
+                style={{ borderColor: 'var(--primary)', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => navigate('/admin/register-customer')}
+              >
+                <UserCheck size={16} /> Register Customer Account
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <UserPlus size={16} /> Create User / Cashier
+              </button>
+            </div>
           </div>
 
           <div className="table-responsive">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { SmisLogoMark } from './SmisLogo';
 import {
   LayoutDashboard,
   Beef,
@@ -26,6 +27,7 @@ const Sidebar = () => {
     { to: '/admin/inventory', label: 'Inventory', icon: Package },
     { to: '/admin/suppliers', label: 'Suppliers', icon: Truck },
     { to: '/admin/users', label: 'Users Management', icon: Users },
+    { to: '/admin/register-customer', label: 'Register Customer', icon: UserPlus },
     { to: '/admin/reports', label: 'Reports', icon: FileText },
     { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp }
   ];
@@ -35,8 +37,7 @@ const Sidebar = () => {
     { to: '/cashier/pos', label: 'Point of Sale', icon: Monitor },
     { to: '/cashier/orders', label: 'Orders', icon: ShoppingCart },
     { to: '/cashier/availability', label: 'Stock Lookup', icon: CheckCircle },
-    { to: '/cashier/transactions', label: 'History', icon: History },
-    { to: '/cashier/register-customer', label: 'Register Customer', icon: UserPlus }
+    { to: '/cashier/transactions', label: 'History', icon: History }
   ];
 
   const customerLinks = [
@@ -78,7 +79,7 @@ const Sidebar = () => {
           {role} PORTAL
         </div>
         <h2 style={{ color: '#fff', fontSize: '17px', fontWeight: '800', margin: 0, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Beef size={20} color="#f87171" /> SMIS Terminal
+          <SmisLogoMark size={20} /> SMIS Terminal
         </h2>
       </div>
 
