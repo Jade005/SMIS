@@ -1,9 +1,33 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
 
+const getStorageKey = (currentUser) => {
+  if (!currentUser || !currentUser.id) return null;
+  if (currentUser.role === 'cashier') return `cart_cashier_${currentUser.id}`;
+  return `cart_${currentUser.id}`;
+};
+
+const loadStoredCart = (key) => {
+  if (!key) return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('Failed to load stored cart:', err);
+    return [];
+  }
+};
+
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState([]);
+  const { user } = useAuth();
+  const currentKey = getStorageKey(user);
+  const activeKeyRef = useRef(currentKey);
+
+  const [cart, setCart] = useState(() => loadStoredCart(currentKey));
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountTendered, setAmountTendered] = useState(0);
@@ -12,13 +36,43 @@ export const CartProvider = ({ children }) => {
   const [activeOrder, setActiveOrder] = useState(null);
   // { orderId, orderNo, customerId, customerName, customerPhone }
 
-  const addToCart = (item) => {
+  // Synchronize cart state whenever the authenticated user changes (login, logout, switch account)
+  useEffect(() => {
+    activeKeyRef.current = currentKey;
+    if (currentKey) {
+      setCart(loadStoredCart(currentKey));
+    } else {
+      setCart([]);
+      setActiveOrder(null);
+      setDiscount(0);
+      setPaymentMethod('cash');
+      setAmountTendered(0);
+    }
+  }, [currentKey]);
+
+  // Helper to update React state and simultaneously persist to the isolated user storage
+  const updateAndPersistCart = (updaterOrNewCart) => {
     setCart((prev) => {
+      const nextCart = typeof updaterOrNewCart === 'function' ? updaterOrNewCart(prev) : updaterOrNewCart;
+      const key = activeKeyRef.current;
+      if (key) {
+        try {
+          localStorage.setItem(key, JSON.stringify(nextCart));
+        } catch (err) {
+          console.error('Failed to save user cart:', err);
+        }
+      }
+      return nextCart;
+    });
+  };
+
+  const addToCart = (item) => {
+    updateAndPersistCart((prev) => {
       const cartItem = {
         ...item,
         cart_item_id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         weight_kg: Number(item.weight_kg || 1),
-        source: item.source || 'walkin'   // 'preorder' | 'walkin'
+        source: item.source || 'walkin' // 'preorder' | 'walkin'
       };
       return [...prev, cartItem];
     });
@@ -58,7 +112,7 @@ export const CartProvider = ({ children }) => {
       });
     }
 
-    setCart(newCartItems);
+    updateAndPersistCart(newCartItems);
     setDiscount(0);
     setAmountTendered(0);
     setActiveOrder({
@@ -77,17 +131,18 @@ export const CartProvider = ({ children }) => {
    */
   const clearActiveOrder = () => {
     setActiveOrder(null);
-    setCart([]);
+    updateAndPersistCart([]);
     setDiscount(0);
     setAmountTendered(0);
   };
 
   const updateWeight = (cartItemIdOrInventoryId, weight) => {
-    setCart((prev) =>
+    updateAndPersistCart((prev) =>
       prev.map((item) => {
         if (
           item.cart_item_id === cartItemIdOrInventoryId ||
-          item.inventory_id === cartItemIdOrInventoryId
+          item.inventory_id === cartItemIdOrInventoryId ||
+          item.product_id === cartItemIdOrInventoryId
         ) {
           return { ...item, weight_kg: Number(Math.max(0.1, weight).toFixed(3)) };
         }
@@ -97,23 +152,24 @@ export const CartProvider = ({ children }) => {
   };
 
   const removeFromCart = (cartItemIdOrInventoryId) => {
-    setCart((prev) =>
+    updateAndPersistCart((prev) =>
       prev.filter(
         (i) =>
           i.cart_item_id !== cartItemIdOrInventoryId &&
-          i.inventory_id !== cartItemIdOrInventoryId
+          i.inventory_id !== cartItemIdOrInventoryId &&
+          i.product_id !== cartItemIdOrInventoryId
       )
     );
   };
 
   const clearCart = () => {
-    setCart([]);
+    updateAndPersistCart([]);
     setDiscount(0);
     setAmountTendered(0);
     // NOTE: does NOT clear activeOrder — use clearActiveOrder() for that
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price_per_kg * item.weight_kg, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0), 0);
   const total = Math.max(0, subtotal - discount);
   const change = Math.max(0, amountTendered - total);
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getUsersApi, createUserApi, toggleUserStatusApi, getPendingUsersApi, approveUserApi } from '../../api/userApi';
+import { getUsersApi, createUserApi, toggleUserStatusApi, getPendingRegistrationsApi, approveRegistrationApi, rejectRegistrationApi } from '../../api/userApi';
 import { Plus, ShieldCheck, Clock, CheckCircle, Mail, UserPlus, UserCheck, AlertCircle, Loader2, RefreshCw, Eye, EyeOff, Copy, Check } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 
@@ -64,7 +64,7 @@ const UserMgmt = () => {
     try {
       const [allRes, pendingRes] = await Promise.all([
         getUsersApi(),
-        getPendingUsersApi()
+        getPendingRegistrationsApi()
       ]);
       setUsers(allRes.data || []);
       setPendingUsers(pendingRes.data || []);
@@ -129,16 +129,39 @@ const UserMgmt = () => {
     }
   };
 
-  const handleApprove = async (id) => {
+  const handleApprove = async (id, isReject = false) => {
+    if (!window.confirm(isReject ? 'Are you sure you want to reject this registration application?' : 'Are you sure you want to approve this registration application?')) return;
     setApprovingId(id);
     try {
-      await approveUserApi(id);
-      setToast({ message: 'Account approved successfully.', type: 'success' });
-      loadUsers();
+      if (isReject) {
+        await rejectRegistrationApi(id);
+        setToast({ message: 'Registration rejected successfully', type: 'success' });
+        loadUsers();
+      } else {
+        const res = await approveRegistrationApi(id);
+        const generatedPassword = res.data?.temp_password;
+        const approvedUser = res.data?.user;
+
+        loadUsers();
+
+        // Show credentials popup so admin can share the password with the customer
+        setCreatedCredentials({
+          fullName: approvedUser ? `${approvedUser.first_name} ${approvedUser.last_name}` : '',
+          username: approvedUser?.username || '',
+          email: approvedUser?.email || '',
+          role: 'customer',
+          tempPassword: generatedPassword
+        });
+        setToast({
+          message: res.data?.message || 'Customer approved! Share the generated password with the customer.',
+          type: 'success'
+        });
+      }
     } catch (err) {
-      setToast({ message: err.response?.data?.message || 'Failed to approve account.', type: 'error' });
+      setToast({ message: err.response?.data?.message || 'Action failed', type: 'error' });
     } finally {
       setApprovingId(null);
+      setTimeout(() => setToast({ message: '', type: '' }), 5000);
     }
   };
 
@@ -333,15 +356,26 @@ const UserMgmt = () => {
                         <td>{u.address || <span style={{ color: '#94a3b8' }}>—</span>}</td>
                         <td>{new Date(u.created_at).toLocaleString()}</td>
                         <td>
-                          <button
-                            className="btn btn-sm"
-                            style={{ background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
-                            onClick={() => handleApprove(u.id)}
-                            disabled={approvingId === u.id}
-                          >
-                            <ShieldCheck size={14} />
-                            {approvingId === u.id ? 'Approving...' : 'Approve Account'}
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-sm"
+                              style={{ background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
+                              onClick={() => handleApprove(u.id, false)}
+                              disabled={approvingId === u.id}
+                            >
+                              <ShieldCheck size={14} />
+                              {approvingId === u.id ? 'Approving...' : 'Approve'}
+                            </button>
+                            <button
+                              className="btn btn-sm"
+                              style={{ background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
+                              onClick={() => handleApprove(u.id, true)}
+                              disabled={approvingId === u.id}
+                            >
+                              <AlertCircle size={14} />
+                              Reject
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -462,7 +496,7 @@ const UserMgmt = () => {
         </div>
       )}
 
-      {/* ---- Newly Created Credentials Popup Modal ---- */}
+      {/* ---- Newly Created / Approved Credentials Popup Modal ---- */}
       {createdCredentials && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '440px', borderRadius: '14px', padding: '24px' }}>
@@ -481,7 +515,7 @@ const UserMgmt = () => {
                 <CheckCircle size={28} />
               </div>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
-                Account Created Successfully!
+                {createdCredentials.role === 'customer' ? 'Registration Approved!' : 'Account Created Successfully!'}
               </h3>
               <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>
                 Credentials for <strong>{createdCredentials.fullName}</strong>
@@ -517,8 +551,18 @@ const UserMgmt = () => {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b', fontSize: '12px' }}>Email:</span>
-                <strong style={{ fontSize: '12px' }}>{createdCredentials.email}</strong>
+                <span style={{ color: '#64748b', fontSize: '12px' }}>Email (Login ID):</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <strong style={{ fontSize: '12px' }}>{createdCredentials.email}</strong>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(createdCredentials.email, 'modal-email')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#64748b', display: 'flex' }}
+                    title="Copy Email"
+                  >
+                    {copiedKey === 'modal-email' ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                  </button>
+                </div>
               </div>
 
               <div style={{
@@ -529,7 +573,7 @@ const UserMgmt = () => {
                 paddingTop: '10px',
                 marginTop: '4px'
               }}>
-                <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '700' }}>Temporary Password:</span>
+                <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '700' }}>Generated Password:</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <code style={{ background: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '13px' }}>
                     {createdCredentials.tempPassword}
@@ -538,7 +582,7 @@ const UserMgmt = () => {
                     type="button"
                     onClick={() => handleCopy(createdCredentials.tempPassword, 'modal-temp')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#b45309', display: 'flex' }}
-                    title="Copy Temporary Password"
+                    title="Copy Password"
                   >
                     {copiedKey === 'modal-temp' ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
                   </button>
@@ -547,15 +591,17 @@ const UserMgmt = () => {
             </div>
 
             <div style={{
-              background: '#eff6ff',
-              border: '1px solid #bfdbfe',
+              background: createdCredentials.role === 'customer' ? '#f0fdf4' : '#eff6ff',
+              border: `1px solid ${createdCredentials.role === 'customer' ? '#bbf7d0' : '#bfdbfe'}`,
               borderRadius: '8px',
               padding: '10px 12px',
               fontSize: '11px',
-              color: '#1e40af',
+              color: createdCredentials.role === 'customer' ? '#166534' : '#1e40af',
               marginBottom: '16px'
             }}>
-              ℹ️ The user will be required to change their temporary password upon initial login.
+              {createdCredentials.role === 'customer'
+                ? '✅ The customer can now log in using their Email and the generated password above. Please share these credentials with them directly.'
+                : 'ℹ️ The user can log in with their credentials. They will be prompted to change their password on first login.'}
             </div>
 
             <button

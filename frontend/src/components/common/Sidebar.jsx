@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { SmisLogoMark } from './SmisLogo';
 import {
   LayoutDashboard,
@@ -19,6 +20,7 @@ import {
 
 const Sidebar = () => {
   const { user } = useAuth();
+  const { cart } = useCart();
   const role = user?.role || 'admin';
 
   const adminLinks = [
@@ -42,7 +44,7 @@ const Sidebar = () => {
 
   const customerLinks = [
     { to: '/customer', label: 'Catalog', icon: Beef, end: true },
-    { to: '/customer/cart', label: 'Cart & Pre-Order', icon: ShoppingCart },
+    { to: '/customer/cart', label: 'Cart & Pre-Order', icon: ShoppingCart, badge: cart.length },
     { to: '/customer/orders', label: 'My Orders', icon: History }
   ];
 
@@ -95,7 +97,7 @@ const Sidebar = () => {
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                justifyContent: 'space-between',
                 padding: '11px 16px',
                 borderRadius: '12px',
                 color: isActive ? '#ffffff' : '#94a3b8',
@@ -109,8 +111,23 @@ const Sidebar = () => {
                 transition: 'all 0.2s ease'
               })}
             >
-              <Icon size={18} />
-              <span>{link.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Icon size={18} />
+                <span>{link.label}</span>
+              </div>
+              {link.badge > 0 && (
+                <span style={{
+                  background: '#10b981',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  padding: '2px 7px',
+                  borderRadius: '100px',
+                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)'
+                }}>
+                  {link.badge}
+                </span>
+              )}
             </NavLink>
           );
         })}

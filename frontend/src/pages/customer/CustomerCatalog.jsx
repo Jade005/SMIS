@@ -280,15 +280,66 @@ const CustomerCatalog = () => {
         </div>
       )}
 
-      {/* ── Product Catalog Grid ─────────────────────────────────────────── */}
-      {!loading && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))',
-          gap: '22px'
-        }}>
-          {filteredProducts.map((p) => {
-            const stock = Number(p.total_available_stock_kg) || 0;
+      {/* ── Product Catalog Grouped Layout ─────────────────────────────────────────── */}
+      {!loading && (() => {
+        // Canonical display order and display metadata per category
+        const CATEGORY_ORDER = ['Beef', 'Pork', 'Chicken', 'Goat', 'Rabbit', 'Others'];
+        const CATEGORY_META = {
+          'Beef':    { emoji: '🥩', color: '#991b1b', borderColor: '#fca5a5' },
+          'Pork':    { emoji: '🐷', color: '#9a3412', borderColor: '#fdba74' },
+          'Chicken': { emoji: '🍗', color: '#854d0e', borderColor: '#fde047' },
+          'Goat':    { emoji: '🐐', color: '#3730a3', borderColor: '#a5b4fc' },
+          'Rabbit':  { emoji: '🐇', color: '#6b21a8', borderColor: '#d8b4fe' },
+          'Others':  { emoji: '🥦', color: '#334155', borderColor: '#cbd5e1' },
+        };
+
+        // Group products by normalized meat_type (Title Case)
+        const grouped = filteredProducts.reduce((acc, p) => {
+          // Normalize to Title Case so "PORK" and "Pork" are the same bucket
+          const rawType = p.meat_type || 'Others';
+          const normalized = rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase();
+          const type = CATEGORY_ORDER.includes(normalized) ? normalized : 'Others';
+          if (!acc[type]) acc[type] = [];
+          acc[type].push(p);
+          return acc;
+        }, {});
+
+        // Sort by canonical order, only include buckets that have products
+        const sortedEntries = CATEGORY_ORDER
+          .filter(cat => grouped[cat] && grouped[cat].length > 0)
+          .map(cat => [cat, grouped[cat]]);
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+            {sortedEntries.map(([meatType, prods]) => {
+              const meta = CATEGORY_META[meatType] || CATEGORY_META['Others'];
+              return (
+            <div key={meatType}>
+              {/* Category Header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                borderBottom: `3px solid ${meta.borderColor}`,
+                paddingBottom: '14px',
+                marginBottom: '24px'
+              }}>
+                <span style={{ fontSize: '28px', lineHeight: 1 }}>{meta.emoji}</span>
+                <h2 style={{ fontSize: '22px', fontWeight: '800', color: meta.color, margin: 0, letterSpacing: '-0.01em' }}>
+                  {meatType}
+                </h2>
+                <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '100px' }}>
+                  {prods.length} {prods.length === 1 ? 'product' : 'products'}
+                </span>
+              </div>
+              {/* 3-column product grid (responsive: 1-col mobile, 2-col tablet, 3-col desktop) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                gap: '24px'
+              }}>
+                {prods.map((p) => {
+                  const stock = Number(p.total_available_stock_kg) || 0;
             const isOutOfStock = stock <= 0;
             const isLowStock = stock > 0 && stock <= 5;
             const currentQty = getQty(p.id);
@@ -564,9 +615,14 @@ const CustomerCatalog = () => {
                 </div>
               </div>
             );
-          })}
-        </div>
-      )}
+                })}
+              </div>
+            </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ── Empty State ──────────────────────────────────────────────────── */}
       {!loading && filteredProducts.length === 0 && (
