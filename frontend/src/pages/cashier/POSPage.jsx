@@ -24,6 +24,7 @@ const POSPage = () => {
   const [processing, setProcessing] = useState(false);
   const [unresolvedItems, setUnresolvedItems] = useState([]);
   const [imageErrors, setImageErrors] = useState({});
+  const [pendingSearch, setPendingSearch] = useState('');
 
   const {
     cart,
@@ -170,6 +171,14 @@ const POSPage = () => {
         } : {})
       };
 
+      // Notify other views (like CashierDashboard) that a sale was completed
+      try {
+        localStorage.setItem('smis_sale_timestamp', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('sale-completed', { detail: saleRecord }));
+      } catch (evtErr) {
+        console.warn('Event dispatch error:', evtErr);
+      }
+
       setLastSale(saleRecord);
       setShowReceipt(true);
       clearActiveOrder();
@@ -253,7 +262,7 @@ const POSPage = () => {
                   <div style={{
                     position: 'relative',
                     width: '100%',
-                    height: '110px',
+                    height: '140px',
                     background: '#f1f5f9',
                     overflow: 'hidden'
                   }}>
@@ -279,7 +288,7 @@ const POSPage = () => {
                       background: 'rgba(15, 23, 42, 0.82)',
                       backdropFilter: 'blur(4px)',
                       color: '#ffffff',
-                      fontSize: '9px',
+                      fontSize: '10px',
                       fontWeight: '800',
                       padding: '2px 6px',
                       borderRadius: '4px',
@@ -297,7 +306,7 @@ const POSPage = () => {
                       background: isLow ? 'rgba(239, 68, 68, 0.92)' : 'rgba(22, 163, 74, 0.92)',
                       backdropFilter: 'blur(4px)',
                       color: '#ffffff',
-                      fontSize: '10px',
+                      fontSize: '11px',
                       fontWeight: '800',
                       padding: '2px 6px',
                       borderRadius: '5px'
@@ -307,22 +316,22 @@ const POSPage = () => {
                   </div>
 
                   {/* Product Details Section */}
-                  <div style={{ padding: '10px 10px 12px', display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+                  <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <div style={{
                       fontWeight: '800',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       color: '#0f172a',
-                      lineHeight: '1.25',
+                      lineHeight: '1.3',
                       overflow: 'hidden',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
-                      minHeight: '32px'
+                      minHeight: '36px'
                     }}>
                       {b.product_name}
                     </div>
 
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>
                       Cut: <strong>{b.meat_cut}</strong>
                     </div>
 
@@ -334,10 +343,10 @@ const POSPage = () => {
                       paddingTop: '6px',
                       borderTop: '1px solid #f1f5f9'
                     }}>
-                      <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '14px' }}>
-                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '10px', color: '#64748b', fontWeight: '500' }}>/kg</span>
+                      <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '15px' }}>
+                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>/kg</span>
                       </div>
-                      <span style={{ fontSize: '10px', color: isLow ? 'var(--danger)' : '#16a34a', fontWeight: '700' }}>
+                      <span style={{ fontSize: '11px', color: isLow ? 'var(--danger)' : '#16a34a', fontWeight: '700' }}>
                         {isLow ? 'Low Stock' : 'In Stock'}
                       </span>
                     </div>
@@ -442,9 +451,26 @@ const POSPage = () => {
 
             {/* ── Pending Customer Orders List ── */}
             <div style={{ marginBottom: '16px' }}>
+              {(() => {
+                const searchTerm = pendingSearch.trim().toLowerCase();
+                const filteredOrders = searchTerm
+                  ? orders.filter(o =>
+                      (o.customer_name || '').toLowerCase().includes(searchTerm) ||
+                      (o.order_no || '').toLowerCase().includes(searchTerm)
+                    )
+                  : orders;
+                return (
+                  <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#374151' }}>
-                  <Users size={15} color="var(--primary-cashier)" /> Pending Customer Orders
+                <span style={{ fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#374151' }}>
+                  <Users size={16} color="var(--primary-cashier)" /> Pending Customer Orders
+                  {filteredOrders.length > 0 && (
+                    <span style={{
+                      fontSize: '11px', fontWeight: '700', background: 'var(--primary-cashier)',
+                      color: '#fff', borderRadius: '10px', padding: '1px 7px', minWidth: '18px',
+                      textAlign: 'center', lineHeight: '16px'
+                    }}>{filteredOrders.length}</span>
+                  )}
                 </span>
                 <button
                   className="btn btn-outline btn-sm"
@@ -457,7 +483,49 @@ const POSPage = () => {
                 </button>
               </div>
 
-              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* ── Pending Orders Search Bar ── */}
+              {orders.length > 0 && (
+                <div style={{ position: 'relative', marginBottom: '8px' }}>
+                  <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    value={pendingSearch}
+                    onChange={e => setPendingSearch(e.target.value)}
+                    placeholder="Search customer name or order #..."
+                    aria-label="Search pending customer orders"
+                    style={{
+                      width: '100%', padding: '9px 32px 9px 32px',
+                      fontSize: '13px', borderRadius: '8px',
+                      border: '1px solid #e2e8f0', background: '#f8fafc',
+                      outline: 'none', color: '#374151',
+                      transition: 'border-color 0.15s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'var(--primary-cashier)'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  />
+                  {pendingSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingSearch('')}
+                      title="Clear search"
+                      aria-label="Clear search"
+                      style={{
+                        position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                        color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius: '50%', lineHeight: 1
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#475569'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {ordersLoading && (
                   <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: '12px' }}>
                     Loading...
@@ -474,7 +542,18 @@ const POSPage = () => {
                     <div>No pending customer orders.</div>
                   </div>
                 )}
-                {!ordersLoading && orders.map((order) => {
+                {!ordersLoading && orders.length > 0 && filteredOrders.length === 0 && (
+                  <div style={{
+                    textAlign: 'center', padding: '20px 16px',
+                    background: '#f8fafc', borderRadius: '10px',
+                    border: '1px dashed #e2e8f0',
+                    color: '#94a3b8', fontSize: '12px'
+                  }}>
+                    <Search size={20} style={{ marginBottom: '6px', opacity: 0.4 }} />
+                    <div>No pending orders found</div>
+                  </div>
+                )}
+                {!ordersLoading && filteredOrders.map((order) => {
                   const isActive = activeOrder?.orderId === order.id;
                   return (
                     <button
@@ -484,7 +563,7 @@ const POSPage = () => {
                       style={{
                         width: '100%',
                         textAlign: 'left',
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         borderRadius: '10px',
                         border: isActive ? '2px solid var(--primary-cashier)' : '1px solid #e2e8f0',
                         background: isActive ? '#fff7ed' : '#ffffff',
@@ -493,13 +572,13 @@ const POSPage = () => {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '12px', color: '#0f172a' }}>
+                        <strong style={{ fontSize: '13px', color: '#0f172a' }}>
                           {isActive && <CheckCircle size={12} color="var(--primary-cashier)" style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
                           {order.customer_name}
                         </strong>
-                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>{formatOrderTime(order.created_at)}</span>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{formatOrderTime(order.created_at)}</span>
                       </div>
-                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ marginTop: '4px', fontSize: '12px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
                         <span>#{order.order_no}</span>
                         <span style={{ fontWeight: '700', color: 'var(--primary-cashier)' }}>₱{Number(order.total_amount).toFixed(2)}</span>
                       </div>
@@ -507,10 +586,13 @@ const POSPage = () => {
                   );
                 })}
               </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* ── Cart Line Items ── */}
-            <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
+            <div style={{ maxHeight: '260px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
               {cart.map((item) => (
                 <div
                   key={item.cart_item_id}
@@ -521,7 +603,7 @@ const POSPage = () => {
                 >
                   <div style={{ flex: 1, paddingRight: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: '700', fontSize: '12px', color: '#0f172a' }}>{item.product_name}</span>
+                      <span style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{item.product_name}</span>
                       {item.source === 'preorder' && (
                         <span style={{
                           fontSize: '9px', fontWeight: '700', padding: '1px 5px',
@@ -541,7 +623,7 @@ const POSPage = () => {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>{item.meat_cut} · ₱{item.price_per_kg}/kg</div>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>{item.meat_cut} · ₱{item.price_per_kg}/kg</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <input
@@ -574,7 +656,7 @@ const POSPage = () => {
             </div>
 
             {/* ── Totals ── */}
-            <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                 <span>Subtotal:</span>
                 <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
@@ -584,16 +666,16 @@ const POSPage = () => {
                 <input
                   type="number"
                   className="form-control"
-                  style={{ width: '90px', padding: '6px 10px', textAlign: 'right', fontSize: '13px', fontWeight: '700' }}
+                  style={{ width: '100px', padding: '8px 10px', textAlign: 'right', fontSize: '14px', fontWeight: '700' }}
                   value={discount}
                   onChange={(e) => setDiscount(Number(e.target.value))}
                 />
               </div>
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
-                fontWeight: '800', fontSize: '18px',
+                fontWeight: '800', fontSize: '20px',
                 borderTop: '2px solid var(--border-color)',
-                paddingTop: '10px', color: '#0f172a', marginTop: '4px'
+                paddingTop: '12px', color: '#0f172a', marginTop: '4px'
               }}>
                 <span>TOTAL DUE:</span>
                 <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
@@ -603,7 +685,7 @@ const POSPage = () => {
 
           {/* ── Payment & Checkout Card ── */}
           <div className="card" style={{ padding: '20px', marginBottom: 0 }}>
-            <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', color: '#64748b' }}>
+            <div style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', color: '#64748b' }}>
               Payment Method
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
@@ -611,7 +693,7 @@ const POSPage = () => {
                 <button
                   key={method}
                   className={`btn ${paymentMethod === method ? 'btn-cashier' : 'btn-outline'}`}
-                  style={{ fontSize: '12px', textTransform: 'uppercase', padding: '8px' }}
+                  style={{ fontSize: '13px', textTransform: 'uppercase', padding: '12px 8px', fontWeight: '700' }}
                   onClick={() => setPaymentMethod(method)}
                 >
                   {method}
@@ -620,11 +702,11 @@ const POSPage = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '700' }}>Amount Tendered:</span>
+              <span style={{ fontSize: '14px', fontWeight: '700' }}>Amount Tendered:</span>
               <input
                 type="number"
                 className="form-control"
-                style={{ width: '130px', fontSize: '15px', fontWeight: '800', textAlign: 'right' }}
+                style={{ width: '140px', fontSize: '16px', fontWeight: '800', textAlign: 'right', padding: '8px 12px' }}
                 value={amountTendered}
                 onChange={(e) => setAmountTendered(Number(e.target.value))}
               />
@@ -632,8 +714,8 @@ const POSPage = () => {
 
             <div style={{
               display: 'flex', justifyContent: 'space-between',
-              fontSize: '14px', fontWeight: '800', marginBottom: '18px',
-              padding: '8px 12px', background: '#f8fafc',
+              fontSize: '15px', fontWeight: '800', marginBottom: '18px',
+              padding: '10px 14px', background: '#f8fafc',
               borderRadius: '8px', border: '1px solid var(--border-color)'
             }}>
               <span style={{ color: '#64748b' }}>Change:</span>

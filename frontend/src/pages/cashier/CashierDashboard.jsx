@@ -1,21 +1,73 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getSalesApi } from '../../api/saleApi';
 import { getLowStockAlertsApi } from '../../api/inventoryApi';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Monitor, AlertTriangle, DollarSign, ShoppingBag } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Monitor } from 'lucide-react';
+
+// Helper to get local date string YYYY-MM-DD
+const getLocalDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const CashierDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [todaySales, setTodaySales] = useState([]);
   const [lowStock, setLowStock] = useState([]);
 
+  const loadShiftData = useCallback(() => {
+    if (!user?.id) return;
+    const today = getLocalDateString();
+    getSalesApi({ cashier_id: user.id, date: today })
+      .then((res) => setTodaySales(res.data || []))
+      .catch(console.error);
+    getLowStockAlertsApi(15)
+      .then((res) => setLowStock(res.data || []))
+      .catch(console.error);
+  }, [user?.id]);
+
+  // Re-fetch every time the dashboard is navigated to (route change) or user changes
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    getSalesApi({ cashier_id: user?.id, date: today }).then(res => setTodaySales(res.data || [])).catch(console.error);
-    getLowStockAlertsApi(15).then(res => setLowStock(res.data || [])).catch(console.error);
-  }, [user]);
+    loadShiftData();
+  }, [loadShiftData, location.key]);
+
+  // Refresh when the browser tab regains focus
+  useEffect(() => {
+    const onFocus = () => loadShiftData();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [loadShiftData]);
+
+  // Listen for sale-completed events (same window) and storage events (cross-tab)
+  useEffect(() => {
+    const handleSaleCompleted = () => {
+      loadShiftData();
+    };
+
+    const handleStorage = (e) => {
+      if (e.key === 'smis_sale_timestamp') {
+        loadShiftData();
+      }
+    };
+
+    window.addEventListener('sale-completed', handleSaleCompleted);
+    window.addEventListener('storage', handleStorage);
+
+    // Periodic safety poll every 15 seconds
+    const interval = setInterval(loadShiftData, 15000);
+
+    return () => {
+      window.removeEventListener('sale-completed', handleSaleCompleted);
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
+  }, [loadShiftData]);
 
   const totalShiftRevenue = todaySales.reduce((sum, s) => sum + Number(s.total_amount), 0);
 
@@ -55,7 +107,8 @@ const CashierDashboard = () => {
           <table>
             <thead>
               <tr>
-                <th>Receipt</th>
+                <th>Receipt #</th>
+                <th>Customer</th>
                 <th>Time</th>
                 <th>Payment</th>
                 <th>Subtotal</th>
@@ -66,14 +119,15 @@ const CashierDashboard = () => {
               {todaySales.map((s) => (
                 <tr key={s.id}>
                   <td><strong>{s.receipt_no}</strong></td>
+                  <td>{s.customer_name || <span style={{ color: 'var(--text-muted)' }}>Walk-in</span>}</td>
                   <td>{new Date(s.created_at).toLocaleTimeString()}</td>
-                  <td><span className="badge badge-info">{s.payment_method}</span></td>
+                  <td><span className="badge badge-info">{s.payment_method?.toUpperCase()}</span></td>
                   <td>₱{Number(s.subtotal).toFixed(2)}</td>
                   <td style={{ fontWeight: 'bold' }}>₱{Number(s.total_amount).toFixed(2)}</td>
                 </tr>
               ))}
               {todaySales.length === 0 && (
-                <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No sales processed yet in this shift</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No sales processed yet in this shift</td></tr>
               )}
             </tbody>
           </table>

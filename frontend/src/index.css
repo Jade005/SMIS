@@ -313,7 +313,7 @@ tbody tr:hover td {
 }
 
 .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 8px; }
-.btn-lg { padding: 14px 24px; font-size: 15px; font-weight: 800; border-radius: var(--radius-md); }
+.btn-lg { padding: 16px 28px; font-size: 16px; font-weight: 800; border-radius: var(--radius-md); }
 
 /* Recessed Inset Clay Forms */
 .form-grid {
@@ -383,7 +383,7 @@ tbody tr:hover td {
 /* POS Terminal Layout */
 .pos-container {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 440px;
   gap: 20px;
   min-height: calc(100vh - 64px - 48px);
   align-items: start;
@@ -391,8 +391,8 @@ tbody tr:hover td {
 
 .product-tile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
   overflow-y: auto;
 }
 
