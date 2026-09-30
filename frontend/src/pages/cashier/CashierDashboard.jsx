@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSalesApi } from '../../api/saleApi';
 import { getLowStockAlertsApi } from '../../api/inventoryApi';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Monitor } from 'lucide-react';
+import { Monitor, Search, X } from 'lucide-react';
 
 // Helper to get local date string YYYY-MM-DD
 const getLocalDateString = () => {
@@ -20,6 +20,16 @@ const CashierDashboard = () => {
   const location = useLocation();
   const [todaySales, setTodaySales] = useState([]);
   const [lowStock, setLowStock] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input by 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const loadShiftData = useCallback(() => {
     if (!user?.id) return;
@@ -69,7 +79,21 @@ const CashierDashboard = () => {
     };
   }, [loadShiftData]);
 
+  // Full shift statistics (not altered by table filtering)
   const totalShiftRevenue = todaySales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+
+  // Filter sales by customer name or receipt # (case-insensitive, multi-word matching)
+  const filteredSales = useMemo(() => {
+    if (!debouncedSearch) return todaySales;
+    const terms = debouncedSearch.toLowerCase().split(/\s+/).filter(Boolean);
+
+    return todaySales.filter((s) => {
+      const customer = (s.customer_name || 'Walk-in').toLowerCase();
+      const receipt = (s.receipt_no || '').toLowerCase();
+      const target = `${customer} ${receipt}`;
+      return terms.every((term) => target.includes(term));
+    });
+  }, [todaySales, debouncedSearch]);
 
   return (
     <div className="page-container">
@@ -99,10 +123,80 @@ const CashierDashboard = () => {
       </div>
 
       <div className="card">
-        <div className="card-header">
-          <span className="card-title">My Recent Shift Sales</span>
-          <button className="btn btn-outline btn-sm" onClick={() => navigate('/cashier/transactions')}>View History</button>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="card-title" style={{ margin: 0 }}>My Recent Shift Sales</span>
+            {debouncedSearch && (
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
+                ({filteredSales.length} of {todaySales.length} sales)
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', width: '260px' }}>
+              <Search
+                size={14}
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setSearchTerm('');
+                }}
+                placeholder="Search customer name or receipt #..."
+                aria-label="Search recent shift sales"
+                className="form-control"
+                style={{
+                  width: '100%',
+                  padding: '7px 28px 7px 32px',
+                  fontSize: '12px',
+                  borderRadius: '8px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  transition: 'border-color 0.15s ease'
+                }}
+                onFocus={(e) => (e.target.style.borderColor = 'var(--primary-cashier)')}
+                onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                  aria-label="Clear search input"
+                  style={{
+                    position: 'absolute',
+                    right: '6px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    color: '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 1
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            <button className="btn btn-outline btn-sm" onClick={() => navigate('/cashier/transactions')} style={{ whiteSpace: 'nowrap' }}>
+              View History
+            </button>
+          </div>
         </div>
+
         <div className="table-responsive">
           <table>
             <thead>
@@ -116,7 +210,7 @@ const CashierDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {todaySales.map((s) => (
+              {filteredSales.map((s) => (
                 <tr key={s.id}>
                   <td><strong>{s.receipt_no}</strong></td>
                   <td>{s.customer_name || <span style={{ color: 'var(--text-muted)' }}>Walk-in</span>}</td>
@@ -128,6 +222,29 @@ const CashierDashboard = () => {
               ))}
               {todaySales.length === 0 && (
                 <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No sales processed yet in this shift</td></tr>
+              )}
+              {todaySales.length > 0 && filteredSales.length === 0 && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '28px 16px', color: 'var(--text-muted)' }}>
+                    <div>No sales found for "<strong>{debouncedSearch}</strong>"</div>
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary-cashier)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        fontWeight: '700',
+                        fontSize: '12px',
+                        marginTop: '6px'
+                      }}
+                    >
+                      Clear search
+                    </button>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

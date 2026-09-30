@@ -11,7 +11,6 @@ import {
   ShoppingCart,
   Users,
   FileText,
-  TrendingUp,
   Monitor,
   CheckCircle,
   History,
@@ -30,8 +29,7 @@ const Sidebar = () => {
     { to: '/admin/suppliers', label: 'Suppliers', icon: Truck },
     { to: '/admin/users', label: 'Users Management', icon: Users },
     { to: '/admin/register-customer', label: 'Register Customer', icon: UserPlus },
-    { to: '/admin/reports', label: 'Reports', icon: FileText },
-    { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp }
+    { to: '/admin/reports', label: 'Reports & Analytics', icon: FileText }
   ];
 
   const cashierLinks = [

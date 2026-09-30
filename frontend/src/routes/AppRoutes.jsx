@@ -21,7 +21,6 @@ import OrderMgmt from '../pages/admin/OrderMgmt';
 import UserMgmt from '../pages/admin/UserMgmt';
 import RegisterCustomer from '../pages/admin/RegisterCustomer';
 import ReportsPage from '../pages/admin/ReportsPage';
-import AnalyticsPage from '../pages/admin/AnalyticsPage';
 
 // Cashier Pages
 import CashierDashboard from '../pages/cashier/CashierDashboard';
@@ -67,7 +66,7 @@ const AppRoutes = () => {
                     <Route path="/admin/users" element={<UserMgmt />} />
                     <Route path="/admin/register-customer" element={<RegisterCustomer />} />
                     <Route path="/admin/reports" element={<ReportsPage />} />
-                    <Route path="/admin/analytics" element={<AnalyticsPage />} />
+                    <Route path="/admin/analytics" element={<Navigate to="/admin/reports" replace />} />
                 </Route>
             </Route>
 

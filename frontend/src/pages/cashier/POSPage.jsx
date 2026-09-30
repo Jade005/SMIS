@@ -4,13 +4,18 @@ import { getCategoriesApi } from '../../api/productApi';
 import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/orderApi';
 import { createSaleApi } from '../../api/saleApi';
 import { useCart } from '../../context/CartContext';
+import BillingPanel from '../../components/pos/BillingPanel';
+import PaymentPanel from '../../components/pos/PaymentPanel';
 import ReceiptModal from '../../components/pos/ReceiptModal';
 import { getProductImage } from '../../utils/meatImages';
-import {
-  Search, ShoppingCart, Trash2, CheckCircle, RefreshCw,
-  Users, X, Tag, AlertTriangle, UserCheck
-} from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 
+/**
+ * POSPage (Cashier POS Terminal)
+ * Two-column layout:
+ * - Left column: Meat products inventory grid with search & category filter.
+ * - Right column: Modular BillingPanel (Step 1) and slide-over PaymentPanel (Step 2).
+ */
 const POSPage = () => {
   const [batches, setBatches] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -24,23 +29,18 @@ const POSPage = () => {
   const [processing, setProcessing] = useState(false);
   const [unresolvedItems, setUnresolvedItems] = useState([]);
   const [imageErrors, setImageErrors] = useState({});
-  const [pendingSearch, setPendingSearch] = useState('');
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   const {
     cart,
     addToCart,
-    updateWeight,
-    removeFromCart,
     clearCart,
     discount,
     setDiscount,
-    paymentMethod,
-    setPaymentMethod,
     amountTendered,
     setAmountTendered,
     subtotal,
     total,
-    change,
     activeOrder,
     loadOrderIntoCart,
     clearActiveOrder
@@ -80,7 +80,7 @@ const POSPage = () => {
     loadOrders();
   }, [loadInventory, loadOrders]);
 
-  // ─── Tile grid ───────────────────────────────────────────────────────────
+  // ─── Tile grid filtering & click ───────────────────────────────────────────
 
   const filteredBatches = batches.filter((b) => {
     const matchesSearch =
@@ -117,28 +117,22 @@ const POSPage = () => {
     }
   };
 
-  const handleClearActiveOrder = () => {
-    clearActiveOrder();
-    setUnresolvedItems([]);
-  };
+  // ─── Checkout & Sale Processing ────────────────────────────────────────────
 
-  // ─── Checkout ────────────────────────────────────────────────────────────
-
-  const handleProcessSale = async () => {
-    if (cart.length === 0 && !activeOrder) {
-      alert('Cart is empty');
-      return;
-    }
-    if (cart.length === 0 && activeOrder) {
-      alert('No items in cart. Please add at least one item to process.');
+  const handleProcessSale = async (paymentDetails = {}) => {
+    if (cart.length === 0) {
+      alert('Cart is empty. Please add items before checking out.');
       return;
     }
     if (discount > subtotal) {
       alert(`Discount (₱${Number(discount).toFixed(2)}) cannot exceed the subtotal (₱${subtotal.toFixed(2)})`);
       return;
     }
-    if (amountTendered < total && paymentMethod === 'cash') {
-      alert(`Amount tendered (₱${amountTendered}) is less than total due (₱${total.toFixed(2)})`);
+
+    const currentTendered = paymentDetails.amountTendered !== undefined ? paymentDetails.amountTendered : amountTendered;
+
+    if (Number(currentTendered) < total) {
+      alert(`Amount tendered (₱${currentTendered}) is less than total due (₱${total.toFixed(2)})`);
       return;
     }
 
@@ -150,14 +144,15 @@ const POSPage = () => {
           weight_kg: i.weight_kg
         })),
         discount: Number(discount),
-        payment_method: paymentMethod,
-        amount_tendered: Number(amountTendered),
+        payment_method: 'cash',
+        amount_tendered: Number(currentTendered),
+        notes: null,
         ...(activeOrder ? { customer_id: activeOrder.customerId } : {})
       };
 
       const res = await createSaleApi(salePayload);
 
-      // If fulfilling a customer order, mark it completed
+      // If fulfilling a customer order, mark it completed in the orders table
       if (activeOrder) {
         try {
           await updateOrderStatusApi(activeOrder.orderId, 'completed');
@@ -166,7 +161,7 @@ const POSPage = () => {
         }
       }
 
-      // Attach order info to the sale for the receipt
+      // Attach customer info for receipt printing and confirmation recap
       const saleRecord = {
         ...res.data.sale,
         ...(activeOrder ? {
@@ -184,11 +179,6 @@ const POSPage = () => {
       }
 
       setLastSale(saleRecord);
-      setShowReceipt(true);
-      clearActiveOrder();
-      setUnresolvedItems([]);
-      loadInventory();
-      loadOrders();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to process sale');
     } finally {
@@ -196,15 +186,20 @@ const POSPage = () => {
     }
   };
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-
-  const formatOrderTime = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  /**
+   * Resets the terminal for the next customer:
+   * clears cart, active order, discount, tendered amounts, and refreshes orders + inventory.
+   */
+  const handleResetTerminal = () => {
+    clearActiveOrder();
+    clearCart();
+    setDiscount(0);
+    setAmountTendered(0);
+    setUnresolvedItems([]);
+    setLastSale(null);
+    loadInventory();
+    loadOrders();
   };
-
-  const preorderCount = cart.filter((i) => i.source === 'preorder').length;
-  const walkinCount = cart.filter((i) => i.source === 'walkin').length;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -212,10 +207,10 @@ const POSPage = () => {
     <div className="page-container">
       <div className="pos-container">
 
-        {/* ── LEFT COLUMN: Product Grid ── */}
+        {/* ── LEFT COLUMN: Product Catalog Grid ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-          {/* Filter & Search */}
+          {/* Filter & Search Bar */}
           <div className="card" style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
@@ -240,7 +235,12 @@ const POSPage = () => {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <button className="btn btn-outline btn-sm" onClick={loadInventory} title="Refresh Inventory">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={loadInventory}
+                title="Refresh Inventory"
+              >
                 <RefreshCw size={14} /> Refresh
               </button>
             </div>
@@ -262,7 +262,6 @@ const POSPage = () => {
                   onClick={() => handleTileClick(b)}
                   title={`Click to add ${b.product_name} (${b.meat_cut}) to cart`}
                 >
-                  {/* Meat Cut Photography Image Box */}
                   <div style={{
                     position: 'relative',
                     width: '100%',
@@ -302,7 +301,7 @@ const POSPage = () => {
                       {meatCategory}
                     </span>
 
-                    {/* Available Stock Tag Overlay */}
+                    {/* Available Stock Tag */}
                     <span style={{
                       position: 'absolute',
                       bottom: '8px',
@@ -319,7 +318,7 @@ const POSPage = () => {
                     </span>
                   </div>
 
-                  {/* Product Details Section */}
+                  {/* Product Details */}
                   <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <div style={{
                       fontWeight: '800',
@@ -366,395 +365,39 @@ const POSPage = () => {
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: Cart & Checkout ── */}
+        {/* ── RIGHT COLUMN: Step 1 Billing Panel ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {/* Shopping Cart Card */}
-          <div className="card" style={{ marginBottom: 0, padding: '20px' }}>
-
-            {/* ── Active Customer Strip (when order is selected) ── */}
-            {activeOrder ? (
-              <div style={{
-                marginBottom: '14px',
-                padding: '12px 14px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
-                border: '2px solid var(--primary-cashier)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: '10px'
-              }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <UserCheck size={22} color="var(--primary-cashier)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: '800', fontSize: '14px', color: '#0f172a' }}>
-                      {activeOrder.customerName}
-                    </div>
-                    {activeOrder.customerPhone && (
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                        📞 {activeOrder.customerPhone}
-                      </div>
-                    )}
-                    <div style={{ fontSize: '11px', color: '#92400e', fontWeight: '700', marginTop: '3px' }}>
-                      Order #{activeOrder.orderNo}
-                    </div>
-                    {preorderCount > 0 && walkinCount > 0 && (
-                      <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>
-                        {preorderCount} pre-ordered · {walkinCount} walk-in added
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <button
-                  title="Clear customer order — switch to walk-in"
-                  onClick={handleClearActiveOrder}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: '#ef4444', padding: '2px', borderRadius: '6px',
-                    display: 'flex', alignItems: 'center'
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <div className="card-header" style={{ marginBottom: '12px' }}>
-                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ShoppingCart size={18} color="var(--primary-cashier)" />
-                  Walk-in Cart ({cart.length})
-                </span>
-                {cart.length > 0 && (
-                  <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger)', borderColor: '#fca5a5' }} onClick={clearCart}>
-                    Clear Cart
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Stock resolution warnings */}
-            {unresolvedItems.length > 0 && (
-              <div style={{
-                marginBottom: '12px',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                background: '#fef9c3',
-                border: '1px solid #fde047',
-                fontSize: '12px',
-                color: '#713f12'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700', marginBottom: '4px' }}>
-                  <AlertTriangle size={14} /> Stock not found for:
-                </div>
-                {unresolvedItems.map((name, i) => (
-                  <div key={i}>• {name}</div>
-                ))}
-                <div style={{ marginTop: '4px', color: '#92400e' }}>Add these items manually from the product grid.</div>
-              </div>
-            )}
-
-            {/* ── Pending Customer Orders List ── */}
-            <div style={{ marginBottom: '16px' }}>
-              {(() => {
-                const searchTerm = pendingSearch.trim().toLowerCase();
-                const filteredOrders = searchTerm
-                  ? orders.filter(o =>
-                      (o.customer_name || '').toLowerCase().includes(searchTerm) ||
-                      (o.order_no || '').toLowerCase().includes(searchTerm)
-                    )
-                  : orders;
-                return (
-                  <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#374151' }}>
-                  <Users size={16} color="var(--primary-cashier)" /> Pending Customer Orders
-                  {filteredOrders.length > 0 && (
-                    <span style={{
-                      fontSize: '11px', fontWeight: '700', background: 'var(--primary-cashier)',
-                      color: '#fff', borderRadius: '10px', padding: '1px 7px', minWidth: '18px',
-                      textAlign: 'center', lineHeight: '16px'
-                    }}>{filteredOrders.length}</span>
-                  )}
-                </span>
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={loadOrders}
-                  disabled={ordersLoading}
-                  title="Refresh pending orders"
-                  style={{ padding: '4px 8px' }}
-                >
-                  <RefreshCw size={12} />
-                </button>
-              </div>
-
-              {/* ── Pending Orders Search Bar ── */}
-              {orders.length > 0 && (
-                <div style={{ position: 'relative', marginBottom: '8px' }}>
-                  <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
-                  <input
-                    type="text"
-                    value={pendingSearch}
-                    onChange={e => setPendingSearch(e.target.value)}
-                    placeholder="Search customer name or order #..."
-                    aria-label="Search pending customer orders"
-                    style={{
-                      width: '100%', padding: '9px 32px 9px 32px',
-                      fontSize: '13px', borderRadius: '8px',
-                      border: '1px solid #e2e8f0', background: '#f8fafc',
-                      outline: 'none', color: '#374151',
-                      transition: 'border-color 0.15s',
-                      boxSizing: 'border-box'
-                    }}
-                    onFocus={e => e.target.style.borderColor = 'var(--primary-cashier)'}
-                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-                  />
-                  {pendingSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setPendingSearch('')}
-                      title="Clear search"
-                      aria-label="Clear search"
-                      style={{
-                        position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-                        color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        borderRadius: '50%', lineHeight: 1
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#475569'}
-                      onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {ordersLoading && (
-                  <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: '12px' }}>
-                    Loading...
-                  </div>
-                )}
-                {!ordersLoading && orders.length === 0 && (
-                  <div style={{
-                    textAlign: 'center', padding: '20px 16px',
-                    background: '#f8fafc', borderRadius: '10px',
-                    border: '1px dashed #e2e8f0',
-                    color: '#94a3b8', fontSize: '12px'
-                  }}>
-                    <Users size={22} style={{ marginBottom: '6px', opacity: 0.4 }} />
-                    <div>No pending customer orders.</div>
-                  </div>
-                )}
-                {!ordersLoading && orders.length > 0 && filteredOrders.length === 0 && (
-                  <div style={{
-                    textAlign: 'center', padding: '20px 16px',
-                    background: '#f8fafc', borderRadius: '10px',
-                    border: '1px dashed #e2e8f0',
-                    color: '#94a3b8', fontSize: '12px'
-                  }}>
-                    <Search size={20} style={{ marginBottom: '6px', opacity: 0.4 }} />
-                    <div>No pending orders found</div>
-                  </div>
-                )}
-                {!ordersLoading && filteredOrders.map((order) => {
-                  const isActive = activeOrder?.orderId === order.id;
-                  return (
-                    <button
-                      key={order.id}
-                      type="button"
-                      onClick={() => handleSelectOrder(order)}
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '12px 14px',
-                        borderRadius: '10px',
-                        border: isActive ? '2px solid var(--primary-cashier)' : '1px solid #e2e8f0',
-                        background: isActive ? '#fff7ed' : '#ffffff',
-                        cursor: 'pointer',
-                        transition: 'border 0.15s, background 0.15s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ fontSize: '13px', color: '#0f172a' }}>
-                          {isActive && <CheckCircle size={12} color="var(--primary-cashier)" style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
-                          {order.customer_name}
-                        </strong>
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{formatOrderTime(order.created_at)}</span>
-                      </div>
-                      <div style={{ marginTop: '4px', fontSize: '12px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>#{order.order_no}</span>
-                        <span style={{ fontWeight: '700', color: 'var(--primary-cashier)' }}>₱{Number(order.total_amount).toFixed(2)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* ── Cart Line Items ── */}
-            <div style={{ maxHeight: '260px', overflowY: 'auto', borderBottom: '1px solid var(--border-color)', marginBottom: '16px', paddingRight: '4px' }}>
-              {cart.map((item) => (
-                <div
-                  key={item.cart_item_id}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 0', borderBottom: '1px solid #f1f5f9'
-                  }}
-                >
-                  <div style={{ flex: 1, paddingRight: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{item.product_name}</span>
-                      {item.source === 'preorder' && (
-                        <span style={{
-                          fontSize: '9px', fontWeight: '700', padding: '1px 5px',
-                          borderRadius: '4px', background: '#fed7aa', color: '#c2410c',
-                          display: 'inline-flex', alignItems: 'center', gap: '2px'
-                        }}>
-                          <Tag size={8} /> Pre-order
-                        </span>
-                      )}
-                      {item.source === 'walkin' && activeOrder && (
-                        <span style={{
-                          fontSize: '9px', fontWeight: '700', padding: '1px 5px',
-                          borderRadius: '4px', background: '#d1fae5', color: '#065f46',
-                          display: 'inline-flex', alignItems: 'center', gap: '2px'
-                        }}>
-                          + Added
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>{item.meat_cut} · ₱{item.price_per_kg}/kg</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      className="form-control"
-                      style={{ width: '70px', padding: '6px', textAlign: 'center', fontSize: '12px', fontWeight: '800' }}
-                      value={item.weight_kg}
-                      onChange={(e) => updateWeight(item.cart_item_id, parseFloat(e.target.value) || 0.1)}
-                    />
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>kg</span>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      style={{ color: 'var(--danger)', padding: '6px 8px' }}
-                      onClick={() => removeFromCart(item.cart_item_id)}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {cart.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '12px' }}>
-                  {activeOrder
-                    ? 'No items loaded. Select an order or click a meat tile to add items.'
-                    : 'Cart is empty. Click any meat tile to add to sale.'}
-                </div>
-              )}
-            </div>
-
-            {/* ── Totals ── */}
-            <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                <span>Subtotal:</span>
-                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b' }}>Discount (₱):</span>
-                <input
-                  type="number"
-                  min="0"
-                  max={subtotal}
-                  placeholder="0.00"
-                  className="form-control"
-                  style={{ width: '100px', padding: '8px 10px', textAlign: 'right', fontSize: '14px', fontWeight: '700' }}
-                  value={discount === 0 ? '' : discount}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
-                    if (val > subtotal) {
-                      alert(`Discount cannot exceed the subtotal (₱${subtotal.toFixed(2)})`);
-                      setDiscount(subtotal);
-                    } else {
-                      setDiscount(val);
-                    }
-                  }}
-                />
-              </div>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                fontWeight: '800', fontSize: '20px',
-                borderTop: '2px solid var(--border-color)',
-                paddingTop: '12px', color: '#0f172a', marginTop: '4px'
-              }}>
-                <span>TOTAL DUE:</span>
-                <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Payment & Checkout Card ── */}
-          <div className="card" style={{ padding: '20px', marginBottom: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', color: '#64748b' }}>
-              Payment Method
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
-              {['cash', 'gcash', 'card'].map((method) => (
-                <button
-                  key={method}
-                  className={`btn ${paymentMethod === method ? 'btn-cashier' : 'btn-outline'}`}
-                  style={{ fontSize: '13px', textTransform: 'uppercase', padding: '12px 8px', fontWeight: '700' }}
-                  onClick={() => setPaymentMethod(method)}
-                >
-                  {method}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '700' }}>Amount Tendered:</span>
-              <input
-                type="number"
-                className="form-control"
-                style={{ width: '140px', fontSize: '16px', fontWeight: '800', textAlign: 'right', padding: '8px 12px' }}
-                value={amountTendered}
-                onChange={(e) => setAmountTendered(Number(e.target.value))}
-              />
-            </div>
-
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              fontSize: '15px', fontWeight: '800', marginBottom: '18px',
-              padding: '10px 14px', background: '#f8fafc',
-              borderRadius: '8px', border: '1px solid var(--border-color)'
-            }}>
-              <span style={{ color: '#64748b' }}>Change:</span>
-              <span style={{ color: 'var(--success)' }}>₱{change.toFixed(2)}</span>
-            </div>
-
-            <button
-              className="btn btn-cashier btn-lg"
-              style={{ width: '100%', justifyContent: 'center' }}
-              onClick={handleProcessSale}
-              disabled={processing || cart.length === 0}
-            >
-              <CheckCircle size={18} />
-              {processing
-                ? 'Processing...'
-                : activeOrder
-                  ? `Fulfill Order — ₱${total.toFixed(2)}`
-                  : 'Process Sale & Print Receipt'}
-            </button>
-          </div>
+          <BillingPanel
+            orders={orders}
+            ordersLoading={ordersLoading}
+            onRefreshOrders={loadOrders}
+            onSelectOrder={handleSelectOrder}
+            unresolvedItems={unresolvedItems}
+            onProceedToPayment={() => setIsPaymentOpen(true)}
+          />
         </div>
       </div>
 
-      <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} sale={lastSale} />
+      {/* ── Step 2 Payment Slide-over Drawer ── */}
+      <PaymentPanel
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        onProcessSale={handleProcessSale}
+        processing={processing}
+        lastCompletedSale={lastSale}
+        onPrintReceipt={(sale) => {
+          setLastSale(sale);
+          setShowReceipt(true);
+        }}
+        onResetTerminal={handleResetTerminal}
+      />
+
+      {/* ── Printable Official Receipt Modal ── */}
+      <ReceiptModal
+        isOpen={showReceipt}
+        onClose={() => setShowReceipt(false)}
+        sale={lastSale}
+      />
     </div>
   );
 };
