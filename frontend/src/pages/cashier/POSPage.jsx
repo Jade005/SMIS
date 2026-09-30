@@ -133,6 +133,10 @@ const POSPage = () => {
       alert('No items in cart. Please add at least one item to process.');
       return;
     }
+    if (discount > subtotal) {
+      alert(`Discount (₱${Number(discount).toFixed(2)}) cannot exceed the subtotal (₱${subtotal.toFixed(2)})`);
+      return;
+    }
     if (amountTendered < total && paymentMethod === 'cash') {
       alert(`Amount tendered (₱${amountTendered}) is less than total due (₱${total.toFixed(2)})`);
       return;
@@ -665,10 +669,21 @@ const POSPage = () => {
                 <span style={{ color: '#64748b' }}>Discount (₱):</span>
                 <input
                   type="number"
+                  min="0"
+                  max={subtotal}
+                  placeholder="0.00"
                   className="form-control"
                   style={{ width: '100px', padding: '8px 10px', textAlign: 'right', fontSize: '14px', fontWeight: '700' }}
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  value={discount === 0 ? '' : discount}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                    if (val > subtotal) {
+                      alert(`Discount cannot exceed the subtotal (₱${subtotal.toFixed(2)})`);
+                      setDiscount(subtotal);
+                    } else {
+                      setDiscount(val);
+                    }
+                  }}
                 />
               </div>
               <div style={{

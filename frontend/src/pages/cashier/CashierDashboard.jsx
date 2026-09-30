@@ -112,7 +112,7 @@ const CashierDashboard = () => {
                 <th>Time</th>
                 <th>Payment</th>
                 <th>Subtotal</th>
-                <th>Total Paid</th>
+                <th>Total Amount</th>
               </tr>
             </thead>
             <tbody>

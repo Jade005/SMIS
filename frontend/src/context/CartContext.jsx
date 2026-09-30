@@ -170,7 +170,8 @@ export const CartProvider = ({ children }) => {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0), 0);
-  const total = Math.max(0, subtotal - discount);
+  const effectiveDiscount = Math.min(Math.max(0, Number(discount) || 0), subtotal);
+  const total = Math.max(0, subtotal - effectiveDiscount);
   const change = Math.max(0, amountTendered - total);
 
   return (
