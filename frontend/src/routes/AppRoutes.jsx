@@ -53,12 +53,15 @@ const AppRoutes = () => {
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/admin/login" element={<Login defaultRole="admin" />} />
+            <Route path="/cashier/login" element={<Login defaultRole="cashier" />} />
+            <Route path="/customer/login" element={<Login defaultRole="customer" />} />
             <Route path="/register" element={<Register />} />
             <Route path="/set-password" element={<SetPassword />} />
 
             {/* Admin Portal Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                <Route element={<AppLayout title="Admin Management Portal" />}>
+                <Route element={<AppLayout title="Administrator Management Portal" />}>
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/admin/products" element={<ProductMgmt />} />
                     <Route path="/admin/inventory" element={<InventoryMgmt />} />
@@ -72,7 +75,7 @@ const AppRoutes = () => {
 
             {/* Cashier Portal Routes */}
             <Route element={<ProtectedRoute allowedRoles={['cashier']} />}>
-                <Route element={<AppLayout title="Cashier POS Terminal" />}>
+                <Route element={<AppLayout title="Cashier POS Weighing Terminal" />}>
                     <Route path="/cashier" element={<CashierDashboard />} />
                     <Route path="/cashier/pos" element={<POSPage />} />
                     <Route path="/cashier/orders" element={<OrderMgmt />} />
@@ -83,7 +86,7 @@ const AppRoutes = () => {
 
             {/* Customer Portal Routes */}
             <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
-                <Route element={<AppLayout title="Customer Online Store" />}>
+                <Route element={<AppLayout title="Customer Fresh Meat Store" />}>
                     <Route path="/customer" element={<CustomerCatalog />} />
                     <Route path="/customer/cart" element={<CustomerCart />} />
                     <Route path="/customer/orders" element={<OrderHistory />} />
