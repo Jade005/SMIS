@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { setPasswordApi } from '../../api/authApi';
 import { SmisLogoMark } from '../../components/common/SmisLogo';
-import { ShieldCheck, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 const SetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -24,9 +24,19 @@ const SetPassword = () => {
     special: false
   });
 
+  // Embers animation
+  const embers = useMemo(() => Array.from({ length: 16 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    size: 3 + Math.random() * 6,
+    dur: 8 + Math.random() * 8,
+    delay: -Math.random() * 15,
+    drift: (Math.random() - 0.5) * 100,
+  })), []);
+
   useEffect(() => {
     if (!token) {
-      setError('Activation token is missing. Please check the link in your email.');
+      setError('Activation token is missing. Please check the link in your notification email.');
     }
   }, [token]);
 
@@ -75,152 +85,237 @@ const SetPassword = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '440px', background: '#ffffff', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', padding: '40px', border: '1px solid #e2e8f0' }}>
-        
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ display: 'inline-flex', padding: '12px', background: '#f1f5f9', borderRadius: '16px', marginBottom: '16px' }}>
-            <SmisLogoMark size={48} />
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '0 0 8px 0' }}>Activate Account</h1>
-          <p style={{ margin: 0, color: '#64748b', fontSize: '14px', lineHeight: '1.5' }}>
-            Set a secure password to activate your account and access the system.
-          </p>
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#1B0709',
+      padding: '24px',
+      position: 'relative',
+      overflow: 'hidden',
+      color: '#F6EBDD'
+    }}>
+      <div className="marble-bg marble-drift" />
+      {embers.map(e => (
+        <span key={e.id} className="ember-particle" style={{
+          left: `${e.left}%`, width: e.size, height: e.size,
+          animationDuration: `${e.dur}s`, animationDelay: `${e.delay}s`, '--dx': `${e.drift}px`
+        }} />
+      ))}
 
-        {error && (
-          <div style={{ background: '#fef2f2', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #fecaca' }}>
-            <AlertTriangle size={16} />
-            {error}
-          </div>
-        )}
+      <div style={{ width: '100%', maxWidth: '460px', position: 'relative', zIndex: 10 }}>
+        <div className="tag-card slab-in" style={{
+          background: 'linear-gradient(175deg, #2A0C10 0%, #1D0608 100%)',
+          borderRadius: '20px',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.65), inset 0 1px 0 rgba(246,235,221,0.1)',
+          padding: '36px 32px',
+          border: '1px solid rgba(246, 235, 221, 0.16)',
+          borderTop: '6px solid #E5384A',
+          position: 'relative'
+        }}>
+          {/* Back to Home Button */}
+          <Link
+            to="/login"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#C9B4A6',
+              textDecoration: 'none',
+              fontSize: '12px',
+              fontWeight: '600',
+              marginBottom: '18px',
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#F6EBDD'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#C9B4A6'}
+          >
+            <ArrowLeft size={14} /> Back to Sign In
+          </Link>
 
-        {success ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '32px', background: '#d1fae5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
-              <ShieldCheck size={32} />
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{
+              display: 'inline-flex',
+              padding: '12px',
+              background: 'linear-gradient(135deg, rgba(229, 56, 74, 0.2) 0%, rgba(193, 18, 31, 0.1) 100%)',
+              border: '1px solid rgba(229, 56, 74, 0.3)',
+              borderRadius: '16px',
+              marginBottom: '14px',
+              boxShadow: '0 4px 16px rgba(193, 18, 31, 0.35)'
+            }}>
+              <SmisLogoMark size={44} accentColor="#FFFFFF" />
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>Success!</h3>
-            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '24px' }}>{success}</p>
-            <p style={{ color: '#94a3b8', fontSize: '13px' }}>Redirecting to login...</p>
+            <h1 style={{
+              fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",
+              fontSize: '22px',
+              fontWeight: 400,
+              color: '#F6EBDD',
+              margin: '0 0 6px 0',
+              letterSpacing: '0.02em'
+            }} className="meat-text">
+              Activate Account
+            </h1>
+            <p style={{ margin: 0, color: '#C9B4A6', fontSize: '13px', lineHeight: '1.5' }}>
+              Set a secure password to unlock system portal access.
+            </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                New Password
-              </label>
-              <div style={{ position: 'relative' }}>
+
+          {error && (
+            <div style={{
+              background: 'rgba(229, 56, 74, 0.18)',
+              color: '#FF8A96',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              border: '1px solid rgba(229, 56, 74, 0.4)'
+            }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success ? (
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(95, 138, 78, 0.25)',
+                border: '2px solid #7BD36B',
+                color: '#7BD36B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 18px auto',
+                boxShadow: '0 0 20px rgba(123, 211, 107, 0.35)'
+              }}>
+                <ShieldCheck size={34} />
+              </div>
+              <h3 style={{
+                fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",
+                fontSize: '18px',
+                fontWeight: 400,
+                color: '#F6EBDD',
+                marginBottom: '10px'
+              }}>
+                Password Set Successfully!
+              </h3>
+              <p style={{ color: '#C9B4A6', fontSize: '13px', marginBottom: '20px' }}>{success}</p>
+              <p style={{ color: '#FFD76B', fontSize: '12px', fontWeight: '600' }} className="blink">
+                Redirecting you to portal sign in...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label>New Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create a strong password"
+                    required
+                    className="form-control"
+                    style={{ paddingRight: '42px', height: '44px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: '#C9B4A6',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Confirm Password</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a strong password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat your new password"
                   required
-                  style={{
-                    width: '100%',
-                    padding: '12px 40px 12px 16px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '14px',
-                    color: '#0f172a',
-                    outline: 'none',
-                    transition: 'all 0.2s ease',
-                    boxSizing: 'border-box'
-                  }}
+                  className="form-control"
+                  style={{ height: '44px' }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: '4px'
-                  }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                Confirm Password
-              </label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Type your password again"
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '14px',
-                  color: '#0f172a',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {/* Validation Rules */}
-            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#475569', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Password Requirements
-              </h4>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {[
-                  { key: 'length', text: 'At least 8 characters' },
-                  { key: 'upper', text: 'One uppercase letter (A-Z)' },
-                  { key: 'lower', text: 'One lowercase letter (a-z)' },
-                  { key: 'number', text: 'One number (0-9)' },
-                  { key: 'special', text: 'One special character (!@#$%)' }
-                ].map(({ key, text }) => (
-                  <li key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: validations[key] ? '#10b981' : '#94a3b8' }}>
-                    <div style={{ width: '16px', height: '16px', borderRadius: '8px', background: validations[key] ? '#d1fae5' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {validations[key] && <ShieldCheck size={10} color="#10b981" />}
-                    </div>
-                    {text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || !token || !Object.values(validations).every(Boolean)}
-              style={{
-                background: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                padding: '14px',
+              {/* Validation Rules */}
+              <div style={{
+                background: '#120406',
+                padding: '14px 16px',
                 borderRadius: '10px',
-                fontWeight: '700',
-                fontSize: '15px',
-                cursor: loading || !token || !Object.values(validations).every(Boolean) ? 'not-allowed' : 'pointer',
-                opacity: loading || !token || !Object.values(validations).every(Boolean) ? 0.7 : 1,
-                marginTop: '8px',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
-              {loading ? 'Activating...' : 'Activate Account'}
-            </button>
-          </form>
-        )}
+                border: '1px solid rgba(246, 235, 221, 0.1)'
+              }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#C9B4A6',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  marginBottom: '10px'
+                }}>
+                  Security Standards
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { key: 'length', text: 'At least 8 characters' },
+                    { key: 'upper', text: 'One uppercase letter (A-Z)' },
+                    { key: 'lower', text: 'One lowercase letter (a-z)' },
+                    { key: 'number', text: 'One number (0-9)' },
+                    { key: 'special', text: 'One special symbol (!@#$%)' }
+                  ].map(({ key, text }) => (
+                    <li key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: validations[key] ? '#7BD36B' : '#8C776B' }}>
+                      <span style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        background: validations[key] ? 'rgba(95, 138, 78, 0.3)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${validations[key] ? '#7BD36B' : 'rgba(255,255,255,0.15)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {validations[key] && <CheckCircle2 size={10} color="#7BD36B" />}
+                      </span>
+                      <span>{text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !token || !Object.values(validations).every(Boolean)}
+                className="btn btn-primary btn-lg"
+                style={{ width: '100%', marginTop: '4px' }}
+              >
+                {loading ? 'Activating Account...' : 'Activate System Account'}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

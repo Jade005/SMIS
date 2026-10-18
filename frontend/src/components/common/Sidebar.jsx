@@ -24,67 +24,100 @@ const Sidebar = () => {
 
   const adminLinks = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/admin/products', label: 'Products', icon: Beef },
-    { to: '/admin/inventory', label: 'Inventory', icon: Package },
-    { to: '/admin/suppliers', label: 'Suppliers', icon: Truck },
-    { to: '/admin/users', label: 'Users Management', icon: Users },
+    { to: '/admin/products', label: 'Products & Cuts', icon: Beef },
+    { to: '/admin/inventory', label: 'Inventory Batches', icon: Package },
+    { to: '/admin/suppliers', label: 'Suppliers & Delivery', icon: Truck },
+    { to: '/admin/users', label: 'User Accounts', icon: Users },
     { to: '/admin/register-customer', label: 'Register Customer', icon: UserPlus },
-    { to: '/admin/reports', label: 'Reports & Analytics', icon: FileText }
+    { to: '/admin/reports', label: 'Sales & Analytics', icon: FileText }
   ];
 
   const cashierLinks = [
-    { to: '/cashier', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/cashier/pos', label: 'Point of Sale', icon: Monitor },
-    { to: '/cashier/orders', label: 'Orders', icon: ShoppingCart },
-    { to: '/cashier/availability', label: 'Stock Lookup', icon: CheckCircle },
-    { to: '/cashier/transactions', label: 'History', icon: History }
+    { to: '/cashier', label: 'Counter Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/cashier/pos', label: 'Point of Sale (POS)', icon: Monitor },
+    { to: '/cashier/orders', label: 'Customer Orders', icon: ShoppingCart },
+    { to: '/cashier/availability', label: 'Live Stock Lookup', icon: CheckCircle },
+    { to: '/cashier/transactions', label: 'Sales History', icon: History }
   ];
 
   const customerLinks = [
-    { to: '/customer', label: 'Catalog', icon: Beef, end: true },
+    { to: '/customer', label: 'Meat Cuts Catalog', icon: Beef, end: true },
     { to: '/customer/cart', label: 'Cart & Pre-Order', icon: ShoppingCart, badge: cart.length },
-    { to: '/customer/orders', label: 'My Orders', icon: History }
+    { to: '/customer/orders', label: 'Order History', icon: History }
   ];
 
   const links = role === 'admin' ? adminLinks : role === 'cashier' ? cashierLinks : customerLinks;
-  const sidebarBg = role === 'admin' ? 'var(--bg-sidebar-admin)' : role === 'cashier' ? 'var(--bg-sidebar-cashier)' : 'var(--bg-sidebar-customer)';
+
+  const roleAccent = role === 'admin' ? '#E5384A' : role === 'cashier' ? '#D99A2B' : '#5F8A4E';
+  const roleStamp = role === 'admin' ? 'Head office' : role === 'cashier' ? 'Counter' : 'Online shop';
 
   return (
     <aside style={{
-      width: '240px',
-      minWidth: '240px',
-      background: sidebarBg,
-      color: '#cbd5e1',
+      width: '250px',
+      minWidth: '250px',
+      background: '#1B0709',
+      borderRight: '1px solid rgba(246, 235, 221, 0.11)',
+      color: '#F6EBDD',
       display: 'flex',
       flexDirection: 'column',
-      boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
-      zIndex: 20
+      boxShadow: '4px 0 24px rgba(0,0,0,0.45)',
+      zIndex: 20,
+      position: 'relative'
     }}>
-      {/* Sidebar Header */}
-      <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Sidebar Header with Slaughterhouse Brand Lockup */}
+      <div style={{ padding: '24px 20px', borderBottom: '1px dashed rgba(246, 235, 221, 0.14)' }}>
         <div style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '3px 10px',
-          borderRadius: '100px',
-          background: 'rgba(255,255,255,0.1)',
-          color: '#fff',
-          fontSize: '10px',
-          fontWeight: '800',
-          letterSpacing: '0.08em',
+          gap: '8px',
+          padding: '4px 10px',
+          borderRadius: '6px',
+          background: `${roleAccent}1c`,
+          border: `1px dashed ${roleAccent}99`,
+          color: '#F6EBDD',
+          fontSize: '11px',
+          fontWeight: '700',
+          letterSpacing: '0.04em',
           textTransform: 'uppercase',
-          marginBottom: '10px'
+          marginBottom: '14px'
         }}>
-          {role} PORTAL
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: roleAccent, boxShadow: `0 0 0 3px ${roleAccent}33` }} />
+          {role} · {roleStamp}
         </div>
-        <h2 style={{ color: '#fff', fontSize: '17px', fontWeight: '800', margin: 0, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <SmisLogoMark size={20} /> SMIS Terminal
-        </h2>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 9,
+            background: 'linear-gradient(135deg, #E5384A, #C1121F)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(193, 18, 31, 0.5)',
+            flexShrink: 0
+          }}>
+            <SmisLogoMark size={22} accentColor="#FFFFFF" />
+          </div>
+          <div>
+            <div style={{
+              fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",
+              fontSize: '18px',
+              letterSpacing: '.04em',
+              lineHeight: 1,
+              color: '#F6EBDD'
+            }}>
+              SMIS
+            </div>
+            <div style={{ fontSize: '10px', fontWeight: '600', color: '#C9B4A6', lineHeight: 1, marginTop: '4px', letterSpacing: '0.03em' }}>
+              Slaughterhouse MIS
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Nav Links */}
-      <nav style={{ padding: '20px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <nav style={{ padding: '20px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto' }}>
         {links.map((link) => {
           const Icon = link.icon;
           return (
@@ -97,16 +130,17 @@ const Sidebar = () => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '11px 16px',
-                borderRadius: '12px',
-                color: isActive ? '#ffffff' : '#94a3b8',
+                borderRadius: '10px',
+                color: isActive ? '#FFFFFF' : '#C9B4A6',
                 background: isActive
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)'
+                  ? 'linear-gradient(135deg, rgba(229, 56, 74, 0.28) 0%, rgba(193, 18, 31, 0.14) 100%)'
                   : 'transparent',
-                fontWeight: isActive ? '800' : '600',
+                borderLeft: isActive ? '3px solid #E5384A' : '3px solid transparent',
+                fontWeight: isActive ? '700' : '500',
                 fontSize: '13px',
                 textDecoration: 'none',
-                boxShadow: isActive ? 'inset 1px 1px 2px rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                transition: 'all 0.2s ease'
+                boxShadow: isActive ? 'inset 1px 1px 2px rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.3)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
               })}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -115,13 +149,13 @@ const Sidebar = () => {
               </div>
               {link.badge > 0 && (
                 <span style={{
-                  background: '#10b981',
+                  background: '#5F8A4E',
                   color: '#ffffff',
                   fontSize: '11px',
                   fontWeight: '800',
-                  padding: '2px 7px',
+                  padding: '2px 8px',
                   borderRadius: '100px',
-                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)'
+                  boxShadow: '0 2px 8px rgba(95, 138, 78, 0.5)'
                 }}>
                   {link.badge}
                 </span>
@@ -131,9 +165,18 @@ const Sidebar = () => {
         })}
       </nav>
 
-      {/* Footer info */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
-        Slaughterhouse MIS v1.0
+      {/* Footer System Info */}
+      <div style={{
+        padding: '16px 20px',
+        borderTop: '1px dashed rgba(246, 235, 221, 0.12)',
+        fontSize: '11px',
+        color: '#C9B4A6',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <span>FIFO Rotation Active</span>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#7BD36B', boxShadow: '0 0 6px #7BD36B' }} />
       </div>
     </aside>
   );

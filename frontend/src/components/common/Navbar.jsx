@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, User, Lock, ChevronDown } from 'lucide-react';
+import { LogOut, User, Lock, ChevronDown, Shield } from 'lucide-react';
 import EditProfileModal from '../customer/EditProfileModal';
 import ChangePasswordModal from '../customer/ChangePasswordModal';
 
@@ -54,14 +54,19 @@ const Navbar = ({ title }) => {
 
   const avatarUrl = resolveAvatarUrl(user);
 
+  const roleAccent = user?.role === 'admin' ? '#E5384A' : user?.role === 'cashier' ? '#D99A2B' : '#5F8A4E';
+
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">{title || 'Slaughterhouse MIS'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="topbar-title">{title || 'Slaughterhouse MIS'}</div>
+        </div>
+
         <div className="topbar-right">
           {user && (
             <div style={{ position: 'relative' }} ref={dropdownRef}>
-              {/* Clickable Profile Badge Section (Avatar + Name + CUSTOMER Badge) */}
+              {/* Clickable Profile Badge Section (Avatar + Name + ROLE Tag) */}
               <div
                 className="user-badge"
                 onClick={() => setDropdownOpen((prev) => !prev)}
@@ -73,29 +78,27 @@ const Navbar = ({ title }) => {
                   gap: '10px',
                   padding: '6px 14px',
                   borderRadius: '100px',
-                  background: dropdownOpen ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  transition: 'all 0.2s ease',
-                  boxShadow: dropdownOpen ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
+                  background: dropdownOpen ? 'rgba(229, 56, 74, 0.15)' : 'rgba(246, 235, 221, 0.05)',
+                  border: dropdownOpen ? '1px dashed #E5384A' : '1px dashed rgba(246, 235, 221, 0.2)',
+                  transition: 'all 0.25s ease'
                 }}
               >
-                {/* Circular Avatar */}
+                {/* Circular Avatar with Meat Gradient */}
                 <div style={{
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  background: 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '12px',
                   fontWeight: '800',
                   color: '#fff',
-                  boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.4)',
                   flexShrink: 0,
                   overflow: 'hidden',
-                  border: '2px solid rgba(255,255,255,0.8)'
+                  border: `2px solid ${roleAccent}`,
+                  boxShadow: '0 2px 8px rgba(193, 18, 31, 0.4)'
                 }}>
                   {avatarUrl ? (
                     <img
@@ -108,7 +111,7 @@ const Navbar = ({ title }) => {
                   )}
                 </div>
 
-                <span style={{ fontWeight: '600', fontSize: '13px' }}>
+                <span style={{ fontWeight: '600', fontSize: '13px', color: '#F6EBDD' }}>
                   {user.first_name} {user.last_name}
                 </span>
 
@@ -117,7 +120,7 @@ const Navbar = ({ title }) => {
                     user.role === 'admin' ? 'badge-danger' :
                     user.role === 'cashier' ? 'badge-warning' : 'badge-success'
                   }`}
-                  style={{ textTransform: 'uppercase', fontSize: '10px', padding: '2px 8px', borderRadius: '100px' }}
+                  style={{ textTransform: 'uppercase', fontSize: '10px', padding: '2px 8px' }}
                 >
                   {user.role}
                 </span>
@@ -127,28 +130,33 @@ const Navbar = ({ title }) => {
                   style={{
                     transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.2s ease',
-                    color: '#64748b'
+                    color: '#C9B4A6'
                   }}
                 />
               </div>
 
-              {/* Profile Dropdown Menu */}
+              {/* Profile Dropdown Menu in Slaughterhouse Oxblood */}
               {dropdownOpen && (
                 <div
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
-                    width: '210px',
-                    background: '#ffffff',
+                    width: '220px',
+                    background: '#2A0C10',
                     borderRadius: '14px',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid #e2e8f0',
-                    padding: '6px',
+                    boxShadow: '0 16px 36px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(246, 235, 221, 0.1)',
+                    border: '1px solid rgba(246, 235, 221, 0.15)',
+                    padding: '8px',
                     zIndex: 99999,
-                    animation: 'dropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
+                    animation: 'dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                   }}
                 >
+                  <div style={{ padding: '8px 12px 10px', borderBottom: '1px dashed rgba(246, 235, 221, 0.1)', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '11px', color: '#C9B4A6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Signed in as</div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#F6EBDD', marginTop: '2px' }}>{user.email || user.username}</div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleOpenEditProfile}
@@ -161,17 +169,17 @@ const Navbar = ({ title }) => {
                       borderRadius: '8px',
                       background: 'transparent',
                       border: 'none',
-                      color: '#334155',
+                      color: '#F6EBDD',
                       fontSize: '13px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'background 0.15s ease'
+                      transition: 'background 0.2s ease'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(246, 235, 221, 0.08)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <User size={16} style={{ color: '#16a34a' }} />
+                    <User size={16} style={{ color: '#7BD36B' }} />
                     <span>Edit Profile</span>
                   </button>
 
@@ -187,21 +195,21 @@ const Navbar = ({ title }) => {
                       borderRadius: '8px',
                       background: 'transparent',
                       border: 'none',
-                      color: '#334155',
+                      color: '#F6EBDD',
                       fontSize: '13px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'background 0.15s ease'
+                      transition: 'background 0.2s ease'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(246, 235, 221, 0.08)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <Lock size={16} style={{ color: '#0284c7' }} />
+                    <Lock size={16} style={{ color: '#FFD76B' }} />
                     <span>Change Password</span>
                   </button>
 
-                  <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ height: '1px', background: 'rgba(246, 235, 221, 0.1)', margin: '4px 0' }} />
 
                   <button
                     type="button"
@@ -215,17 +223,17 @@ const Navbar = ({ title }) => {
                       borderRadius: '8px',
                       background: 'transparent',
                       border: 'none',
-                      color: '#dc2626',
+                      color: '#E5384A',
                       fontSize: '13px',
-                      fontWeight: '600',
+                      fontWeight: '700',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'background 0.15s ease'
+                      transition: 'background 0.2s ease'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(229, 56, 74, 0.15)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <LogOut size={16} style={{ color: '#dc2626' }} />
+                    <LogOut size={16} style={{ color: '#E5384A' }} />
                     <span>Logout</span>
                   </button>
                 </div>
