@@ -51,44 +51,96 @@ export const resolveColor = (label, index = 0) => {
 /**
  * Groups any slice under thresholdPercent (default: 3%) into "Others"
  */
-export function groupUnderThreshold(dataItems = [], valueKey = 'value', labelKey = 'label', thresholdPercent = 3) {
+export function groupUnderThreshold(
+  dataItems = [],
+  valueKey = 'value',
+  labelKey = 'label',
+  thresholdPercent = 3
+) {
   const total = dataItems.reduce((sum, item) => sum + (Number(item[valueKey]) || 0), 0);
   if (total <= 0) return { items: [], total: 0 };
 
-  const regular = [];
+  let regular = [];
   let othersSum = 0;
 
-  dataItems.forEach((item) => {
-    const val = Number(item[valueKey]) || 0;
-    if (val <= 0) return;
-    const pct = (val / total) * 100;
-    if (pct < thresholdPercent) {
-      othersSum += val;
-    } else {
-      regular.push({
+  if (thresholdPercent <= 0) {
+    // Keep all items intact, including items with 0 value
+    regular = dataItems.map((item) => {
+      const val = Math.max(0, Number(item[valueKey]) || 0);
+      return {
         label: item[labelKey],
         value: val,
-        rawPct: pct,
+        rawPct: total > 0 ? (val / total) * 100 : 0,
         original: item
+      };
+    });
+  } else {
+    dataItems.forEach((item) => {
+      const val = Number(item[valueKey]) || 0;
+      if (val <= 0) return;
+      const pct = (val / total) * 100;
+      if (pct < thresholdPercent) {
+        othersSum += val;
+      } else {
+        regular.push({
+          label: item[labelKey],
+          value: val,
+          rawPct: pct,
+          original: item
+        });
+      }
+    });
+
+    if (othersSum > 0) {
+      regular.push({
+        label: 'Others',
+        value: othersSum,
+        rawPct: (othersSum / total) * 100,
+        isOthers: true
       });
     }
-  });
-
-  if (othersSum > 0) {
-    regular.push({
-      label: 'Others',
-      value: othersSum,
-      rawPct: (othersSum / total) * 100,
-      isOthers: true
-    });
   }
 
-  // Recalculate percent based on total
-  const items = regular.map((r, idx) => ({
-    ...r,
-    percent: (r.value / total) * 100,
-    color: r.isOthers ? '#94a3b8' : resolveColor(r.label, idx)
-  }));
+  // Calculate formatted percentages with Largest Remainder Method (Hare-Niemeyer)
+  // so that the 1-decimal-place numbers add up to exactly 100.0%
+  const nonZeroItems = regular.filter((r) => r.value > 0);
+  const scaled = nonZeroItems.map((item, idx) => {
+    const raw = (item.value / total) * 100;
+    const x = raw * 10;
+    const floor = Math.floor(x);
+    return {
+      idx,
+      floor,
+      rem: x - floor
+    };
+  });
+
+  const sumFloor = scaled.reduce((acc, s) => acc + s.floor, 0);
+  const diff = Math.max(0, 1000 - sumFloor);
+  const sorted = [...scaled].sort((a, b) => b.rem - a.rem);
+  for (let k = 0; k < diff && k < sorted.length; k++) {
+    sorted[k].floor += 1;
+  }
+
+  const assignedMap = new Map();
+  scaled.forEach((s) => {
+    assignedMap.set(s.idx, (s.floor / 10).toFixed(1));
+  });
+
+  let nonZeroCount = 0;
+  const items = regular.map((r, idx) => {
+    let pctDisplay = '0.0';
+    if (r.value > 0) {
+      pctDisplay = assignedMap.get(nonZeroCount) || ((r.value / total) * 100).toFixed(1);
+      nonZeroCount++;
+    }
+    return {
+      ...r,
+      percent: parseFloat(pctDisplay),
+      percentDisplay: `${pctDisplay}%`,
+      color: r.isOthers ? '#94a3b8' : resolveColor(r.label, idx)
+    };
+  });
 
   return { items, total };
 }

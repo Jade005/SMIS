@@ -48,8 +48,8 @@ const ProductAvailability = () => {
           <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
             Live Product Availability & Stock Lookup
           </span>
-          <div style={{ fontSize: '13px', color: '#64748b' }}>
-            Total Active Cuts: <strong>{products.length}</strong>
+          <div style={{ fontSize: '13px', color: '#C9B4A6' }}>
+            Total Active Cuts: <strong style={{ color: '#F6EBDD' }}>{products.length}</strong>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ const ProductAvailability = () => {
                         <div>
                           <strong>{p.name}</strong>
                           {p.description && (
-                            <div style={{ fontSize: '11px', color: '#64748b', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: '11px', color: '#C9B4A6', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {p.description}
                             </div>
                           )}
@@ -132,7 +132,7 @@ const ProductAvailability = () => {
                         {p.category_name || p.meat_type}
                       </span>
                     </td>
-                    <td><code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{p.meat_cut}</code></td>
+                    <td><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{p.meat_cut}</code></td>
                     <td style={{ fontWeight: '800', color: 'var(--primary-cashier)' }}>₱{Number(p.price_per_kg).toFixed(2)}</td>
                     <td>
                       <span style={{ fontWeight: '800', fontSize: '14px', color: isOutOfStock ? '#ef4444' : isLowStock ? '#d97706' : '#10b981' }}>
@@ -149,7 +149,7 @@ const ProductAvailability = () => {
               })}
               {filteredProducts.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#C9B4A6' }}>
                     No products found matching "{search}"
                   </td>
                 </tr>

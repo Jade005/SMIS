@@ -4,8 +4,8 @@ import { groupUnderThreshold } from './chartConstants';
 
 /**
  * DonutChart / PieChart Component
- * Renders a Chart.js pie or donut chart with grand total in the center,
- * a custom legend with values & percentage shares, and 3% threshold grouping.
+ * Renders a Chart.js pie or donut chart with optional center label (for donuts),
+ * responsive layout, custom legend with exact percentages, and clean hover tooltips.
  */
 const DonutChart = ({
   data = [],
@@ -18,15 +18,19 @@ const DonutChart = ({
   formatValue = (v) => v,
   loading = false,
   emptyMessage = 'No data for this period',
-  legendPosition = 'right' // 'right' | 'bottom'
+  legendPosition = 'right', // 'right' | 'bottom'
+  thresholdPercent = 3,
+  fullWidth = false,
+  chartSize = null
 }) => {
   const canvasRef = useRef(null);
   const chartInstance = useRef(null);
 
-  const { items, total } = groupUnderThreshold(data, valueKey, labelKey, 3);
+  const { items, total } = groupUnderThreshold(data, valueKey, labelKey, thresholdPercent);
+  const chartItems = items.filter((i) => i.value > 0);
 
   useEffect(() => {
-    if (!canvasRef.current || loading || items.length === 0) return;
+    if (!canvasRef.current || loading || chartItems.length === 0) return;
 
     const ctx = canvasRef.current.getContext('2d');
     if (chartInstance.current) {
@@ -36,14 +40,14 @@ const DonutChart = ({
     chartInstance.current = new Chart(ctx, {
       type: isDoughnut ? 'doughnut' : 'pie',
       data: {
-        labels: items.map((i) => i.label),
+        labels: chartItems.map((i) => i.label),
         datasets: [
           {
-            data: items.map((i) => i.value),
-            backgroundColor: items.map((i) => i.color),
+            data: chartItems.map((i) => i.value),
+            backgroundColor: chartItems.map((i) => i.color),
             borderColor: '#ffffff',
             borderWidth: 2,
-            hoverOffset: 6
+            hoverOffset: 8
           }
         ]
       },
@@ -59,7 +63,7 @@ const DonutChart = ({
             display: false // Custom legend used for precise layout
           },
           tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
             titleFont: { size: 12, weight: 'bold' },
             bodyFont: { size: 12 },
             padding: 10,
@@ -67,10 +71,12 @@ const DonutChart = ({
             boxPadding: 4,
             callbacks: {
               label: function (context) {
+                const label = context.label || '';
                 const val = context.raw || 0;
-                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                const match = items.find((i) => i.label === label);
+                const pct = match ? match.percentDisplay : `${total > 0 ? ((val / total) * 100).toFixed(1) : 0}%`;
                 const formatted = formatValue ? formatValue(val) : val;
-                return ` ${context.label}: ${formatted} (${pct}%)`;
+                return ` ${label}: ${formatted} (${pct})`;
               }
             }
           }
@@ -84,7 +90,7 @@ const DonutChart = ({
         chartInstance.current = null;
       }
     };
-  }, [items, total, isDoughnut, loading]);
+  }, [items, chartItems, total, isDoughnut, loading]);
 
   if (loading) {
     return (
@@ -104,13 +110,48 @@ const DonutChart = ({
 
   if (items.length === 0 || total === 0) {
     return (
-      <div style={{ height: '240px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#94a3b8' }}>
-        <span style={{ fontSize: '13px', fontWeight: '600' }}>{emptyMessage}</span>
+      <div style={{
+        height: fullWidth ? '260px' : '240px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        color: '#64748b',
+        background: '#f8fafc',
+        borderRadius: '10px',
+        border: '1px dashed #cbd5e1',
+        margin: '12px 0',
+        padding: '24px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          width: '46px',
+          height: '46px',
+          borderRadius: '50%',
+          background: '#f1f5f9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#94a3b8'
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+            <path d="M22 12A10 10 0 0 0 12 2v10z" />
+          </svg>
+        </div>
+        <span style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>
+          {emptyMessage}
+        </span>
+        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+          No transactions recorded for the selected timeframe. Try switching the period dropdown.
+        </span>
       </div>
     );
   }
 
   const isStacked = legendPosition === 'bottom';
+  const size = chartSize || (fullWidth ? 260 : 200);
 
   return (
     <div style={{
@@ -118,20 +159,22 @@ const DonutChart = ({
       flexDirection: isStacked ? 'column' : 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '24px',
-      padding: '8px 0',
-      minHeight: '250px'
+      gap: fullWidth ? '48px' : '24px',
+      padding: fullWidth ? '16px 20px' : '8px 0',
+      minHeight: fullWidth ? '280px' : '250px',
+      flexWrap: 'wrap',
+      width: '100%'
     }}>
       {/* Canvas Box */}
       <div style={{
         position: 'relative',
-        width: '200px',
-        height: '200px',
+        width: `${size}px`,
+        height: `${size}px`,
         flexShrink: 0
       }}>
         <canvas ref={canvasRef} />
 
-        {/* Center Grand Total (for Doughnuts) */}
+        {/* Center Grand Total (ONLY for Doughnuts) */}
         {isDoughnut && (
           <div style={{
             position: 'absolute',
@@ -140,7 +183,7 @@ const DonutChart = ({
             transform: 'translate(-50%, -50%)',
             textAlign: 'center',
             pointerEvents: 'none',
-            maxWidth: '130px',
+            maxWidth: `${Math.round(size * 0.65)}px`,
             padding: '0 4px'
           }}>
             <div style={{
@@ -167,13 +210,13 @@ const DonutChart = ({
 
       {/* Custom Legend */}
       <div style={{
-        flex: 1,
+        flex: fullWidth ? '1 1 320px' : 1,
         width: '100%',
-        maxWidth: isStacked ? '100%' : '260px',
+        maxWidth: isStacked ? '100%' : (fullWidth ? '420px' : '260px'),
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        maxHeight: '220px',
+        maxHeight: fullWidth ? '280px' : '220px',
         overflowY: 'auto',
         paddingRight: '6px'
       }}>
@@ -184,21 +227,24 @@ const DonutChart = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '10px',
+              gap: '12px',
               fontSize: '12px',
-              padding: '4px 6px',
+              padding: '6px 10px',
               borderRadius: '6px',
               background: '#f8fafc',
-              border: '1px solid #f1f5f9'
+              border: '1px solid #f1f5f9',
+              transition: 'background-color 0.15s ease',
+              opacity: item.value === 0 ? 0.6 : 1
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
               <span style={{
-                width: '10px',
-                height: '10px',
+                width: '12px',
+                height: '12px',
                 borderRadius: '50%',
                 background: item.color,
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: `0 0 0 2px ${item.color}22`
               }} />
               <span style={{
                 fontWeight: '600',
@@ -210,18 +256,22 @@ const DonutChart = ({
                 {item.label}
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <span style={{ color: '#64748b', fontSize: '11px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+              <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '500' }}>
                 {formatValue ? formatValue(item.value) : item.value}
               </span>
               <span style={{
                 fontWeight: '700',
-                color: '#0f172a',
-                minWidth: '40px',
+                color: item.value > 0 ? '#0f172a' : '#94a3b8',
+                minWidth: '45px',
                 textAlign: 'right',
-                fontSize: '11px'
+                fontSize: '12px',
+                background: item.value > 0 ? '#ffffff' : 'transparent',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: item.value > 0 ? '1px solid #e2e8f0' : 'none'
               }}>
-                {item.percent.toFixed(1)}%
+                {item.percentDisplay}
               </span>
             </div>
           </div>

@@ -157,7 +157,7 @@ const BillingPanel = ({
       {/* ── 2. Pending Customer Orders Section ── */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#374151' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#F6EBDD' }}>
             <Users size={15} color="var(--primary-cashier)" /> Pending Customer Orders
             {filteredOrders.length > 0 && (
               <span style={{
@@ -217,7 +217,7 @@ const BillingPanel = ({
         {/* Orders scrollable list */}
         <div style={{ maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {ordersLoading && (
-            <div style={{ textAlign: 'center', padding: '12px', color: '#94a3b8', fontSize: '12px' }}>
+            <div style={{ textAlign: 'center', padding: '12px', color: '#C9B4A6', fontSize: '12px' }}>
               Loading orders...
             </div>
           )}
@@ -279,10 +279,10 @@ const BillingPanel = ({
       {/* ── 3. Cart Line Items ── */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#374151' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#F6EBDD' }}>
             Cart Line Items ({cart.length})
           </span>
-          <span style={{ fontSize: '11px', color: '#64748b' }}>
+          <span style={{ fontSize: '11px', color: '#C9B4A6' }}>
             Total Weight: {cart.reduce((sum, item) => sum + (Number(item.weight_kg) || 0), 0).toFixed(2)} kg
           </span>
         </div>
@@ -298,7 +298,7 @@ const BillingPanel = ({
             >
               <div style={{ flex: 1, paddingRight: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: '700', fontSize: '13px', color: '#0f172a' }}>{item.product_name}</span>
+                  <span style={{ fontWeight: '700', fontSize: '13px', color: '#FFFFFF' }}>{item.product_name}</span>
                   {item.source === 'preorder' && (
                     <span style={{
                       fontSize: '9px', fontWeight: '700', padding: '1px 5px',
@@ -318,9 +318,9 @@ const BillingPanel = ({
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                <div style={{ fontSize: '11px', color: '#C9B4A6' }}>
                   {item.meat_cut} · ₱{Number(item.price_per_kg).toFixed(2)}/kg
-                  <strong style={{ marginLeft: '6px', color: '#0f172a' }}>
+                  <strong style={{ marginLeft: '6px', color: '#F6EBDD' }}>
                     ₱{((Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0)).toFixed(2)}
                   </strong>
                 </div>
@@ -335,7 +335,7 @@ const BillingPanel = ({
                   value={item.weight_kg}
                   onChange={(e) => updateWeight(item.cart_item_id, parseFloat(e.target.value) || 0.1)}
                 />
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>kg</span>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#C9B4A6' }}>kg</span>
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
@@ -349,7 +349,7 @@ const BillingPanel = ({
             </div>
           ))}
           {cart.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8', fontSize: '12px' }}>
+            <div style={{ textAlign: 'center', padding: '24px 16px', color: '#C9B4A6', fontSize: '12px' }}>
               {activeOrder
                 ? 'No items loaded for this order. Click any meat tile to add items.'
                 : 'Cart is empty. Select a customer order above or click a meat tile to start.'}
@@ -360,15 +360,15 @@ const BillingPanel = ({
 
       {/* ── 4. Billing Totals ── */}
       <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#C9B4A6' }}>
           <span>Subtotal:</span>
-          <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
+          <span style={{ fontWeight: '700', color: '#F6EBDD' }}>₱{subtotal.toFixed(2)}</span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span style={{ color: '#64748b' }}>Discount (₱):</span>
-            <div style={{ fontSize: '10px', color: '#94a3b8' }}>Deduction from subtotal</div>
+            <span style={{ color: '#C9B4A6' }}>Discount (₱):</span>
+            <div style={{ fontSize: '10px', color: '#C9B4A6' }}>Deduction from subtotal</div>
           </div>
           <input
             type="number"
@@ -394,7 +394,7 @@ const BillingPanel = ({
           display: 'flex', justifyContent: 'space-between',
           fontWeight: '800', fontSize: '18px',
           borderTop: '2px solid var(--border-color)',
-          paddingTop: '10px', color: '#0f172a', marginTop: '2px'
+          paddingTop: '10px', color: '#FFFFFF', marginTop: '2px'
         }}>
           <span>TOTAL DUE:</span>
           <span style={{ color: 'var(--primary-cashier)' }}>₱{total.toFixed(2)}</span>
@@ -414,7 +414,7 @@ const BillingPanel = ({
       </button>
 
       {isProceedDisabled && (
-        <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', marginTop: '-8px' }}>
+        <div style={{ textAlign: 'center', fontSize: '11px', color: '#C9B4A6', marginTop: '-8px' }}>
           Add at least one item to proceed to payment
         </div>
       )}

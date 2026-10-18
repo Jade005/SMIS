@@ -61,7 +61,7 @@ const ReportsPage = () => {
         getSalesReportApi({ period: salesPeriod }),
         getRevenueTrendsApi(trendDays),
         getBestSellersApi(5),
-        getSalesByCategoryApi()
+        getSalesByCategoryApi({ period: salesPeriod })
       ])
         .then(([salesRes, revRes, sellersRes, catRes]) => {
           setSalesReport(salesRes.data || null);
@@ -145,20 +145,30 @@ const ReportsPage = () => {
     return supplierReport.reduce((sum, s) => sum + (Number(s.total_weight_supplied_kg) || 0), 0);
   }, [supplierReport]);
 
-  // 5. Best Sellers Pie Data
-  const bestSellersPieData = useMemo(() => {
-    return bestSellers.map((b) => ({
-      label: `${b.product_name} (${b.meat_cut})`,
-      value: Number(b.total_revenue_generated || 0)
-    }));
-  }, [bestSellers]);
-
-  // 6. Category Sales Donut Data (toggled between Revenue and Volume)
+  // Meat Category Sales Distribution Data (toggled between Revenue and Volume)
   const categorySalesDonutData = useMemo(() => {
-    return categorySales.map((c) => ({
-      label: c.category_name,
-      value: categoryMetric === 'revenue' ? Number(c.total_revenue || 0) : Number(c.total_kg_sold || 0)
-    }));
+    const STANDARD_CATEGORIES = ['Beef', 'Pork', 'Goat', 'Chicken', 'Rabbit'];
+    const map = {};
+    categorySales.forEach((c) => {
+      map[c.category_name] = {
+        revenue: Number(c.total_revenue || 0),
+        volume: Number(c.total_kg_sold || 0)
+      };
+    });
+
+    const extraCategories = categorySales
+      .map((c) => c.category_name)
+      .filter((name) => !STANDARD_CATEGORIES.includes(name) && name !== 'Others');
+
+    const allCategoryNames = [...STANDARD_CATEGORIES, ...extraCategories];
+
+    return allCategoryNames.map((name) => {
+      const data = map[name] || { revenue: 0, volume: 0 };
+      return {
+        label: name,
+        value: categoryMetric === 'revenue' ? data.revenue : data.volume
+      };
+    });
   }, [categorySales, categoryMetric]);
 
   const totalCategoryDonut = useMemo(() => {
@@ -256,91 +266,79 @@ const ReportsPage = () => {
             </div>
           </div>
 
-          {/* 2. Charts Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-
-            {/* Chart 1: Sales Volume by Meat Category (Donut with Toggle) */}
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          {/* 2. Meat Category Sales Distribution (Single Full-Width Pie Chart) */}
+          <div className="card" style={{ marginBottom: 0, width: '100%' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div>
                 <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <PieChartIcon size={18} color="var(--primary-admin)" />
                   Sales Volume by Meat Category
                 </span>
-                {/* Metric Toggle */}
-                <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
-                  <button
-                    type="button"
-                    style={{
-                      border: 'none',
-                      background: categoryMetric === 'revenue' ? '#ffffff' : 'transparent',
-                      color: categoryMetric === 'revenue' ? 'var(--primary-admin)' : '#64748b',
-                      fontWeight: '700',
-                      fontSize: '11px',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      boxShadow: categoryMetric === 'revenue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                    }}
-                    onClick={() => setCategoryMetric('revenue')}
-                  >
-                    Revenue (₱)
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      border: 'none',
-                      background: categoryMetric === 'volume' ? '#ffffff' : 'transparent',
-                      color: categoryMetric === 'volume' ? 'var(--primary-admin)' : '#64748b',
-                      fontWeight: '700',
-                      fontSize: '11px',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      boxShadow: categoryMetric === 'volume' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                    }}
-                    onClick={() => setCategoryMetric('volume')}
-                  >
-                    Volume (kg)
-                  </button>
+                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginTop: '3px' }}>
+                  Total {categoryMetric === 'revenue' ? 'Revenue' : 'Volume'}:{' '}
+                  <span style={{ color: 'var(--primary-admin)', fontWeight: '700' }}>
+                    {categoryMetric === 'revenue'
+                      ? `₱${Number(totalCategoryDonut).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : `${Number(totalCategoryDonut).toFixed(2)} kg`}
+                  </span>
                 </div>
               </div>
 
-              <DonutChart
-                data={categorySalesDonutData}
-                isDoughnut={true}
-                loading={loading}
-                centerLabel={categoryMetric === 'revenue' ? 'Total Sales' : 'Total Kg'}
-                centerValue={
-                  categoryMetric === 'revenue'
-                    ? `₱${Number(totalCategoryDonut).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                    : `${Number(totalCategoryDonut).toFixed(1)} kg`
-                }
-                formatValue={(val) =>
-                  categoryMetric === 'revenue'
-                    ? `₱${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : `${Number(val).toFixed(2)} kg`
-                }
-              />
-            </div>
-
-            {/* Chart 2: Top Selling Meat Cuts (Pie Chart) */}
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header" style={{ marginBottom: '16px' }}>
-                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Trophy size={18} color="var(--warning)" />
-                  Top Selling Meat Cuts (by Revenue)
-                </span>
+              {/* Metric Toggle */}
+              <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
+                <button
+                  type="button"
+                  style={{
+                    border: 'none',
+                    background: categoryMetric === 'revenue' ? '#ffffff' : 'transparent',
+                    color: categoryMetric === 'revenue' ? 'var(--primary-admin)' : '#64748b',
+                    fontWeight: '700',
+                    fontSize: '11px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    boxShadow: categoryMetric === 'revenue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setCategoryMetric('revenue')}
+                >
+                  Revenue (₱)
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    border: 'none',
+                    background: categoryMetric === 'volume' ? '#ffffff' : 'transparent',
+                    color: categoryMetric === 'volume' ? 'var(--primary-admin)' : '#64748b',
+                    fontWeight: '700',
+                    fontSize: '11px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    boxShadow: categoryMetric === 'volume' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setCategoryMetric('volume')}
+                >
+                  Volume (kg)
+                </button>
               </div>
-
-              <DonutChart
-                data={bestSellersPieData}
-                isDoughnut={false}
-                loading={loading}
-                formatValue={(val) =>
-                  `₱${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                }
-              />
             </div>
+
+            <DonutChart
+              data={categorySalesDonutData}
+              isDoughnut={false}
+              loading={loading}
+              fullWidth={true}
+              chartSize={260}
+              thresholdPercent={0}
+              emptyMessage="No sales data for this period"
+              formatValue={(val) =>
+                categoryMetric === 'revenue'
+                  ? `₱${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : `${Number(val).toFixed(2)} kg`
+              }
+            />
           </div>
 
           {/* 3. Top Selling Meat Cuts (Table) */}

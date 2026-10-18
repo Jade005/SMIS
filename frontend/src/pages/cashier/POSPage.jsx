@@ -323,7 +323,7 @@ const POSPage = () => {
                     <div style={{
                       fontWeight: '800',
                       fontSize: '14px',
-                      color: '#0f172a',
+                      color: '#FFFFFF',
                       lineHeight: '1.3',
                       overflow: 'hidden',
                       display: '-webkit-box',
@@ -334,7 +334,7 @@ const POSPage = () => {
                       {b.product_name}
                     </div>
 
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                    <div style={{ fontSize: '12px', color: '#C9B4A6' }}>
                       Cut: <strong>{b.meat_cut}</strong>
                     </div>
 
@@ -344,12 +344,12 @@ const POSPage = () => {
                       alignItems: 'baseline',
                       marginTop: '6px',
                       paddingTop: '6px',
-                      borderTop: '1px solid #f1f5f9'
+                      borderTop: '1px solid rgba(246, 235, 221, 0.12)'
                     }}>
                       <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '15px' }}>
-                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>/kg</span>
+                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '11px', color: '#C9B4A6', fontWeight: '500' }}>/kg</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: isLow ? 'var(--danger)' : '#16a34a', fontWeight: '700' }}>
+                      <span style={{ fontSize: '11px', color: isLow ? '#FF6B6B' : '#7BD36B', fontWeight: '700' }}>
                         {isLow ? 'Low Stock' : 'In Stock'}
                       </span>
                     </div>
@@ -358,7 +358,7 @@ const POSPage = () => {
               );
             })}
             {filteredBatches.length === 0 && (
-              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#64748b', marginBottom: 0 }}>
+              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#C9B4A6', marginBottom: 0 }}>
                 {loading ? 'Loading inventory...' : 'No available inventory batches found'}
               </div>
             )}

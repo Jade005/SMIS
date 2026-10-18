@@ -127,7 +127,7 @@ const CashierDashboard = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="card-title" style={{ margin: 0 }}>My Recent Shift Sales</span>
             {debouncedSearch && (
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
+              <span style={{ fontSize: '12px', color: '#C9B4A6', fontWeight: '700' }}>
                 ({filteredSales.length} of {todaySales.length} sales)
               </span>
             )}
@@ -157,6 +157,7 @@ const CashierDashboard = () => {
                   borderRadius: '8px',
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
+                  color: '#111827',
                   outline: 'none',
                   fontFamily: 'inherit',
                   transition: 'border-color 0.15s ease'
