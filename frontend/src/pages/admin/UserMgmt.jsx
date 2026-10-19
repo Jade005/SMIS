@@ -1,17 +1,53 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getUsersApi, createUserApi, updateUserApi, toggleUserStatusApi, getPendingRegistrationsApi, approveRegistrationApi, rejectRegistrationApi } from '../../api/userApi';
-import { Plus, ShieldCheck, Clock, CheckCircle, Mail, UserPlus, UserCheck, AlertCircle, Loader2, RefreshCw, Eye, EyeOff, Copy, Check, Search, X, Pencil } from 'lucide-react';
+import {
+  getUsersApi,
+  createUserApi,
+  updateUserApi,
+  toggleUserStatusApi,
+  deactivateUserApi,
+  activateUserApi,
+  deleteUserApi,
+  getPendingRegistrationsApi,
+  approveRegistrationApi,
+  rejectRegistrationApi
+} from '../../api/userApi';
+import {
+  Plus,
+  ShieldCheck,
+  Clock,
+  CheckCircle,
+  Mail,
+  UserPlus,
+  UserCheck,
+  AlertCircle,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  Search,
+  X,
+  Pencil,
+  Trash2
+} from 'lucide-react';
 import Toast from '../../components/common/Toast';
+import { useAuth } from '../../context/AuthContext';
 
 const UserMgmt = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user: currentAdmin } = useAuth();
   const initialTab = searchParams.get('tab') === 'pending' ? 'pending' : 'all';
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [users, setUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+
+  // Edit User state
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -26,24 +62,58 @@ const UserMgmt = () => {
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
+
+  // Deactivate Modal state
+  const [deactivateModalUser, setDeactivateModalUser] = useState(null);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [deactivateError, setDeactivateError] = useState('');
+
+  // Activate Modal state
+  const [activateModalUser, setActivateModalUser] = useState(null);
+  const [activateLoading, setActivateLoading] = useState(false);
+  const [activateError, setActivateError] = useState('');
+
+  // Delete Modal state
+  const [deleteModalUser, setDeleteModalUser] = useState(null);
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteHasHistory, setDeleteHasHistory] = useState(false);
+
   const [revealedPasswords, setRevealedPasswords] = useState({});
   const [copiedKey, setCopiedKey] = useState(null);
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Safeguards
+  const isSelf = (targetUser) => {
+    if (!currentAdmin || !targetUser) return false;
+    return String(currentAdmin.id) === String(targetUser.id) || currentAdmin.username === targetUser.username;
+  };
+
+  const activeAdminsCount = users.filter((u) => u.role === 'admin' && Boolean(u.is_active)).length;
+  const isLastAdmin = (targetUser) => {
+    return Boolean(targetUser?.role === 'admin' && targetUser?.is_active && activeAdminsCount <= 1);
+  };
+
   const filteredUsers = users.filter((u) => {
+    if (statusFilter === 'active' && !u.is_active) return false;
+    if (statusFilter === 'inactive' && u.is_active) return false;
+
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
     const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
     const username = (u.username || '').toLowerCase();
     const email = (u.email || '').toLowerCase();
     const id = String(u.id ?? '').toLowerCase();
+    const statusText = u.is_active ? 'active' : 'inactive';
     return (
       fullName.includes(q) ||
       username.includes(q) ||
       email.includes(q) ||
       id.includes(q) ||
-      `#${id}`.includes(q)
+      `#${id}`.includes(q) ||
+      statusText.includes(q)
     );
   });
 
@@ -165,13 +235,112 @@ const UserMgmt = () => {
     }
   };
 
+  const handleOpenDeactivate = (user) => {
+    if (isSelf(user)) {
+      setToast({ message: 'You cannot deactivate your own account.', type: 'error' });
+      return;
+    }
+    if (isLastAdmin(user)) {
+      setToast({ message: 'Cannot deactivate the last remaining active administrator.', type: 'error' });
+      return;
+    }
+    setDeactivateModalUser(user);
+    setDeactivateError('');
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateModalUser) return;
+    setDeactivateLoading(true);
+    setDeactivateError('');
+    try {
+      await deactivateUserApi(deactivateModalUser.id);
+      setDeactivateModalUser(null);
+      setToast({ message: 'User deactivated.', type: 'success' });
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to deactivate user:', err);
+      setDeactivateError(err.response?.data?.message || 'Failed to deactivate user.');
+    } finally {
+      setDeactivateLoading(false);
+    }
+  };
+
+  const handleOpenActivate = (user) => {
+    setActivateModalUser(user);
+    setActivateError('');
+  };
+
+  const handleConfirmActivate = async () => {
+    if (!activateModalUser) return;
+    setActivateLoading(true);
+    setActivateError('');
+    try {
+      await activateUserApi(activateModalUser.id);
+      setActivateModalUser(null);
+      setToast({ message: 'User reactivated.', type: 'success' });
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to reactivate user:', err);
+      setActivateError(err.response?.data?.message || 'Failed to reactivate user.');
+    } finally {
+      setActivateLoading(false);
+    }
+  };
+
+  const handleOpenDelete = (user) => {
+    if (isSelf(user)) {
+      setToast({ message: 'You cannot delete your own account.', type: 'error' });
+      return;
+    }
+    if (isLastAdmin(user)) {
+      setToast({ message: 'Cannot delete the last remaining active administrator.', type: 'error' });
+      return;
+    }
+    setDeleteModalUser(user);
+    setDeleteConfirmationInput('');
+    setDeleteError('');
+    setDeleteHasHistory(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalUser) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    setDeleteHasHistory(false);
+    try {
+      await deleteUserApi(deleteModalUser.id);
+      setDeleteModalUser(null);
+      setDeleteConfirmationInput('');
+      setToast({ message: 'User deleted.', type: 'success' });
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      if (err.response?.status === 409) {
+        setDeleteHasHistory(true);
+        setDeleteError(
+          err.response?.data?.message ||
+          'This user has related sales/order history and cannot be deleted. Deactivate the account instead.'
+        );
+      } else {
+        setDeleteError(err.response?.data?.message || 'Failed to delete user.');
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleToggle = async (id, is_active) => {
     try {
-      await toggleUserStatusApi(id, !is_active);
-      setToast({ message: `User account status updated.`, type: 'success' });
+      if (is_active) {
+        await deactivateUserApi(id);
+        setToast({ message: 'User deactivated.', type: 'success' });
+      } else {
+        await activateUserApi(id);
+        setToast({ message: 'User reactivated.', type: 'success' });
+      }
       loadUsers();
     } catch (err) {
-      setToast({ message: 'Failed to update user status.', type: 'error' });
+      setToast({ message: err.response?.data?.message || 'Failed to update user status.', type: 'error' });
     }
   };
 
@@ -378,6 +547,27 @@ const UserMgmt = () => {
             </span>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               {renderSearchBar()}
+              <select
+                className="form-control"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  height: '38px',
+                  fontSize: '13px',
+                  background: '#140507',
+                  color: '#F6EBDD',
+                  border: '1px solid rgba(246, 235, 221, 0.2)',
+                  borderRadius: '8px',
+                  width: 'auto',
+                  cursor: 'pointer',
+                  padding: '0 12px'
+                }}
+                title="Filter by status"
+              >
+                <option value="all">All Statuses ({users.length})</option>
+                <option value="active">Active ({users.filter((u) => Boolean(u.is_active)).length})</option>
+                <option value="inactive">Inactive ({users.filter((u) => !u.is_active).length})</option>
+              </select>
               <button
                 className="btn btn-outline"
                 style={{ borderColor: 'var(--primary)', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
@@ -426,8 +616,8 @@ const UserMgmt = () => {
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <span className={`badge ${u.is_active ? 'badge-success' : 'badge-gray'}`}>
-                          {u.is_active ? 'Active' : u.role === 'customer' ? 'Pending' : 'Inactive'}
+                        <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`} style={{ letterSpacing: '0.04em' }}>
+                          {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                         </span>
                         {Boolean(u.is_temp_password) && (
                           <div style={{
@@ -478,23 +668,54 @@ const UserMgmt = () => {
                           Edit
                         </button>
 
-                        {u.role === 'customer' && !u.is_active && (
+                        {u.is_active ? (
                           <button
                             className="btn btn-outline btn-sm"
-                            style={{ color: '#16a34a', borderColor: '#16a34a' }}
-                            onClick={() => handleApprove(u.id)}
-                            disabled={approvingId === u.id}
+                            onClick={() => handleOpenDeactivate(u)}
+                            disabled={isSelf(u) || isLastAdmin(u)}
+                            title={
+                              isSelf(u)
+                                ? 'You cannot deactivate your own account'
+                                : isLastAdmin(u)
+                                ? 'Cannot deactivate the last remaining administrator'
+                                : `Deactivate user #${u.id}`
+                            }
                           >
-                            <CheckCircle size={12} />
-                            {approvingId === u.id ? 'Approving...' : 'Approve'}
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-outline btn-sm btn-success"
+                            onClick={() => handleOpenActivate(u)}
+                            title={`Activate user #${u.id}`}
+                          >
+                            Activate
                           </button>
                         )}
 
                         <button
-                          className={`btn btn-outline btn-sm ${u.is_active ? '' : 'btn-success'}`}
-                          onClick={() => handleToggle(u.id, u.is_active)}
+                          className="btn btn-outline btn-sm"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
+                            borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
+                            opacity: isSelf(u) || isLastAdmin(u) ? 0.5 : 1,
+                            cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
+                          }}
+                          onClick={() => handleOpenDelete(u)}
+                          disabled={isSelf(u) || isLastAdmin(u)}
+                          title={
+                            isSelf(u)
+                              ? 'You cannot delete your own account'
+                              : isLastAdmin(u)
+                              ? 'Cannot delete the last remaining administrator'
+                              : `Delete user #${u.id}`
+                          }
                         >
-                          {u.is_active ? 'Deactivate' : 'Activate'}
+                          <Trash2 size={12} />
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -931,14 +1152,13 @@ const UserMgmt = () => {
                   <label style={{ fontWeight: '600', fontSize: '12px' }}>Status</label>
                   <select
                     className="form-control"
-                    value={editFormData.is_active ? 'active' : (editingUser.role === 'customer' && !editFormData.is_active ? 'pending' : 'inactive')}
+                    value={editFormData.is_active ? 'active' : 'inactive'}
                     onChange={(e) => {
                       const val = e.target.value;
                       setEditFormData({ ...editFormData, is_active: val === 'active' });
                     }}
                   >
                     <option value="active">Active</option>
-                    <option value="pending">Pending</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
@@ -979,6 +1199,305 @@ const UserMgmt = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Deactivate Confirmation Modal ---- */}
+      {deactivateModalUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px', borderRadius: '12px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={20} color="#f59e0b" />
+                Deactivate User?
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setDeactivateModalUser(null); setDeactivateError(''); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {deactivateError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{deactivateError}</span>
+              </div>
+            )}
+
+            <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '24px' }}>
+              <strong style={{ color: 'var(--fat)' }}>
+                {deactivateModalUser.first_name} {deactivateModalUser.last_name}
+              </strong> ({deactivateModalUser.username}) will no longer be able to log in. Their sales and order history will be kept. You can reactivate them anytime.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => { setDeactivateModalUser(null); setDeactivateError(''); }}
+                disabled={deactivateLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleConfirmDeactivate}
+                disabled={deactivateLoading}
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {deactivateLoading ? <Loader2 className="spin" size={16} /> : null}
+                <span>{deactivateLoading ? 'Deactivating...' : 'Yes, Deactivate'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Activate Confirmation Modal ---- */}
+      {activateModalUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px', borderRadius: '12px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={20} color="#22c55e" />
+                Activate User?
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setActivateModalUser(null); setActivateError(''); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {activateError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{activateError}</span>
+              </div>
+            )}
+
+            <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '24px' }}>
+              Are you sure you want to reactivate <strong style={{ color: 'var(--fat)' }}>
+                {activateModalUser.first_name} {activateModalUser.last_name}
+              </strong> ({activateModalUser.username})? They will be able to log in again.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => { setActivateModalUser(null); setActivateError(''); }}
+                disabled={activateLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmActivate}
+                disabled={activateLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {activateLoading ? <Loader2 className="spin" size={16} /> : null}
+                <span>{activateLoading ? 'Activating...' : 'Yes, Activate'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Delete Permanently Confirmation Modal ---- */}
+      {deleteModalUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px', borderRadius: '12px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Trash2 size={20} color="#ef4444" />
+                Delete User Permanently?
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalUser(null);
+                  setDeleteConfirmationInput('');
+                  setDeleteError('');
+                  setDeleteHasHistory(false);
+                }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {deleteError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            {deleteHasHistory ? (
+              <div>
+                <p style={{ fontSize: '14px', color: 'var(--fat)', lineHeight: '1.6', marginBottom: '16px' }}>
+                  This user has related sales/order history and cannot be deleted. Deactivate the account instead.
+                </p>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setDeleteModalUser(null);
+                      setDeleteConfirmationInput('');
+                      setDeleteError('');
+                      setDeleteHasHistory(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-warning"
+                    onClick={() => {
+                      const target = deleteModalUser;
+                      setDeleteModalUser(null);
+                      setDeleteConfirmationInput('');
+                      setDeleteError('');
+                      setDeleteHasHistory(false);
+                      handleOpenDeactivate(target);
+                    }}
+                    style={{ background: '#d97706', borderColor: '#d97706', color: '#fff' }}
+                  >
+                    Deactivate Instead
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '16px' }}>
+                  This will permanently remove <strong style={{ color: 'var(--fat)' }}>
+                    {deleteModalUser.first_name} {deleteModalUser.last_name}
+                  </strong>. This action cannot be undone.
+                </p>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--mute)', display: 'block', marginBottom: '6px' }}>
+                    Type <code style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 5px', borderRadius: '4px' }}>{deleteModalUser.username || 'DELETE'}</code> or <code style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 5px', borderRadius: '4px' }}>DELETE</code> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder={`Type ${deleteModalUser.username || 'DELETE'} or DELETE`}
+                    value={deleteConfirmationInput}
+                    onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                    style={{
+                      background: '#140507',
+                      color: '#F6EBDD',
+                      border: '1px solid rgba(246, 235, 221, 0.2)',
+                      borderRadius: '8px'
+                    }}
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setDeleteModalUser(null);
+                      setDeleteConfirmationInput('');
+                      setDeleteError('');
+                      setDeleteHasHistory(false);
+                    }}
+                    disabled={deleteLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handleConfirmDelete}
+                    disabled={
+                      deleteLoading ||
+                      !(
+                        deleteConfirmationInput.trim() === (deleteModalUser.username || '') ||
+                        deleteConfirmationInput.trim().toUpperCase() === 'DELETE'
+                      )
+                    }
+                    style={{
+                      background:
+                        deleteConfirmationInput.trim() === (deleteModalUser.username || '') ||
+                        deleteConfirmationInput.trim().toUpperCase() === 'DELETE'
+                          ? '#ef4444'
+                          : 'rgba(239, 68, 68, 0.3)',
+                      color: '#fff',
+                      border: 'none',
+                      cursor:
+                        deleteConfirmationInput.trim() === (deleteModalUser.username || '') ||
+                        deleteConfirmationInput.trim().toUpperCase() === 'DELETE'
+                          ? 'pointer'
+                          : 'not-allowed',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {deleteLoading ? <Loader2 className="spin" size={16} /> : <Trash2 size={15} />}
+                    <span>{deleteLoading ? 'Deleting...' : 'Delete Permanently'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
