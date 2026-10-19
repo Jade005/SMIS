@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { getUsersApi, createUserApi, toggleUserStatusApi, getPendingRegistrationsApi, approveRegistrationApi, rejectRegistrationApi } from '../../api/userApi';
-import { Plus, ShieldCheck, Clock, CheckCircle, Mail, UserPlus, UserCheck, AlertCircle, Loader2, RefreshCw, Eye, EyeOff, Copy, Check } from 'lucide-react';
+import { getUsersApi, createUserApi, updateUserApi, toggleUserStatusApi, getPendingRegistrationsApi, approveRegistrationApi, rejectRegistrationApi } from '../../api/userApi';
+import { Plus, ShieldCheck, Clock, CheckCircle, Mail, UserPlus, UserCheck, AlertCircle, Loader2, RefreshCw, Eye, EyeOff, Copy, Check, Search, X, Pencil } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 
 const UserMgmt = () => {
@@ -13,9 +13,55 @@ const UserMgmt = () => {
   const [users, setUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    username: '',
+    email: '',
+    role: 'customer',
+    is_active: true,
+    password: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
   const [revealedPasswords, setRevealedPasswords] = useState({});
   const [copiedKey, setCopiedKey] = useState(null);
   const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUsers = users.filter((u) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
+    const username = (u.username || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const id = String(u.id ?? '').toLowerCase();
+    return (
+      fullName.includes(q) ||
+      username.includes(q) ||
+      email.includes(q) ||
+      id.includes(q) ||
+      `#${id}`.includes(q)
+    );
+  });
+
+  const filteredPendingUsers = pendingUsers.filter((u) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
+    const username = (u.username || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const id = String(u.id ?? '').toLowerCase();
+    return (
+      fullName.includes(q) ||
+      username.includes(q) ||
+      email.includes(q) ||
+      id.includes(q) ||
+      `#${id}`.includes(q)
+    );
+  });
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -165,8 +211,136 @@ const UserMgmt = () => {
     }
   };
 
+  const handleOpenEdit = (user) => {
+    setEditingUser(user);
+    setEditFormData({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      username: user.username || '',
+      email: user.email || '',
+      role: user.role === 'customer' ? 'customer' : user.role,
+      is_active: Boolean(user.is_active),
+      password: ''
+    });
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const fName = editFormData.first_name.trim();
+    const lName = editFormData.last_name.trim();
+    const uName = editFormData.username.trim();
+    const mail = editFormData.email.trim();
+
+    if (!fName || !lName || !uName || !mail) {
+      setEditError('All required fields (First Name, Last Name, Username, Email) must be filled.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(mail)) {
+      setEditError('Please enter a valid email address.');
+      return;
+    }
+
+    setEditLoading(true);
+    setEditError('');
+
+    try {
+      const payload = {
+        first_name: fName,
+        last_name: lName,
+        username: uName,
+        email: mail,
+        role: editFormData.role,
+        is_active: editFormData.is_active ? 1 : 0
+      };
+
+      if (editFormData.password && editFormData.password.trim()) {
+        payload.password = editFormData.password.trim();
+      }
+
+      await updateUserApi(editingUser.id, payload);
+
+      setShowEditModal(false);
+      setEditingUser(null);
+      setToast({ message: 'User updated successfully', type: 'success' });
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      setEditError(err.response?.data?.message || 'Failed to update user. Please try again.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const renderSearchBar = () => (
+    <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+      <Search
+        size={15}
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: '#94a3b8',
+          pointerEvents: 'none'
+        }}
+      />
+      <input
+        type="text"
+        className="form-control user-search-input"
+        placeholder="Search by name, username, email, or ID..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        style={{
+          paddingLeft: '34px',
+          paddingRight: searchQuery ? '32px' : '12px',
+          height: '38px',
+          fontSize: '13px',
+          background: '#140507',
+          color: '#F6EBDD',
+          border: '1px solid rgba(246, 235, 221, 0.2)',
+          borderRadius: '8px'
+        }}
+      />
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => setSearchQuery('')}
+          title="Clear search"
+          aria-label="Clear search"
+          style={{
+            position: 'absolute',
+            right: '10px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#94a3b8'
+          }}
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="page-container">
+      <style>{`
+        .user-search-input::placeholder {
+          color: #94a3b8 !important;
+        }
+      `}</style>
 
       {/* Tab Navigation */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -202,7 +376,8 @@ const UserMgmt = () => {
             <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
               Admin Account Management
             </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {renderSearchBar()}
               <button
                 className="btn btn-outline"
                 style={{ borderColor: 'var(--primary)', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
@@ -231,12 +406,19 @@ const UserMgmt = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>#{u.id}</td>
-                    <td><strong>{u.first_name} {u.last_name}</strong></td>
-                    <td><code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{u.username || '—'}</code></td>
-                    <td>{u.email}</td>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
+                      No users match your search
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>#{u.id}</td>
+                      <td><strong>{u.first_name} {u.last_name}</strong></td>
+                      <td><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px' }}>{u.username || '—'}</code></td>
+                      <td>{u.email}</td>
                     <td>
                       <span className={`badge ${u.role === 'admin' ? 'badge-danger' : u.role === 'cashier' ? 'badge-warning' : 'badge-gray'}`}>
                         {u.role === 'customer' ? 'USER' : u.role.toUpperCase()}
@@ -286,6 +468,16 @@ const UserMgmt = () => {
                     <td>{new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          onClick={() => handleOpenEdit(u)}
+                          title={`Edit user #${u.id}`}
+                        >
+                          <Pencil size={12} />
+                          Edit
+                        </button>
+
                         {u.role === 'customer' && !u.is_active && (
                           <button
                             className="btn btn-outline btn-sm"
@@ -307,7 +499,7 @@ const UserMgmt = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -317,11 +509,14 @@ const UserMgmt = () => {
       {/* ---- PENDING APPROVALS TAB ---- */}
       {activeTab === 'pending' && (
         <div className="card">
-          <div className="card-header">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldCheck size={18} color="#d97706" />
               Pending Customer Account Approvals
             </span>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {renderSearchBar()}
+            </div>
           </div>
 
           {pendingUsers.length === 0 ? (
@@ -348,15 +543,31 @@ const UserMgmt = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {pendingUsers.map((u) => (
-                      <tr key={u.id}>
+                    {filteredPendingUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
+                          No users match your search
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPendingUsers.map((u) => (
+                        <tr key={u.id}>
                         <td><strong>{u.first_name} {u.last_name}</strong></td>
                         <td>{u.email}</td>
                         <td>{u.phone || <span style={{ color: '#94a3b8' }}>—</span>}</td>
                         <td>{u.address || <span style={{ color: '#94a3b8' }}>—</span>}</td>
                         <td>{new Date(u.created_at).toLocaleString()}</td>
                         <td>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                              className="btn btn-outline btn-sm"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              onClick={() => handleOpenEdit(u)}
+                              title={`Edit user #${u.id}`}
+                            >
+                              <Pencil size={12} />
+                              Edit
+                            </button>
                             <button
                               className="btn btn-sm"
                               style={{ background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
@@ -378,7 +589,7 @@ const UserMgmt = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -612,6 +823,162 @@ const UserMgmt = () => {
             >
               Done & Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Edit User Modal ---- */}
+      {showEditModal && editingUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '520px', borderRadius: '12px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)' }}>
+                Edit User
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowEditModal(false); setEditError(''); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {editError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit}>
+              <div className="form-grid" style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. John"
+                    value={editFormData.first_name}
+                    onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Doe"
+                    value={editFormData.last_name}
+                    onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px' }}>Username <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. john.doe"
+                  value={editFormData.username}
+                  onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="email"
+                  className="form-control"
+                  placeholder="john.doe@smis.local"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-grid" style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px' }}>Role <span style={{ color: '#ef4444' }}>*</span></label>
+                  <select
+                    className="form-control"
+                    value={editFormData.role}
+                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                  >
+                    <option value="customer">User</option>
+                    <option value="cashier">Cashier</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px' }}>Status</label>
+                  <select
+                    className="form-control"
+                    value={editFormData.is_active ? 'active' : (editingUser.role === 'customer' && !editFormData.is_active ? 'pending' : 'inactive')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditFormData({ ...editFormData, is_active: val === 'active' });
+                    }}
+                  >
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px' }}>Password</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  placeholder="Enter new password (optional)"
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                  autoComplete="new-password"
+                />
+                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                  Leave blank to keep the current password
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => { setShowEditModal(false); setEditError(''); }}
+                  disabled={editLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={editLoading}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {editLoading ? <Loader2 className="spin" size={16} /> : null}
+                  <span>{editLoading ? 'Saving Changes...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
