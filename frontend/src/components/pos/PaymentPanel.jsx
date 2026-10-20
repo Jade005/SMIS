@@ -129,7 +129,7 @@ const PaymentPanel = ({
         {/* ── DRAWER HEADER ── */}
         <div style={{
           padding: '18px 24px',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid #cbd5e1',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -139,9 +139,18 @@ const PaymentPanel = ({
             type="button"
             className="btn btn-outline btn-sm"
             onClick={successView ? handleFinishAndReset : onClose}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              fontWeight: '700',
+              color: '#0f172a',
+              background: '#f1f5f9',
+              borderColor: '#94a3b8'
+            }}
           >
-            <ArrowLeft size={14} /> Back to Billing
+            <ArrowLeft size={14} color="#0f172a" /> Back to Billing
           </button>
           <span id="payment-drawer-title" style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
             {successView ? 'Transaction Complete' : 'Payment & Checkout'}
@@ -151,7 +160,7 @@ const PaymentPanel = ({
             onClick={successView ? handleFinishAndReset : onClose}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: '#94a3b8', padding: '4px', borderRadius: '6px',
+              color: '#475569', padding: '4px', borderRadius: '6px',
               display: 'flex', alignItems: 'center'
             }}
             title="Close (Esc)"
@@ -294,7 +303,7 @@ const PaymentPanel = ({
             {/* 2. Amount Tendered & Cash Calculation */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '700', display: 'block', marginBottom: '6px', color: '#0f172a' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', display: 'block', marginBottom: '6px', color: '#F6EBDD' }}>
                   Amount Tendered (₱):
                 </label>
                 <input
@@ -310,7 +319,7 @@ const PaymentPanel = ({
                     fontWeight: '800',
                     textAlign: 'right',
                     padding: '12px 16px',
-                    color: isShortage ? 'var(--danger)' : '#0f172a'
+                    color: isShortage ? '#f87171' : '#ffffff'
                   }}
                   value={amountTendered === 0 ? '' : amountTendered}
                   onChange={(e) => {
@@ -322,7 +331,7 @@ const PaymentPanel = ({
 
               {/* Quick Cash Denominations */}
               <div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginBottom: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#E5D5C3', fontWeight: '700', marginBottom: '6px' }}>
                   Quick Cash Denominations:
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -335,10 +344,11 @@ const PaymentPanel = ({
                         className="btn btn-outline btn-sm"
                         style={{
                           flex: 1, minWidth: '60px', padding: '8px 4px',
-                          fontSize: '12px', fontWeight: '700',
-                          borderColor: isSelected ? 'var(--primary-cashier)' : '#cbd5e1',
-                          background: isSelected ? 'var(--primary-cashier-soft)' : '#ffffff',
-                          color: isSelected ? 'var(--primary-cashier)' : 'inherit'
+                          fontSize: '12px', fontWeight: '800',
+                          borderColor: isSelected ? 'var(--primary-cashier)' : '#94a3b8',
+                          background: isSelected ? 'var(--primary-cashier)' : '#ffffff',
+                          color: isSelected ? '#ffffff' : '#0f172a',
+                          boxShadow: isSelected ? '0 2px 8px rgba(217, 119, 6, 0.4)' : '0 1px 3px rgba(0,0,0,0.1)'
                         }}
                         onClick={() => setAmountTendered(opt.value)}
                       >
@@ -354,7 +364,7 @@ const PaymentPanel = ({
                 <div style={{
                   padding: '10px 12px', borderRadius: '8px',
                   background: '#fef2f2', border: '1px solid #fecaca',
-                  fontSize: '12px', color: 'var(--danger)',
+                  fontSize: '12px', color: '#991b1b',
                   display: 'flex', alignItems: 'center', gap: '8px'
                 }}>
                   <AlertCircle size={16} />
@@ -367,10 +377,10 @@ const PaymentPanel = ({
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 fontSize: '16px', fontWeight: '800',
                 padding: '14px 16px', background: '#f8fafc',
-                borderRadius: '10px', border: '1px solid #e2e8f0'
+                borderRadius: '10px', border: '1px solid #cbd5e1'
               }}>
-                <span style={{ color: '#64748b' }}>Change Due:</span>
-                <span style={{ color: isTenderedValid ? 'var(--success)' : '#94a3b8', fontSize: '20px' }}>
+                <span style={{ color: '#0f172a' }}>Change Due:</span>
+                <span style={{ color: isTenderedValid ? '#15803d' : '#64748b', fontSize: '20px', fontWeight: '800' }}>
                   ₱{changeDue.toFixed(2)}
                 </span>
               </div>
@@ -397,8 +407,8 @@ const PaymentPanel = ({
                   ? `Confirm Payment & Fulfill Order — ₱${roundedTotal.toFixed(2)}`
                   : `Confirm Payment & Complete Sale — ₱${roundedTotal.toFixed(2)}`}
             </button>
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8' }}>
-              Press <strong>Enter</strong> to confirm payment, <strong>Esc</strong> to cancel
+            <div style={{ textAlign: 'center', fontSize: '12px', color: '#E5D5C3' }}>
+              Press <strong style={{ color: '#FFFFFF' }}>Enter</strong> to confirm payment, <strong style={{ color: '#FFFFFF' }}>Esc</strong> to cancel
             </div>
           </div>
         )}

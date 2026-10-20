@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   getUsersApi,
   createUserApi,
@@ -7,19 +6,14 @@ import {
   toggleUserStatusApi,
   deactivateUserApi,
   activateUserApi,
-  deleteUserApi,
-  getPendingRegistrationsApi,
-  approveRegistrationApi,
-  rejectRegistrationApi
+  deleteUserApi
 } from '../../api/userApi';
 import {
   Plus,
   ShieldCheck,
-  Clock,
   CheckCircle,
   Mail,
   UserPlus,
-  UserCheck,
   AlertCircle,
   AlertTriangle,
   Loader2,
@@ -39,14 +33,9 @@ import Toast from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 
 const UserMgmt = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { user: currentAdmin } = useAuth();
-  const initialTab = searchParams.get('tab') === 'pending' ? 'pending' : 'all';
 
-  const [activeTab, setActiveTab] = useState(initialTab);
   const [users, setUsers] = useState([]);
-  const [pendingUsers, setPendingUsers] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
 
   // Edit User state
@@ -119,22 +108,6 @@ const UserMgmt = () => {
     );
   });
 
-  const filteredPendingUsers = pendingUsers.filter((u) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.trim().toLowerCase();
-    const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
-    const username = (u.username || '').toLowerCase();
-    const email = (u.email || '').toLowerCase();
-    const id = String(u.id ?? '').toLowerCase();
-    return (
-      fullName.includes(q) ||
-      username.includes(q) ||
-      email.includes(q) ||
-      id.includes(q) ||
-      `#${id}`.includes(q)
-    );
-  });
-
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -144,7 +117,6 @@ const UserMgmt = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [approvingId, setApprovingId] = useState(null);
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
   const toggleReveal = (userId) => {
@@ -180,12 +152,8 @@ const UserMgmt = () => {
 
   const loadUsers = useCallback(async () => {
     try {
-      const [allRes, pendingRes] = await Promise.all([
-        getUsersApi(),
-        getPendingRegistrationsApi()
-      ]);
+      const allRes = await getUsersApi();
       setUsers(allRes.data || []);
-      setPendingUsers(pendingRes.data || []);
     } catch (err) {
       console.error('Failed to load users:', err);
     }
@@ -194,18 +162,6 @@ const UserMgmt = () => {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'pending') setActiveTab('pending');
-    else if (tab === null) setActiveTab('all');
-  }, [searchParams]);
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    if (tab === 'pending') setSearchParams({ tab: 'pending' });
-    else setSearchParams({});
-  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -575,41 +531,26 @@ const UserMgmt = () => {
         }
       `}</style>
 
-      {/* Tab Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button
-          className={`btn ${activeTab === 'all' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => handleTabChange('all')}
-        >
-          All Users ({users.length})
-        </button>
-        <button
-          className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => handleTabChange('pending')}
-          style={{ position: 'relative' }}
-        >
-          <Clock size={15} />
-          Pending Approvals
-          {pendingUsers.length > 0 && (
-            <span style={{
-              background: '#ef4444', color: '#fff', borderRadius: '100px',
-              fontSize: '10px', fontWeight: '800', padding: '2px 6px',
-              marginLeft: '6px'
-            }}>
-              {pendingUsers.length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ---- ALL USERS TAB ---- */}
-      {activeTab === 'all' && (
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      {/* ---- ALL USERS LIST ---- */}
+      <div className="card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
-              Admin Account Management
+              All Users
             </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{
+              background: 'rgba(229, 56, 74, 0.18)',
+              color: '#FF8A96',
+              border: '1px solid rgba(229, 56, 74, 0.35)',
+              borderRadius: '100px',
+              fontSize: '12px',
+              fontWeight: '800',
+              padding: '2px 9px'
+            }}>
+              {users.length}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
               {renderSearchBar()}
               <select
                 className="form-control"
@@ -632,13 +573,6 @@ const UserMgmt = () => {
                 <option value="active">Active ({users.filter((u) => Boolean(u.is_active)).length})</option>
                 <option value="inactive">Inactive ({users.filter((u) => !u.is_active).length})</option>
               </select>
-              <button
-                className="btn btn-outline"
-                style={{ borderColor: 'var(--primary)', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                onClick={() => navigate('/admin/register-customer')}
-              >
-                <UserCheck size={16} /> Register Customer Account
-              </button>
               <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <UserPlus size={16} /> Create User / Cashier
               </button>
@@ -862,125 +796,29 @@ const UserMgmt = () => {
             </table>
           </div>
         </div>
-      )}
-
-      {/* ---- PENDING APPROVALS TAB ---- */}
-      {activeTab === 'pending' && (
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} color="#d97706" />
-              Pending Customer Account Approvals
-            </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {renderSearchBar()}
-            </div>
-          </div>
-
-          {pendingUsers.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-              <CheckCircle size={40} color="#86efac" style={{ margin: '0 auto 12px' }} />
-              <p style={{ fontWeight: 'bold' }}>All clear! No pending approvals.</p>
-              <p style={{ fontSize: '12px' }}>All customer registrations have been reviewed.</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ background: '#fffbeb', borderBottom: '1px solid #fcd34d', padding: '10px 16px', fontSize: '12px', color: '#92400e' }}>
-                ⚠️ The following customer accounts are pending approval. Approved accounts will immediately be able to log in.
-              </div>
-              <div className="table-responsive user-mgmt-table-responsive">
-                <table className="user-mgmt-table" style={{ minWidth: '1080px' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ minWidth: '160px', whiteSpace: 'nowrap' }}>Name</th>
-                      <th style={{ minWidth: '180px' }}>Email</th>
-                      <th style={{ minWidth: '130px' }}>Phone</th>
-                      <th style={{ minWidth: '160px' }}>Address</th>
-                      <th style={{ minWidth: '150px', whiteSpace: 'nowrap' }}>Registered On</th>
-                      <th className="actions-col-header" style={{ minWidth: '320px', width: '320px', textAlign: 'left' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPendingUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
-                          No users match your search
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredPendingUsers.map((u) => (
-                        <tr key={u.id}>
-                        <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{u.first_name} {u.last_name}</strong></td>
-                        <td style={{ verticalAlign: 'middle' }}>{u.email}</td>
-                        <td style={{ verticalAlign: 'middle' }}>{u.phone || <span style={{ color: '#94a3b8' }}>—</span>}</td>
-                        <td style={{ verticalAlign: 'middle' }}>{u.address || <span style={{ color: '#94a3b8' }}>—</span>}</td>
-                        <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleString()}</td>
-                        <td className="actions-col-cell" style={{ minWidth: '320px', width: '320px', textAlign: 'left', verticalAlign: 'middle' }}>
-                          <div className="actions-cell-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                            <button
-                              className="btn btn-outline btn-sm action-btn"
-                              onClick={() => handleOpenEdit(u)}
-                              title={`Edit user #${u.id}`}
-                            >
-                              <Pencil size={12} />
-                              <span className="action-btn-text">Edit</span>
-                            </button>
-                            <button
-                              className="btn btn-sm action-btn"
-                              style={{
-                                background: '#16a34a',
-                                color: '#fff',
-                                border: 'none',
-                                fontWeight: '700'
-                              }}
-                              onClick={() => handleApprove(u.id, false)}
-                              disabled={approvingId === u.id}
-                              title="Approve registration"
-                            >
-                              <ShieldCheck size={14} />
-                              <span className="action-btn-text">{approvingId === u.id ? 'Registering...' : 'Register'}</span>
-                            </button>
-                            <button
-                              className="btn btn-sm action-btn"
-                              style={{
-                                background: '#ef4444',
-                                color: '#fff',
-                                border: 'none',
-                                fontWeight: '700'
-                              }}
-                              onClick={() => handleApprove(u.id, true)}
-                              disabled={approvingId === u.id}
-                              title="Reject registration"
-                            >
-                              <AlertCircle size={14} />
-                              <span className="action-btn-text">Reject</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* ---- Add Account Modal ---- */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '520px', borderRadius: '12px', padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#FFF1F2' }}>
                 Create Account (User / Cashier)
               </h3>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                style={{ background: 'none', border: 'none', color: '#e5d5c3', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <form onSubmit={handleCreate}>
               <div className="form-grid" style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
+                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -991,7 +829,7 @@ const UserMgmt = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
+                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -1004,7 +842,7 @@ const UserMgmt = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label style={{ fontWeight: '600', fontSize: '12px' }}>Username <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Username <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   type="text"
                   className="form-control"
@@ -1016,7 +854,7 @@ const UserMgmt = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label style={{ fontWeight: '600', fontSize: '12px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   type="email"
                   className="form-control"
@@ -1028,7 +866,7 @@ const UserMgmt = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ fontWeight: '600', fontSize: '12px' }}>Role <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Role <span style={{ color: '#ef4444' }}>*</span></label>
                 <select
                   className="form-control"
                   value={formData.role}
