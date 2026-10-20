@@ -1,17 +1,23 @@
 import React from 'react';
 
 /**
- * SMIS Brand Logo Mark & Lockup
- * Fuses precision weighing scale / data calibration lines with abstract cut-of-meat / shield geometry.
+ * SMIS Brand Logo Mark (SVG)
+ * Features the signature shield geometry with the butcher meat hook and precision weighing scale lines.
  *
  * @param {Object} props
- * @param {'full' | 'icon' | 'tile' | 'stacked'} [props.variant='full'] - Lockup variant
- * @param {'dark' | 'light'} [props.theme='dark'] - Color scheme
- * @param {number} [props.size=40] - Icon height/width in px
- * @param {string} [props.className=''] - Custom CSS class
- * @param {Object} [props.style={}] - Custom styles
+ * @param {number} [props.size=36] - Icon dimension in pixels
+ * @param {string} [props.color='#E2493D'] - Shield base color if not using whiteShield
+ * @param {string} [props.accentColor='#FFFFFF'] - Color of hook & scale markings
+ * @param {boolean} [props.swingHook=false] - Whether the hook gently swings like a pendulum
+ * @param {boolean} [props.whiteShield=false] - Whether to render a white shield outline & facet for dark tiles
  */
-export const SmisLogoMark = ({ size = 36, color = '#E2493D', accentColor = '#FFFFFF' }) => {
+export const SmisLogoMark = ({
+  size = 36,
+  color = '#E2493D',
+  accentColor = '#FFFFFF',
+  swingHook = false,
+  whiteShield = false
+}) => {
   return (
     <svg
       width={size}
@@ -33,88 +39,195 @@ export const SmisLogoMark = ({ size = 36, color = '#E2493D', accentColor = '#FFF
         </linearGradient>
       </defs>
 
-      {/* Outer Geometric Cut Shield / Precision Calibrated Contour */}
-      <path
-        d="M24 4L40 10V22C40 31.8 33.2 40.8 24 44C14.8 40.8 8 31.8 8 22V10L24 4Z"
-        fill="url(#smisRedGrad)"
-      />
+      {whiteShield ? (
+        <>
+          {/* White Shield Contour */}
+          <path
+            d="M24 5L39 10.5V22C39 31.8 32.5 40 24 43.5C15.5 40 9 31.8 9 22V10.5L24 5Z"
+            fill="rgba(255, 255, 255, 0.16)"
+            stroke="#FFFFFF"
+            strokeWidth="2.8"
+            strokeLinejoin="round"
+          />
+          {/* Internal facet curve */}
+          <path
+            d="M24 9.5L34 13.5V21.5C34 27.5 29.5 34 24 36.8C18.5 34 14 27.5 14 21.5V13.5L24 9.5Z"
+            fill="rgba(0, 0, 0, 0.22)"
+          />
+        </>
+      ) : (
+        <>
+          {/* Outer Geometric Cut Shield */}
+          <path
+            d="M24 4L40 10V22C40 31.8 33.2 40.8 24 44C14.8 40.8 8 31.8 8 22V10L24 4Z"
+            fill="url(#smisRedGrad)"
+          />
+          {/* Internal Cut-Chamber facet */}
+          <path
+            d="M24 9L35 13.5V21.5C35 28.5 30.5 35 24 37.8C17.5 35 13 28.5 13 21.5V13.5L24 9Z"
+            fill="#0B1220"
+            fillOpacity="0.22"
+          />
+        </>
+      )}
 
-      {/* Internal Cut-Chamber facet creating the organic cut-of-meat & weighing pan curve */}
-      <path
-        d="M24 9L35 13.5V21.5C35 28.5 30.5 35 24 37.8C17.5 35 13 28.5 13 21.5V13.5L24 9Z"
-        fill="#0B1220"
-        fillOpacity="0.22"
-      />
+      {/* Meat Hook & Weighing Balance Geometry */}
+      <g
+        className={swingHook ? 'smis-pendulum-hook' : ''}
+        style={{ transformOrigin: '24px 14px' }}
+      >
+        {/* Top Suspension Eyelet / Calibration Pivot */}
+        <circle cx="24" cy="14" r="2.2" stroke={accentColor} strokeWidth="1.8" fill="none" />
 
-      {/* Precision Weighing Scale Beam & Calibration Diamond */}
-      {/* Central Pillar */}
-      <rect x="22.5" y="14" width="3" height="19" rx="1.5" fill={accentColor} />
+        {/* Meat Hook Shank & Curved Hook Point */}
+        <path
+          d="M24 16.2V26.5C24 26.5 24 33.5 19 33.5C15.5 33.5 14 31 14 28.5C14 25.5 16.5 24.5 18 26"
+          stroke={accentColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
 
-      {/* Top Balance Bar */}
-      <path
-        d="M15 17.5C15 16.6716 15.6716 16 16.5 16H31.5C32.3284 16 33 16.6716 33 17.5C33 18.3284 32.3284 19 31.5 19H16.5C15.6716 19 15 18.3284 15 17.5Z"
-        fill={accentColor}
-      />
+        {/* Balance Scale Bar */}
+        <path
+          d="M15 17.5C15 16.67 15.67 16 16.5 16H31.5C32.33 16 33 16.67 33 17.5C33 18.33 32.33 19 31.5 19H16.5C15.67 19 15 18.33 15 17.5Z"
+          fill={accentColor}
+        />
 
-      {/* Left Weighing Scale Pan & Precision Line */}
-      <path
-        d="M14 20L17 26H13L14 20Z"
-        fill="url(#smisAccentGrad)"
-      />
-      <circle cx="15" cy="28.5" r="1.5" fill={accentColor} />
+        {/* Left Scale Pan */}
+        <path d="M14 20L17 26H13L14 20Z" fill="url(#smisAccentGrad)" />
+        <circle cx="15" cy="28.5" r="1.4" fill={accentColor} />
 
-      {/* Right Weighing Scale Pan & Precision Line */}
-      <path
-        d="M34 20L35 26H31L34 20Z"
-        fill="url(#smisAccentGrad)"
-      />
-      <circle cx="33" cy="28.5" r="1.5" fill={accentColor} />
+        {/* Right Scale Pan */}
+        <path d="M34 20L35 26H31L34 20Z" fill="url(#smisAccentGrad)" />
+        <circle cx="33" cy="28.5" r="1.4" fill={accentColor} />
 
-      {/* Digital Calibration Indicator Notch at center apex */}
-      <polygon points="24,10 26.5,13.5 21.5,13.5" fill={accentColor} />
+        {/* Center Apex Indicator */}
+        <polygon points="24,10 26.5,13.5 21.5,13.5" fill={accentColor} />
+      </g>
     </svg>
   );
 };
 
-export const SmisLogoTile = ({ size = 42, iconSize = 24 }) => {
+export const SmisLogoTile = ({
+  size = 42,
+  iconSize = 24,
+  swingHook = false,
+  className = '',
+  style = {}
+}) => {
   return (
     <div
+      className={className}
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        borderRadius: '12px',
-        background: 'linear-gradient(135deg, #E2493D 0%, #B91C1C 100%)',
+        borderRadius: `${Math.round(size * 0.25)}px`,
+        background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 16px rgba(226, 73, 61, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.3)',
-        flexShrink: 0
+        boxShadow: '0 8px 24px rgba(190, 18, 60, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
+        flexShrink: 0,
+        ...style
       }}
     >
-      <SmisLogoMark size={iconSize} accentColor="#FFFFFF" />
+      <SmisLogoMark
+        size={iconSize}
+        accentColor="#FFFFFF"
+        swingHook={swingHook}
+        whiteShield={true}
+      />
     </div>
   );
 };
 
+/**
+ * Reusable SMIS Logo Component
+ * Supports 'stacked' (vertical lockup), 'full' (horizontal lockup), 'tile' and 'icon'.
+ */
 export const SmisLogo = ({
   variant = 'full',
   size = 40,
   theme = 'dark',
+  swingHook = false,
   style = {},
   className = ''
 }) => {
   const isDark = theme === 'dark';
   const textColor = isDark ? '#F8FAFC' : '#0F172A';
-  const subtextColor = isDark ? '#94A3B8' : '#64748B';
+  const subtextColor = isDark ? '#E5384A' : '#C1121F';
 
   if (variant === 'icon') {
-    return <SmisLogoMark size={size} />;
+    return <SmisLogoMark size={size} swingHook={swingHook} whiteShield={false} />;
   }
 
   if (variant === 'tile') {
-    return <SmisLogoTile size={size} iconSize={Math.round(size * 0.65)} />;
+    return (
+      <SmisLogoTile
+        size={size}
+        iconSize={Math.round(size * 0.62)}
+        swingHook={swingHook}
+        className={className}
+        style={style}
+      />
+    );
   }
 
+  if (variant === 'stacked') {
+    const tileDim = size;
+    const markDim = Math.round(tileDim * 0.6);
+    return (
+      <div
+        className={`smis-logo-stacked ${className}`}
+        style={{
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          userSelect: 'none',
+          ...style
+        }}
+      >
+        <SmisLogoTile
+          size={tileDim}
+          iconSize={markDim}
+          swingHook={swingHook}
+        />
+        <div
+          style={{
+            fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",
+            fontSize: `${Math.round(tileDim * 0.38)}px`,
+            color: '#FDF2E3',
+            letterSpacing: '0.05em',
+            lineHeight: 1,
+            marginTop: `${Math.round(tileDim * 0.2)}px`,
+            marginBottom: `${Math.round(tileDim * 0.08)}px`,
+            textShadow: '0 4px 16px rgba(0, 0, 0, 0.5)'
+          }}
+        >
+          SMIS
+        </div>
+        <div
+          style={{
+            fontFamily: "'Work Sans', 'Inter', system-ui, sans-serif",
+            fontSize: `${Math.max(9, Math.round(tileDim * 0.14))}px`,
+            fontWeight: 700,
+            letterSpacing: '0.24em',
+            textTransform: 'uppercase',
+            color: '#F43F5E',
+            lineHeight: 1
+          }}
+        >
+          SLAUGHTERHOUSE MIS
+        </div>
+      </div>
+    );
+  }
+
+  // Horizontal 'full' lockup
   return (
     <div
       className={className}
@@ -126,22 +239,11 @@ export const SmisLogo = ({
         ...style
       }}
     >
-      <div
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '11px',
-          background: 'linear-gradient(135deg, rgba(226, 73, 61, 0.15) 0%, rgba(226, 73, 61, 0.05) 100%)',
-          border: '1px solid rgba(226, 73, 61, 0.3)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 10px rgba(226, 73, 61, 0.18)',
-          flexShrink: 0
-        }}
-      >
-        <SmisLogoMark size={Math.round(size * 0.72)} />
-      </div>
+      <SmisLogoTile
+        size={size}
+        iconSize={Math.round(size * 0.62)}
+        swingHook={swingHook}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div
@@ -151,7 +253,7 @@ export const SmisLogo = ({
             letterSpacing: '-0.025em',
             color: textColor,
             lineHeight: 1,
-            fontFamily: "'Inter', 'Sora', 'Manrope', system-ui, sans-serif"
+            fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif"
           }}
         >
           SMIS
@@ -161,10 +263,10 @@ export const SmisLogo = ({
             fontSize: `${Math.max(9, Math.round(size * 0.22))}px`,
             color: subtextColor,
             fontWeight: 700,
-            letterSpacing: '0.08em',
+            letterSpacing: '0.14em',
             textTransform: 'uppercase',
             marginTop: '3px',
-            fontFamily: "'Inter', 'Manrope', system-ui, sans-serif"
+            fontFamily: "'Work Sans', 'Inter', system-ui, sans-serif"
           }}
         >
           SLAUGHTERHOUSE MIS

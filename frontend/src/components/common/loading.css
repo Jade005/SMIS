@@ -1,0 +1,356 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SMIS Branded Loading Screen & PageLoader Styles
+   Theme: Dark oxblood/maroon (#1a0a0c) with glowing red & gold accents
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Fullscreen Overlay ─────────────────────────────────────────────────── */
+.smis-loading-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a0a0c;
+  background-image: radial-gradient(
+    ellipse 65% 65% at 50% 48%,
+    rgba(190, 18, 60, 0.28) 0%,
+    rgba(136, 19, 55, 0.12) 45%,
+    #1a0a0c 80%
+  );
+  overflow: hidden;
+  user-select: none;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.smis-loading-overlay.smis-loading-fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ── Floating Red/Gold Embers ───────────────────────────────────────────── */
+.smis-ember-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.smis-ember-dot {
+  position: absolute;
+  bottom: -20px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, #ffb36b 0%, #f43f5e 55%, transparent 75%);
+  opacity: 0;
+  animation: smisEmberRise linear infinite;
+}
+
+@keyframes smisEmberRise {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(var(--ember-drift, 0px), -105vh) scale(0.25);
+    opacity: 0;
+  }
+}
+
+/* ── Central Branded Content ────────────────────────────────────────────── */
+.smis-loading-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 90vw;
+  transform: translateZ(0);
+}
+
+/* ── Logo Tile & Icon Pulse ─────────────────────────────────────────────── */
+.smis-loading-logo-tile {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 36px rgba(190, 18, 60, 0.45),
+              0 0 24px rgba(190, 18, 60, 0.3),
+              inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  animation: smisLogoPulse 2.8s ease-in-out infinite;
+  transform-origin: center center;
+  flex-shrink: 0;
+}
+
+@keyframes smisLogoPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 12px 36px rgba(190, 18, 60, 0.45),
+                0 0 20px rgba(190, 18, 60, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 18px 46px rgba(244, 63, 94, 0.65),
+                0 0 35px rgba(244, 63, 94, 0.45),
+                inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* ── Meat Hook Pendulum Swing ───────────────────────────────────────────── */
+.smis-pendulum-hook {
+  transform-origin: 24px 14px;
+  animation: smisHookSwing 2.6s ease-in-out infinite;
+}
+
+@keyframes smisHookSwing {
+  0%, 100% {
+    transform: rotate(-5.5deg);
+  }
+  50% {
+    transform: rotate(5.5deg);
+  }
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+.smis-loading-wordmark {
+  font-family: 'Alfa Slab One', 'Rockwell', 'Georgia', serif;
+  font-size: 28px;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  color: #fdf2e3;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.smis-loading-tagline {
+  font-family: 'Work Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #f43f5e;
+  margin-bottom: 18px;
+  line-height: 1;
+}
+
+/* ── Loading Progress Bar ───────────────────────────────────────────────── */
+.smis-loading-bar-track {
+  width: 180px;
+  height: 3px;
+  background: rgba(246, 235, 221, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin: 0 auto;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.smis-loading-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f43f5e 0%, #fbbf24 50%, #f43f5e 100%);
+  background-size: 200% 100%;
+  animation: smisBarLoop 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes smisBarLoop {
+  0% {
+    left: -48%;
+    background-position: 0% 50%;
+  }
+  50% {
+    left: 28%;
+    background-position: 100% 50%;
+  }
+  100% {
+    left: 100%;
+    background-position: 0% 50%;
+  }
+}
+
+/* ── Rotating Status Text ───────────────────────────────────────────────── */
+.smis-loading-status-text {
+  font-family: 'Work Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5d5c3;
+  margin-top: 14px;
+  letter-spacing: 0.02em;
+  min-height: 20px;
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.smis-loading-status-text.text-fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.smis-loading-status-text.text-fade-out {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+/* ── Timeout / Error State & Retry Button ───────────────────────────────── */
+.smis-loading-error-title {
+  font-family: 'Alfa Slab One', 'Rockwell', 'Georgia', serif;
+  font-size: 20px;
+  color: #fdf2e3;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.smis-loading-error-sub {
+  font-family: 'Work Sans', 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  color: #c9b4a6;
+  max-width: 360px;
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+
+.smis-loading-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 22px;
+  font-family: 'Work Sans', 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(190, 18, 60, 0.4);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease,
+              background 0.2s ease;
+}
+
+.smis-loading-retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(244, 63, 94, 0.55);
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+.smis-loading-retry-btn:active {
+  transform: translateY(1px);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INLINE PAGE LOADER (<PageLoader />)
+   ══════════════════════════════════════════════════════════════════════════ */
+.smis-page-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  min-height: 240px;
+  width: 100%;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.smis-page-loader-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(190, 18, 60, 0.35),
+              inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  margin-bottom: 14px;
+  animation: smisLogoPulse 2.8s ease-in-out infinite;
+}
+
+.smis-page-loader-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid rgba(244, 63, 94, 0.2);
+  border-top-color: #f43f5e;
+  border-radius: 50%;
+  animation: smisSpinnerRotate 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes smisSpinnerRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.smis-page-loader-text {
+  font-family: 'Work Sans', 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5d5c3;
+  letter-spacing: 0.02em;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN & REDUCED MOTION
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .smis-loading-content {
+    transform: scale(0.82);
+  }
+  .smis-loading-wordmark {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smis-loading-logo-tile,
+  .smis-page-loader-tile {
+    animation: none !important;
+    transform: none !important;
+  }
+  .smis-pendulum-hook {
+    animation: none !important;
+    transform: none !important;
+  }
+  .smis-loading-bar-fill {
+    animation: none !important;
+    left: 0 !important;
+    width: 100% !important;
+  }
+  .smis-ember-dot {
+    display: none !important;
+  }
+  .smis-loading-status-text {
+    transition: none !important;
+    transform: none !important;
+  }
+  .smis-page-loader-spinner {
+    animation-duration: 2s !important;
+  }
+}

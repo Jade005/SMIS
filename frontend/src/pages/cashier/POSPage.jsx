@@ -9,6 +9,7 @@ import PaymentPanel from '../../components/pos/PaymentPanel';
 import ReceiptModal from '../../components/pos/ReceiptModal';
 import { getProductImage } from '../../utils/meatImages';
 import { Search, RefreshCw } from 'lucide-react';
+import PageLoader from '../../components/common/PageLoader';
 
 /**
  * POSPage (Cashier POS Terminal)
@@ -358,9 +359,15 @@ const POSPage = () => {
               );
             })}
             {filteredBatches.length === 0 && (
-              <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#C9B4A6', marginBottom: 0 }}>
-                {loading ? 'Loading inventory...' : 'No available inventory batches found'}
-              </div>
+              loading ? (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <PageLoader message="Loading POS inventory batches..." />
+                </div>
+              ) : (
+                <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#C9B4A6', marginBottom: 0 }}>
+                  No available inventory batches found
+                </div>
+              )
             )}
           </div>
         </div>

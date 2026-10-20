@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { User, Mail, Phone, Edit2, Lock, AtSign, Clock } from 'lucide-react';
 import EditProfileModal from '../../components/shared/EditProfileModal';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal';
+import PageLoader from '../../components/common/PageLoader';
 
 const resolveAvatarUrl = (userObj) => {
   if (!userObj) return null;
@@ -44,11 +45,8 @@ const CustomerProfile = () => {
 
   if (loading) {
     return (
-      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
-        <div style={{ textAlign: 'center', color: '#64748b' }}>
-          <Clock size={32} className="spin" style={{ margin: '0 auto 12px', color: '#16a34a' }} />
-          <p style={{ fontWeight: '600' }}>Loading profile...</p>
-        </div>
+      <div className="page-container">
+        <PageLoader message="Loading customer profile..." />
       </div>
     );
   }

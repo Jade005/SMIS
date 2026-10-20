@@ -3,6 +3,7 @@ import { getSalesReportApi } from '../../api/reportApi';
 import { getLowStockAlertsApi, getExpiredAlertsApi } from '../../api/inventoryApi';
 import { getSalesApi } from '../../api/saleApi';
 import { DollarSign, ShoppingBag, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
+import PageLoader from '../../components/common/PageLoader';
 
 const AdminDashboard = () => {
   const [salesSummary, setSalesSummary] = useState({ total_revenue: 0, total_transactions: 0 });
@@ -35,7 +36,11 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
-  if (loading) return <div className="page-container">Loading Admin Dashboard...</div>;
+  if (loading) return (
+    <div className="page-container">
+      <PageLoader message="Loading Admin Dashboard..." />
+    </div>
+  );
 
   return (
     <div className="page-container">

@@ -13,7 +13,16 @@ const Login = ({ defaultRole }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { user, login } = useAuth();
+
+  // If user is already logged in, redirect them to their respective dashboard
+  useEffect(() => {
+    if (user && user.role) {
+      if (user.role === 'admin') navigate('/admin', { replace: true });
+      else if (user.role === 'cashier') navigate('/cashier', { replace: true });
+      else navigate('/customer', { replace: true });
+    }
+  }, [user, navigate]);
 
   // Determine active portal based on prop, pathname, or state
   const currentRole = useMemo(() => {
@@ -28,7 +37,13 @@ const Login = ({ defaultRole }) => {
 
   useEffect(() => {
     setSelectedRole(currentRole);
+    setError('');
   }, [currentRole]);
+
+  const handleTabChange = (role) => {
+    setSelectedRole(role);
+    setError('');
+  };
 
   // Floating embers animation
   const embers = useMemo(() => Array.from({ length: 18 }, (_, i) => ({
@@ -73,12 +88,13 @@ const Login = ({ defaultRole }) => {
     setLoading(true);
 
     try {
-      const user = await login(email, password);
-      if (user.role === 'admin') navigate('/admin');
-      else if (user.role === 'cashier') navigate('/cashier');
-      else navigate('/customer');
+      const loggedInUser = await login(email, password, selectedRole);
+      if (loggedInUser.role === 'admin') navigate('/admin', { replace: true });
+      else if (loggedInUser.role === 'cashier') navigate('/cashier', { replace: true });
+      else navigate('/customer', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please verify your credentials.');
+      setError(err.response?.data?.message || 'Invalid credentials');
+      setPassword(''); // Clear password field after a failed attempt
     } finally {
       setLoading(false);
     }
@@ -259,7 +275,7 @@ const Login = ({ defaultRole }) => {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setSelectedRole(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 style={{
                   background: selectedRole === tab.id ? tab.color : 'transparent',
                   color: selectedRole === tab.id ? (tab.id === 'cashier' ? '#1E1412' : '#ffffff') : '#C9B4A6',

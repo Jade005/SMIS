@@ -4,6 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { getProductImage } from '../../utils/meatImages';
 import { ShoppingCart, Search, Plus, Minus, Check, AlertTriangle, XCircle, Sparkles, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import PageLoader from '../../components/common/PageLoader';
 
 const CustomerCatalog = () => {
   const [products, setProducts] = useState([]);
@@ -350,10 +351,7 @@ const CustomerCatalog = () => {
 
       {/* ── Loading Skeleton ──────────────────────────────────────────────── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#e5d5c3' }}>
-          <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-          <p style={{ fontWeight: '700', fontSize: '15px', color: '#fdf2e3' }}>Loading Fresh Meat Catalog...</p>
-        </div>
+        <PageLoader message="Loading Fresh Meat Catalog..." />
       )}
 
       {/* ── Product Catalog Grouped Layout ─────────────────────────────────────────── */}
