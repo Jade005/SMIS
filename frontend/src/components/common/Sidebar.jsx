@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { SmisLogoMark } from './SmisLogo';
+import Logo from './Logo';
 import {
   LayoutDashboard,
   Beef,
@@ -88,19 +88,7 @@ const Sidebar = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: 9,
-            background: 'linear-gradient(135deg, #E5384A, #C1121F)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(193, 18, 31, 0.5)',
-            flexShrink: 0
-          }}>
-            <SmisLogoMark size={22} accentColor="#FFFFFF" />
-          </div>
+          <Logo size={36} alt="SMIS Logo" />
           <div>
             <div style={{
               fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",

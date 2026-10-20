@@ -1,5 +1,5 @@
 import React from 'react';
-import { SmisLogoMark } from './SmisLogo';
+import Logo from './Logo';
 import './loading.css';
 
 /**
@@ -33,15 +33,14 @@ export const PageLoader = ({
         style={{
           width: `${size}px`,
           height: `${size}px`,
-          borderRadius: `${Math.round(size * 0.28)}px`
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'transparent',
+          boxShadow: 'none'
         }}
       >
-        <SmisLogoMark
-          size={Math.round(size * 0.62)}
-          accentColor="#FFFFFF"
-          swingHook={true}
-          whiteShield={true}
-        />
+        <Logo size={size} alt="SMIS Logo" />
       </div>
 
       <div className="smis-page-loader-spinner" />

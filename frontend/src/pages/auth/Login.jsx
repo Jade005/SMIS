@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, Mail, Lock, Eye, EyeOff, ArrowLeft, ShieldCheck, Scale, Package, ChevronRight } from 'lucide-react';
-import { SmisLogoMark } from '../../components/common/SmisLogo';
+import Logo from '../../components/common/Logo';
 
 const Login = ({ defaultRole }) => {
   const [email, setEmail] = useState('');
@@ -222,19 +222,8 @@ const Login = ({ defaultRole }) => {
 
           {/* Header & Logo */}
           <div style={{ textAlign: 'left', marginBottom: '22px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: `linear-gradient(135deg, ${portal.accent}, #A60E1A)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 4px 14px ${portal.accent}55`
-              }}>
-                <PortalIcon size={20} color="#ffffff" />
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '10px' }}>
+              <Logo size={56} alt="SMIS Logo" />
               <div>
                 <h1 style={{
                   fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",

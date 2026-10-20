@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { setPasswordApi } from '../../api/authApi';
-import { SmisLogoMark } from '../../components/common/SmisLogo';
+import Logo from '../../components/common/Logo';
 import { ShieldCheck, Eye, EyeOff, AlertTriangle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 const SetPassword = () => {
@@ -135,16 +135,8 @@ const SetPassword = () => {
           </Link>
 
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{
-              display: 'inline-flex',
-              padding: '12px',
-              background: 'linear-gradient(135deg, rgba(229, 56, 74, 0.2) 0%, rgba(193, 18, 31, 0.1) 100%)',
-              border: '1px solid rgba(229, 56, 74, 0.3)',
-              borderRadius: '16px',
-              marginBottom: '14px',
-              boxShadow: '0 4px 16px rgba(193, 18, 31, 0.35)'
-            }}>
-              <SmisLogoMark size={44} accentColor="#FFFFFF" />
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+              <Logo size={56} alt="SMIS Logo" />
             </div>
             <h1 style={{
               fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",

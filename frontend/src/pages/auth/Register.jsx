@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { registerApi } from '../../api/authApi';
 import { UserPlus, Clock, CheckCircle, ArrowLeft, Package, Sparkles } from 'lucide-react';
+import Logo from '../../components/common/Logo';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -248,15 +249,8 @@ const Register = () => {
 
           {/* Header */}
           <div style={{ textAlign: 'left', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'linear-gradient(135deg, #7BD36B, #5F8A4E)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(95, 138, 78, 0.4)'
-              }}>
-                <Package size={20} color="#ffffff" />
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+              <Logo size={56} alt="SMIS Logo" />
               <div>
                 <h1 style={{
                   fontFamily: "'Alfa Slab One', 'Rockwell', 'Georgia', serif",

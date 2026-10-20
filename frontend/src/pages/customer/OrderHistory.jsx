@@ -5,7 +5,7 @@ import { getProductsApi } from '../../api/productApi';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import Toast from '../../components/common/Toast';
-import { SmisLogoMark } from '../../components/common/SmisLogo';
+import Logo from '../../components/common/Logo';
 import {
   Eye,
   XCircle,
@@ -1258,7 +1258,7 @@ const OrderHistory = () => {
               {/* Receipt Header */}
               <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '1.5px dashed #111827' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                  <SmisLogoMark size={28} />
+                  <Logo size={32} inline={true} alt="SMIS Logo" />
                 </div>
                 <div style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em' }}>
                   SMIS SLAUGHTERHOUSE

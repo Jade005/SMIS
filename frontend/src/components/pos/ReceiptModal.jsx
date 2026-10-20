@@ -1,5 +1,6 @@
 import React from 'react';
 import { Printer, X } from 'lucide-react';
+import Logo from '../common/Logo';
 
 const ReceiptModal = ({ isOpen, onClose, sale }) => {
   if (!isOpen || !sale) return null;
@@ -17,6 +18,9 @@ const ReceiptModal = ({ isOpen, onClose, sale }) => {
         </div>
 
         <div id="printable-receipt" style={{ textAlign: 'center', background: '#fff', padding: '16px', border: '1px solid #dde1ea', borderRadius: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+            <Logo size={32} inline={true} alt="SMIS Logo" />
+          </div>
           <div style={{ fontWeight: 'bold', fontSize: '15px' }}>SMIS SLAUGHTERHOUSE</div>
           <div style={{ fontSize: '11px', color: '#6b7280' }}>Meat Inventory &amp; Sales System</div>
           <div style={{ fontSize: '11px', color: '#6b7280', margin: '4px 0 10px' }}>

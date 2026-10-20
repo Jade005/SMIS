@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
-import { SmisLogoMark } from './SmisLogo';
+import { Logo } from './Logo';
 import './loading.css';
 
 const DEFAULT_MESSAGES = [
@@ -161,20 +161,18 @@ export const LoadingScreen = ({
 
       {/* Center Branded Lockup */}
       <div className="smis-loading-content">
-        {/* Red Rounded Logo Tile with Shield & Meat Hook */}
+        {/* Red Rounded Logo Tile with Shield & Meat Hook (96px) */}
         <div
           className="smis-loading-logo-tile"
-          style={isErrorState ? { background: 'linear-gradient(135deg, #e11d48 0%, #881337 100%)' } : {}}
+          style={isErrorState ? {
+            background: 'linear-gradient(135deg, #e11d48 0%, #881337 100%)',
+            borderRadius: '24px'
+          } : {}}
         >
           {isErrorState ? (
-            <AlertTriangle size={36} color="#FFFFFF" strokeWidth={2.4} />
+            <AlertTriangle size={48} color="#FFFFFF" strokeWidth={2.4} />
           ) : (
-            <SmisLogoMark
-              size={46}
-              accentColor="#FFFFFF"
-              swingHook={true}
-              whiteShield={true}
-            />
+            <Logo size={96} inline={true} alt="SMIS Unified Logo" />
           )}
         </div>
 

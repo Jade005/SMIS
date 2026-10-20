@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Scale, Clock, ShieldCheck, TrendingUp, ArrowRight, CheckCircle2,
   MapPin, Phone, Mail, ChevronRight, Package, BarChart3,
-  Activity, Lock, Shield, Menu, X, Flame, Snowflake, Users
+  Activity, Lock, Menu, X, Flame, Snowflake, Users
 } from 'lucide-react';
+import Logo from '../components/common/Logo';
 
 /* ════════════════════════════════════════════════════════
    DESIGN TOKENS — oxblood + butcher-paper + steel hooks
@@ -475,9 +476,7 @@ const LandingPage = () => {
       }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: `linear-gradient(135deg,${MEAT_HI},${MEAT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(193,18,31,.5)' }}>
-              <Shield size={18} color="#fff" strokeWidth={2.5} />
-            </div>
+            <Logo size={40} alt="SMIS Logo" />
             <div>
               <div style={{ fontFamily: DISPLAY, fontSize: 18, letterSpacing: '.04em', lineHeight: 1 }}>SMIS</div>
               <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, lineHeight: 1, marginTop: 3 }}>Slaughterhouse MIS</div>
@@ -754,9 +753,7 @@ const LandingPage = () => {
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: `linear-gradient(135deg,${MEAT_HI},${MEAT})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(193,18,31,.5)' }}>
-                <Shield size={16} color="#fff" strokeWidth={2.5} />
-              </div>
+              <Logo size={36} alt="SMIS Logo" />
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontFamily: DISPLAY, fontSize: 17, letterSpacing: '.04em', lineHeight: 1 }}>SMIS</div>
                 <div style={{ fontSize: 10, fontWeight: 600, color: MUTE, lineHeight: 1, marginTop: 3 }}>Slaughterhouse MIS</div>
