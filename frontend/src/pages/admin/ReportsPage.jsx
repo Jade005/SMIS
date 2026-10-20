@@ -5,6 +5,7 @@ import {
   getExpiryReportApi,
   getSupplierReportApi
 } from '../../api/reportApi';
+import { getDisposalsApi } from '../../api/inventoryApi';
 import ReportBarChart from '../../components/reports/ReportBarChart';
 import {
   Trophy,
@@ -14,7 +15,8 @@ import {
   Truck,
   DollarSign,
   Receipt,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 
 const formatDateYMD = (d) => {
@@ -71,6 +73,7 @@ const ReportsPage = () => {
   const [inventoryReport, setInventoryReport] = useState({ summary: {}, chartData: [], batches: [] });
   const [expiryReport, setExpiryReport] = useState({ summary: {}, chartData: [], batches: [] });
   const [supplierReport, setSupplierReport] = useState({ summary: {}, chartData: [], suppliers: [] });
+  const [disposals, setDisposals] = useState([]);
 
   // Handle Granularity change
   const handleGranularityChange = (newGran) => {
@@ -109,6 +112,11 @@ const ReportsPage = () => {
         .then((res) => setSupplierReport(res.data || { summary: {}, chartData: [], suppliers: [] }))
         .catch(console.error)
         .finally(() => setLoading(false));
+    } else if (activeTab === 'disposals') {
+      getDisposalsApi()
+        .then((res) => setDisposals(res.data || []))
+        .catch(console.error)
+        .finally(() => setLoading(false));
     }
   }, [activeTab, granularity, fromDate, toDate]);
 
@@ -144,7 +152,8 @@ const ReportsPage = () => {
             { id: 'sales', label: 'Sales Report', icon: DollarSign },
             { id: 'inventory', label: 'Inventory Report', icon: Package },
             { id: 'expiry', label: 'Expiry Report', icon: AlertTriangle },
-            { id: 'suppliers', label: 'Suppliers Report', icon: Truck }
+            { id: 'suppliers', label: 'Suppliers Report', icon: Truck },
+            { id: 'disposals', label: 'Disposed / Wasted Stock', icon: Trash2 }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -712,6 +721,92 @@ const ReportsPage = () => {
                     <tr>
                       <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
                         No data for the selected period.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          TAB 5: DISPOSED / WASTED STOCK
+      ═══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'disposals' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Summary KPIs */}
+          <div className="kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-label">Disposed Batches</div>
+              <div className="kpi-value" style={{ color: 'var(--danger)' }}>
+                {disposals.length}
+              </div>
+              <div className="kpi-sub" style={{ color: '#a89886' }}>Condemned / Soft-Removed</div>
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-label">Total Weight Disposed</div>
+              <div className="kpi-value" style={{ color: 'var(--danger)' }}>
+                {formatWeight(
+                  disposals.reduce((sum, d) => sum + Number(d.weight_disposed_kg || 0), 0),
+                  3
+                )}
+              </div>
+              <div className="kpi-sub" style={{ color: '#a89886' }}>Wasted Meat Stock</div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Disposed / Wasted Inventory Audit Log</span>
+            </div>
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>DISPOSAL DATE</th>
+                    <th>BATCH NO.</th>
+                    <th>PRODUCT & CUT</th>
+                    <th>WEIGHT DISPOSED</th>
+                    <th>DISPOSED BY</th>
+                    <th>REASON</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {disposals.map((d) => (
+                    <tr key={d.id}>
+                      <td style={{ fontSize: '13px', color: '#C9B4A6' }}>
+                        {new Date(d.disposal_date).toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td><strong>{d.batch_no}</strong></td>
+                      <td>
+                        <strong>{d.product_name}</strong>
+                        {d.meat_cut && <span style={{ color: '#a89886', fontSize: '11px' }}> ({d.meat_cut})</span>}
+                      </td>
+                      <td style={{ fontWeight: 'bold', color: 'var(--danger)' }}>
+                        {formatWeight(d.weight_disposed_kg, 3)}
+                      </td>
+                      <td>
+                        <span className="badge badge-info">{d.disposed_by_name || 'Admin'}</span>
+                      </td>
+                      <td style={{ fontSize: '12px', color: '#F6EBDD' }}>
+                        {d.reason || 'Expired shelf life'}
+                      </td>
+                    </tr>
+                  ))}
+                  {disposals.length === 0 && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        No stock disposal records found.
                       </td>
                     </tr>
                   )}

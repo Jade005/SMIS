@@ -26,6 +26,7 @@ const ProductMgmt = () => {
     meat_type: 'Beef',
     meat_cut: '',
     price_per_kg: '',
+    low_stock_threshold: '15',
     description: ''
   });
 
@@ -63,6 +64,7 @@ const ProductMgmt = () => {
       meat_type: 'Beef',
       meat_cut: '',
       price_per_kg: '',
+      low_stock_threshold: '15',
       description: ''
     });
     setEditingProduct(null);
@@ -80,12 +82,19 @@ const ProductMgmt = () => {
 
   const handleOpenEdit = (p) => {
     setEditingProduct(p);
+    const matchedCategory = categories.find(
+      (c) => String(c.id) === String(p.category_id) || c.name.toLowerCase() === (p.category_name || p.meat_type || '').toLowerCase()
+    );
+    const categoryId = matchedCategory ? String(matchedCategory.id) : (p.category_id ? String(p.category_id) : '');
+    const meatType = matchedCategory ? matchedCategory.name : (p.meat_type || 'Beef');
+
     setFormData({
-      category_id: String(p.category_id || ''),
+      category_id: categoryId,
       name: p.name || '',
-      meat_type: p.meat_type || 'Beef',
+      meat_type: meatType,
       meat_cut: p.meat_cut || '',
       price_per_kg: p.price_per_kg !== undefined ? String(p.price_per_kg) : '',
+      low_stock_threshold: p.low_stock_threshold !== undefined && p.low_stock_threshold !== null ? String(Number(p.low_stock_threshold)) : '15',
       description: p.description || ''
     });
     setPhotoFile(null);
@@ -163,12 +172,20 @@ const ProductMgmt = () => {
     setUploadError('');
 
     try {
+      const catIdToSend = formData.category_id || (editingProduct ? String(editingProduct.category_id || '') : '');
+      if (!catIdToSend) {
+        setUploadError('Please select a category for this product.');
+        setSubmitting(false);
+        return;
+      }
+
       const payload = new FormData();
-      payload.append('category_id', formData.category_id);
+      payload.append('category_id', catIdToSend);
       payload.append('name', formData.name);
       payload.append('meat_type', formData.meat_type);
       payload.append('meat_cut', formData.meat_cut);
       payload.append('price_per_kg', formData.price_per_kg);
+      payload.append('low_stock_threshold', formData.low_stock_threshold || '15');
       payload.append('description', formData.description || '');
 
       if (photoFile) {
@@ -241,7 +258,9 @@ const ProductMgmt = () => {
                 <th>Category</th>
                 <th>Meat Cut</th>
                 <th>Price / kg</th>
+                <th>Threshold</th>
                 <th>Available Stock</th>
+                <th>Stock Status</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -277,9 +296,21 @@ const ProductMgmt = () => {
                     </td>
                     <td><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{p.meat_cut}</code></td>
                     <td style={{ fontWeight: 'bold', color: 'var(--primary-admin)' }}>₱{Number(p.price_per_kg).toFixed(2)}</td>
+                    <td style={{ fontSize: '12px', color: '#F6EBDD' }}>{Number(p.low_stock_threshold || 15).toFixed(1)} kg</td>
                     <td>
-                      <span className={`badge ${stock > 10 ? 'badge-success' : stock > 0 ? 'badge-warning' : 'badge-danger'}`}>
+                      <span style={{ fontWeight: '800', color: stock === 0 ? 'var(--danger)' : stock <= (Number(p.low_stock_threshold) || 15) ? 'var(--warning)' : '#10b981' }}>
                         {stock.toFixed(3)} kg
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        stock === 0
+                          ? 'badge-danger'
+                          : stock <= (Number(p.low_stock_threshold) || 15)
+                          ? 'badge-warning'
+                          : 'badge-success'
+                      }`}>
+                        {stock === 0 ? 'Out of Stock' : stock <= (Number(p.low_stock_threshold) || 15) ? 'Low Stock' : 'In Stock'}
                       </span>
                     </td>
                     <td>
@@ -374,7 +405,7 @@ const ProductMgmt = () => {
                 >
                   <option value="">Select Category</option>
                   {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                    <option key={c.id} value={String(c.id)}>{c.name}</option>
                   ))}
                 </select>
               </div>
@@ -422,19 +453,36 @@ const ProductMgmt = () => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>
-                  Price per kg (₱) <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  placeholder="0.00"
-                  value={formData.price_per_kg}
-                  onChange={(e) => setFormData({ ...formData, price_per_kg: e.target.value })}
-                  required
-                />
+              <div className="form-grid" style={{ marginBottom: '12px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>
+                    Price per kg (₱) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-control"
+                    placeholder="0.00"
+                    value={formData.price_per_kg}
+                    onChange={(e) => setFormData({ ...formData, price_per_kg: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>
+                    Low stock threshold (kg) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    className="form-control"
+                    placeholder="15"
+                    value={formData.low_stock_threshold}
+                    onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
 
               {/* PRODUCT PHOTO (OPTIONAL) - Dropzone / Preview */}

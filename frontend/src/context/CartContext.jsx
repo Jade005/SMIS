@@ -67,11 +67,20 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (item) => {
+    const maxStock = Number(item.available_stock_kg) || 0;
+    if (maxStock <= 0) return;
+
     updateAndPersistCart((prev) => {
+      const existing = prev.find((i) => i.inventory_id === item.inventory_id);
+      if (existing) {
+        const newWeight = Math.min(maxStock, Number((existing.weight_kg + 1).toFixed(3)));
+        return prev.map((i) => i.cart_item_id === existing.cart_item_id ? { ...i, weight_kg: newWeight } : i);
+      }
+      const initialWeight = Math.min(maxStock, Number(item.weight_kg || 1));
       const cartItem = {
         ...item,
         cart_item_id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        weight_kg: Number(item.weight_kg || 1),
+        weight_kg: initialWeight,
         source: item.source || 'walkin' // 'preorder' | 'walkin'
       };
       return [...prev, cartItem];
@@ -107,7 +116,7 @@ export const CartProvider = ({ children }) => {
         meat_cut: item.meat_cut || batch.meat_cut,
         price_per_kg: Number(item.price_per_kg || batch.price_per_kg),
         available_stock_kg: Number(batch.available_stock_kg),
-        weight_kg: Number(item.weight_kg || 1),
+        weight_kg: Math.min(Number(batch.available_stock_kg), Number(item.weight_kg || 1)),
         source: 'preorder'
       });
     }
@@ -144,7 +153,12 @@ export const CartProvider = ({ children }) => {
           item.inventory_id === cartItemIdOrInventoryId ||
           item.product_id === cartItemIdOrInventoryId
         ) {
-          return { ...item, weight_kg: Number(Math.max(0.1, weight).toFixed(3)) };
+          const maxAllowed = Number(item.available_stock_kg) || 0;
+          let clampedWeight = Number(Math.max(0.1, weight).toFixed(3));
+          if (maxAllowed > 0 && clampedWeight > maxAllowed) {
+            clampedWeight = maxAllowed;
+          }
+          return { ...item, weight_kg: clampedWeight };
         }
         return item;
       })

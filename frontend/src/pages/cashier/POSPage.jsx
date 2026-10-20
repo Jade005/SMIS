@@ -92,13 +92,30 @@ const POSPage = () => {
   });
 
   const handleTileClick = (batch) => {
+    const available = Number(batch.available_stock_kg) || 0;
+    if (available <= 0) {
+      alert(`Cannot add ${batch.product_name}: Batch has 0 kg available stock.`);
+      return;
+    }
+    const currentInCart = cart.find((i) => i.inventory_id === batch.id);
+    if (currentInCart && Number(currentInCart.weight_kg) >= available) {
+      alert(`Cannot add more. All ${available.toFixed(3)} kg of this batch is already in your cart.`);
+      return;
+    }
+
+    const effectivePrice = Number(
+      batch.product_price_per_kg !== undefined && batch.product_price_per_kg !== null
+        ? batch.product_price_per_kg
+        : batch.price_per_kg
+    );
+
     addToCart({
       inventory_id: batch.id,
       product_id: batch.product_id,
       product_name: batch.product_name,
       meat_cut: batch.meat_cut,
-      price_per_kg: Number(batch.price_per_kg),
-      available_stock_kg: Number(batch.available_stock_kg),
+      price_per_kg: effectivePrice,
+      available_stock_kg: available,
       weight_kg: 1.000,
       source: 'walkin'
     });
@@ -128,6 +145,13 @@ const POSPage = () => {
     if (discount > subtotal) {
       alert(`Discount (₱${Number(discount).toFixed(2)}) cannot exceed the subtotal (₱${subtotal.toFixed(2)})`);
       return;
+    }
+
+    for (const item of cart) {
+      if (Number(item.weight_kg) > Number(item.available_stock_kg)) {
+        alert(`Cannot sell ${item.weight_kg} kg of ${item.product_name}. Available stock is only ${item.available_stock_kg} kg.`);
+        return;
+      }
     }
 
     const currentTendered = paymentDetails.amountTendered !== undefined ? paymentDetails.amountTendered : amountTendered;
@@ -253,15 +277,19 @@ const POSPage = () => {
               const imgSrc = imageErrors[b.id]
                 ? getProductImage({ ...b, name: b.product_name, image_url: null })
                 : getProductImage({ ...b, name: b.product_name });
-              const isLow = Number(b.available_stock_kg) <= 10;
+              const productTotal = Number(b.product_total_stock_kg !== undefined ? b.product_total_stock_kg : b.available_stock_kg) || 0;
+              const threshold = Number(b.low_stock_threshold) || 15;
+              const isOutOfStock = productTotal <= 0 || Number(b.available_stock_kg) <= 0;
+              const isLow = !isOutOfStock && productTotal <= threshold;
               const meatCategory = b.category_name || b.meat_type || 'Fresh Meat';
 
               return (
                 <div
                   key={b.id}
                   className="product-tile"
-                  onClick={() => handleTileClick(b)}
-                  title={`Click to add ${b.product_name} (${b.meat_cut}) to cart`}
+                  onClick={() => !isOutOfStock && handleTileClick(b)}
+                  style={isOutOfStock ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                  title={isOutOfStock ? `${b.product_name} is out of stock` : `Click to add ${b.product_name} (${b.meat_cut}) to cart`}
                 >
                   <div style={{
                     position: 'relative',
@@ -307,7 +335,7 @@ const POSPage = () => {
                       position: 'absolute',
                       bottom: '8px',
                       right: '8px',
-                      background: isLow ? 'rgba(239, 68, 68, 0.92)' : 'rgba(22, 163, 74, 0.92)',
+                      background: isOutOfStock ? 'rgba(100, 116, 139, 0.92)' : isLow ? 'rgba(239, 68, 68, 0.92)' : 'rgba(22, 163, 74, 0.92)',
                       backdropFilter: 'blur(4px)',
                       color: '#ffffff',
                       fontSize: '11px',
@@ -348,10 +376,14 @@ const POSPage = () => {
                       borderTop: '1px solid rgba(246, 235, 221, 0.12)'
                     }}>
                       <div style={{ fontWeight: '800', color: 'var(--primary-cashier)', fontSize: '15px' }}>
-                        ₱{Number(b.price_per_kg).toFixed(2)}<span style={{ fontSize: '11px', color: '#C9B4A6', fontWeight: '500' }}>/kg</span>
+                        ₱{Number(b.product_price_per_kg !== undefined && b.product_price_per_kg !== null ? b.product_price_per_kg : b.price_per_kg).toFixed(2)}<span style={{ fontSize: '11px', color: '#C9B4A6', fontWeight: '500' }}>/kg</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: isLow ? '#FF6B6B' : '#7BD36B', fontWeight: '700' }}>
-                        {isLow ? 'Low Stock' : 'In Stock'}
+                      <span style={{
+                        fontSize: '11px',
+                        color: isOutOfStock ? '#FF4D4F' : isLow ? '#FFB800' : '#7BD36B',
+                        fontWeight: '700'
+                      }}>
+                        {isOutOfStock ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock'}
                       </span>
                     </div>
                   </div>

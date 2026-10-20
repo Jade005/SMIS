@@ -302,42 +302,6 @@ const UserMgmt = () => {
     }
   };
 
-  const handleApprove = async (id, isReject = false) => {
-    if (!window.confirm(isReject ? 'Are you sure you want to reject this registration application?' : 'Are you sure you want to register (approve) this customer account?')) return;
-    setApprovingId(id);
-    try {
-      if (isReject) {
-        await rejectRegistrationApi(id);
-        setToast({ message: 'Registration rejected successfully', type: 'success' });
-        loadUsers();
-      } else {
-        const res = await approveRegistrationApi(id);
-        const generatedPassword = res.data?.temp_password;
-        const approvedUser = res.data?.user;
-
-        loadUsers();
-
-        // Show credentials popup so admin can share the password with the customer
-        setCreatedCredentials({
-          fullName: approvedUser ? `${approvedUser.first_name} ${approvedUser.last_name}` : '',
-          username: approvedUser?.username || '',
-          email: approvedUser?.email || '',
-          role: 'customer',
-          tempPassword: generatedPassword
-        });
-        setToast({
-          message: res.data?.message || 'Customer approved! Share the generated password with the customer.',
-          type: 'success'
-        });
-      }
-    } catch (err) {
-      setToast({ message: err.response?.data?.message || 'Action failed', type: 'error' });
-    } finally {
-      setApprovingId(null);
-      setTimeout(() => setToast({ message: '', type: '' }), 5000);
-    }
-  };
-
   const handleOpenEdit = (user) => {
     setEditingUser(user);
     setEditFormData({
@@ -656,138 +620,74 @@ const UserMgmt = () => {
                       <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleDateString()}</td>
                       <td className="actions-col-cell" style={{ minWidth: '320px', width: '320px', textAlign: 'left', verticalAlign: 'middle' }}>
                         <div className="actions-cell-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-                          {u.status === 'pending' || u.is_pending ? (
-                            <>
-                              <button
-                                className="btn btn-outline btn-sm action-btn"
-                                onClick={() => handleOpenEdit(u)}
-                                title={`Edit user #${u.id}`}
-                              >
-                                <Pencil size={12} />
-                                <span className="action-btn-text">Edit</span>
-                              </button>
-                              <button
-                                className="btn btn-sm action-btn"
-                                style={{
-                                  background: '#16a34a',
-                                  color: '#fff',
-                                  border: 'none',
-                                  fontWeight: '700'
-                                }}
-                                onClick={() => handleApprove(u.id, false)}
-                                disabled={approvingId === u.id}
-                                title="Approve registration"
-                              >
-                                <ShieldCheck size={14} />
-                                <span className="action-btn-text">{approvingId === u.id ? 'Approving...' : 'Approve'}</span>
-                              </button>
-                              <button
-                                className="btn btn-outline btn-sm action-btn"
-                                style={{
-                                  color: '#22c55e',
-                                  borderColor: 'rgba(34, 197, 94, 0.4)',
-                                  background: 'rgba(34, 197, 94, 0.08)'
-                                }}
-                                onClick={() => handleOpenActivate(u)}
-                                title={`Activate user #${u.id}`}
-                              >
-                                <Power size={12} />
-                                <span className="action-btn-text">Activate</span>
-                              </button>
-                              <button
-                                className="btn btn-outline btn-sm action-btn"
-                                style={{
-                                  color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
-                                  borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
-                                  opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
-                                  cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
-                                }}
-                                onClick={() => handleOpenDelete(u)}
-                                disabled={isSelf(u) || isLastAdmin(u)}
-                                title={
-                                  isSelf(u)
-                                    ? 'You cannot delete your own account'
-                                    : isLastAdmin(u)
-                                    ? 'Cannot delete the last remaining administrator'
-                                    : `Delete user #${u.id}`
-                                }
-                              >
-                                <Trash2 size={12} />
-                                <span className="action-btn-text">Delete</span>
-                              </button>
-                            </>
+                          <button
+                            className="btn btn-outline btn-sm action-btn"
+                            onClick={() => handleOpenEdit(u)}
+                            title={`Edit user #${u.id}`}
+                          >
+                            <Pencil size={12} />
+                            <span className="action-btn-text">Edit</span>
+                          </button>
+
+                          {u.is_active ? (
+                            <button
+                              className="btn btn-outline btn-sm action-btn"
+                              onClick={() => handleOpenDeactivate(u)}
+                              disabled={isSelf(u) || isLastAdmin(u)}
+                              style={{
+                                opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
+                                cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer',
+                                color: isSelf(u) || isLastAdmin(u) ? '#64748b' : undefined,
+                                borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : undefined
+                              }}
+                              title={
+                                isSelf(u)
+                                  ? 'You cannot deactivate your own account'
+                                  : isLastAdmin(u)
+                                  ? 'Cannot deactivate the last remaining administrator'
+                                  : `Deactivate user #${u.id}`
+                              }
+                            >
+                              <Ban size={12} />
+                              <span className="action-btn-text">Deactivate</span>
+                            </button>
                           ) : (
-                            <>
-                              <button
-                                className="btn btn-outline btn-sm action-btn"
-                                onClick={() => handleOpenEdit(u)}
-                                title={`Edit user #${u.id}`}
-                              >
-                                <Pencil size={12} />
-                                <span className="action-btn-text">Edit</span>
-                              </button>
-
-                              {u.is_active ? (
-                                <button
-                                  className="btn btn-outline btn-sm action-btn"
-                                  onClick={() => handleOpenDeactivate(u)}
-                                  disabled={isSelf(u) || isLastAdmin(u)}
-                                  style={{
-                                    opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
-                                    cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer',
-                                    color: isSelf(u) || isLastAdmin(u) ? '#64748b' : undefined,
-                                    borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : undefined
-                                  }}
-                                  title={
-                                    isSelf(u)
-                                      ? 'You cannot deactivate your own account'
-                                      : isLastAdmin(u)
-                                      ? 'Cannot deactivate the last remaining administrator'
-                                      : `Deactivate user #${u.id}`
-                                  }
-                                >
-                                  <Ban size={12} />
-                                  <span className="action-btn-text">Deactivate</span>
-                                </button>
-                              ) : (
-                                <button
-                                  className="btn btn-outline btn-sm action-btn"
-                                  style={{
-                                    color: '#22c55e',
-                                    borderColor: 'rgba(34, 197, 94, 0.4)',
-                                    background: 'rgba(34, 197, 94, 0.08)'
-                                  }}
-                                  onClick={() => handleOpenActivate(u)}
-                                  title={`Activate user #${u.id}`}
-                                >
-                                  <Power size={12} />
-                                  <span className="action-btn-text">Activate</span>
-                                </button>
-                              )}
-
-                              <button
-                                className="btn btn-outline btn-sm action-btn"
-                                style={{
-                                  color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
-                                  borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
-                                  opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
-                                  cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
-                                }}
-                                onClick={() => handleOpenDelete(u)}
-                                disabled={isSelf(u) || isLastAdmin(u)}
-                                title={
-                                  isSelf(u)
-                                    ? 'You cannot delete your own account'
-                                    : isLastAdmin(u)
-                                    ? 'Cannot delete the last remaining administrator'
-                                    : `Delete user #${u.id}`
-                                }
-                              >
-                                <Trash2 size={12} />
-                                <span className="action-btn-text">Delete</span>
-                              </button>
-                            </>
+                            <button
+                              className="btn btn-outline btn-sm action-btn"
+                              style={{
+                                color: '#22c55e',
+                                borderColor: 'rgba(34, 197, 94, 0.4)',
+                                background: 'rgba(34, 197, 94, 0.08)'
+                              }}
+                              onClick={() => handleOpenActivate(u)}
+                              title={`Activate user #${u.id}`}
+                            >
+                              <Power size={12} />
+                              <span className="action-btn-text">Activate</span>
+                            </button>
                           )}
+
+                          <button
+                            className="btn btn-outline btn-sm action-btn"
+                            style={{
+                              color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
+                              borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
+                              opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
+                              cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
+                            }}
+                            onClick={() => handleOpenDelete(u)}
+                            disabled={isSelf(u) || isLastAdmin(u)}
+                            title={
+                              isSelf(u)
+                                ? 'You cannot delete your own account'
+                                : isLastAdmin(u)
+                                ? 'Cannot delete the last remaining administrator'
+                                : `Delete user #${u.id}`
+                            }
+                          >
+                            <Trash2 size={12} />
+                            <span className="action-btn-text">Delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>

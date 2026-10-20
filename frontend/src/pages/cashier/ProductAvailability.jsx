@@ -104,8 +104,9 @@ const ProductAvailability = () => {
             <tbody>
               {filteredProducts.map((p) => {
                 const stock = Number(p.total_available_stock_kg) || 0;
+                const threshold = Number(p.low_stock_threshold) || 15;
                 const isOutOfStock = stock <= 0;
-                const isLowStock = stock > 0 && stock <= 5;
+                const isLowStock = stock > 0 && stock <= threshold;
                 const imgSrc = getProductImage(p);
 
                 return (

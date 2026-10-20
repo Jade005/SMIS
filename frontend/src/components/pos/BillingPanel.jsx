@@ -330,10 +330,19 @@ const BillingPanel = ({
                   type="number"
                   step="0.1"
                   min="0.1"
+                  max={item.available_stock_kg || 9999}
                   className="form-control"
                   style={{ width: '64px', padding: '4px 6px', textAlign: 'center', fontSize: '12px', fontWeight: '800' }}
                   value={item.weight_kg}
-                  onChange={(e) => updateWeight(item.cart_item_id, parseFloat(e.target.value) || 0.1)}
+                  onChange={(e) => {
+                    const parsed = parseFloat(e.target.value) || 0.1;
+                    const max = Number(item.available_stock_kg) || 0;
+                    if (max > 0 && parsed > max) {
+                      updateWeight(item.cart_item_id, max);
+                    } else {
+                      updateWeight(item.cart_item_id, parsed);
+                    }
+                  }}
                 />
                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#C9B4A6' }}>kg</span>
                 <button
