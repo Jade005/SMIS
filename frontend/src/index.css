@@ -847,6 +847,41 @@ select.form-control option {
   }
 }
 
+/* ════════════════════════════════════════════════════════
+   CART PAGE LAYOUT & RESPONSIVENESS
+   ════════════════════════════════════════════════════════ */
+.cart-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cart-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cart-desktop-table {
+  display: block;
+}
+
+.cart-mobile-cards {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .cart-desktop-table {
+    display: none !important;
+  }
+  .cart-mobile-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001s !important;
@@ -854,3 +889,4 @@ select.form-control option {
     transition-duration: 0.001s !important;
   }
 }
+

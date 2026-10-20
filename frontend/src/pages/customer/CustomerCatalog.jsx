@@ -125,26 +125,41 @@ const CustomerCatalog = () => {
       
       {/* ── Top Hero Banner ──────────────────────────────────────────────── */}
       <div style={{
-        background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%)',
-        color: '#ffffff',
+        background: 'linear-gradient(170deg, var(--ox3, #3a1219) 0%, var(--ox2, #2a0a0e) 100%)',
+        color: '#fdf2e3',
         padding: '28px 32px',
         borderRadius: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         marginBottom: '24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '16px',
-        boxShadow: '0 10px 25px -5px rgba(6, 78, 59, 0.3)'
+        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(246, 235, 221, 0.1)'
       }}>
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: '100px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
-            <Sparkles size={13} color="#fde047" /> Slaughterhouse Fresh Meat Direct
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(26, 10, 12, 0.7)',
+            border: '1px solid rgba(229, 56, 74, 0.35)',
+            color: '#FFD76B',
+            padding: '4px 12px',
+            borderRadius: '100px',
+            fontSize: '11px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: '8px'
+          }}>
+            <Sparkles size={13} color="#FFD76B" /> Slaughterhouse Fresh Meat Direct
           </div>
-          <h1 style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '800', margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#fdf2e3' }}>
             Fresh Meat Catalog & Cuts
           </h1>
-          <p style={{ fontSize: '13px', margin: 0, opacity: 0.9, maxWidth: '560px' }}>
+          <p style={{ fontSize: '13px', margin: 0, color: '#e5d5c3', maxWidth: '560px', lineHeight: '1.5' }}>
             Browse prime cuts of Beef, Pork, Chicken, Goat, and Rabbit directly sourced from our slaughterhouse. Order fresh weights online for fast pickup.
           </p>
         </div>
@@ -153,13 +168,13 @@ const CustomerCatalog = () => {
           className="btn btn-lg"
           onClick={() => navigate('/customer/cart')}
           style={{
-            background: '#ffffff',
-            color: '#064e3b',
+            background: 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
+            color: '#ffffff',
             fontWeight: '800',
             fontSize: '14px',
             padding: '12px 22px',
             borderRadius: '12px',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+            boxShadow: '0 4px 14px rgba(193, 18, 31, 0.4)',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
@@ -170,11 +185,11 @@ const CustomerCatalog = () => {
           onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <ShoppingCart size={18} color="#047857" />
+          <ShoppingCart size={18} color="#ffffff" />
           <span>View Cart</span>
           {cartItemCount > 0 && (
             <span style={{
-              background: '#047857',
+              background: 'rgba(0, 0, 0, 0.35)',
               color: '#ffffff',
               borderRadius: '100px',
               padding: '2px 8px',
@@ -188,10 +203,17 @@ const CustomerCatalog = () => {
       </div>
 
       {/* ── Search Bar & Category Filter Bar ──────────────────────────────── */}
-      <div style={{ background: '#ffffff', padding: '18px 20px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', marginBottom: '24px' }}>
+      <div style={{
+        background: 'linear-gradient(170deg, var(--ox3, #3a1219) 0%, var(--ox2, #2a0a0e) 100%)',
+        padding: '20px 22px',
+        borderRadius: '16px',
+        border: '1px solid rgba(246, 235, 221, 0.12)',
+        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(246, 235, 221, 0.08)',
+        marginBottom: '28px'
+      }}>
         
         {/* Search Input */}
-        <div style={{ position: 'relative', marginBottom: '14px' }}>
+        <div style={{ position: 'relative', marginBottom: '16px' }}>
           <input
             type="text"
             className="form-control"
@@ -200,20 +222,44 @@ const CustomerCatalog = () => {
             onChange={(e) => setSearch(e.target.value)}
             style={{
               width: '100%',
-              paddingLeft: '40px',
+              paddingLeft: '42px',
               paddingRight: search ? '36px' : '14px',
               height: '46px',
               fontSize: '14px',
               borderRadius: '10px',
-              border: '1.5px solid #cbd5e1',
-              background: '#f8fafc'
+              border: '1px solid rgba(246, 235, 221, 0.15)',
+              background: '#1a0a0c',
+              color: '#F6EBDD',
+              boxSizing: 'border-box',
+              outline: 'none',
+              transition: 'all 0.15s ease'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#E5384A';
+              e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'rgba(246, 235, 221, 0.15)';
+              e.target.style.boxShadow = 'none';
             }}
           />
-          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+          <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
           {search && (
             <button
               onClick={() => setSearch('')}
-              style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', fontSize: '13px', fontWeight: 'bold' }}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#c9b4a6',
+                cursor: 'pointer',
+                padding: '4px',
+                fontSize: '13px',
+                fontWeight: 'bold'
+              }}
               title="Clear search"
             >
               ✕
@@ -223,13 +269,24 @@ const CustomerCatalog = () => {
 
         {/* Category Pills (Dynamic Filter) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '12px', fontWeight: '700', marginRight: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <Filter size={14} /> Categories:
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: '#e5d5c3',
+            fontSize: '12px',
+            fontWeight: '700',
+            marginRight: '6px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em'
+          }}>
+            <Filter size={14} color="#e5d5c3" /> Categories:
           </div>
 
           {/* All Meats Pill */}
           <button
-            className={`btn btn-sm ${selectedCat === '' ? 'btn-customer' : 'btn-outline'}`}
+            type="button"
+            className="btn btn-sm"
             onClick={() => setSelectedCat('')}
             style={{
               borderRadius: '100px',
@@ -237,9 +294,18 @@ const CustomerCatalog = () => {
               fontSize: '13px',
               fontWeight: '700',
               whiteSpace: 'nowrap',
-              background: selectedCat === '' ? 'var(--primary-customer)' : '#ffffff',
-              color: selectedCat === '' ? '#ffffff' : '#334155',
-              borderColor: selectedCat === '' ? 'var(--primary-customer)' : '#cbd5e1'
+              background: selectedCat === '' ? 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)' : 'rgba(246, 235, 221, 0.05)',
+              color: selectedCat === '' ? '#ffffff' : '#F6EBDD',
+              border: selectedCat === '' ? '1px solid #E5384A' : '1px solid rgba(246, 235, 221, 0.18)',
+              boxShadow: selectedCat === '' ? '0 2px 10px rgba(229, 56, 74, 0.35)' : 'none',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (selectedCat !== '') e.currentTarget.style.background = 'rgba(246, 235, 221, 0.12)';
+            }}
+            onMouseLeave={(e) => {
+              if (selectedCat !== '') e.currentTarget.style.background = 'rgba(246, 235, 221, 0.05)';
             }}
           >
             All Meats ({products.length})
@@ -252,7 +318,8 @@ const CustomerCatalog = () => {
             return (
               <button
                 key={c.id}
-                className={`btn btn-sm ${isSelected ? 'btn-customer' : 'btn-outline'}`}
+                type="button"
+                className="btn btn-sm"
                 onClick={() => setSelectedCat(String(c.id))}
                 style={{
                   borderRadius: '100px',
@@ -260,9 +327,18 @@ const CustomerCatalog = () => {
                   fontSize: '13px',
                   fontWeight: '700',
                   whiteSpace: 'nowrap',
-                  background: isSelected ? 'var(--primary-customer)' : '#ffffff',
-                  color: isSelected ? '#ffffff' : '#334155',
-                  borderColor: isSelected ? 'var(--primary-customer)' : '#cbd5e1'
+                  background: isSelected ? 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)' : 'rgba(246, 235, 221, 0.05)',
+                  color: isSelected ? '#ffffff' : '#F6EBDD',
+                  border: isSelected ? '1px solid #E5384A' : '1px solid rgba(246, 235, 221, 0.18)',
+                  boxShadow: isSelected ? '0 2px 10px rgba(229, 56, 74, 0.35)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = 'rgba(246, 235, 221, 0.12)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) e.currentTarget.style.background = 'rgba(246, 235, 221, 0.05)';
                 }}
               >
                 {c.name} ({count})
@@ -274,9 +350,9 @@ const CustomerCatalog = () => {
 
       {/* ── Loading Skeleton ──────────────────────────────────────────────── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#e5d5c3' }}>
           <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
-          <p style={{ fontWeight: '700', fontSize: '15px' }}>Loading Fresh Meat Catalog...</p>
+          <p style={{ fontWeight: '700', fontSize: '15px', color: '#fdf2e3' }}>Loading Fresh Meat Catalog...</p>
         </div>
       )}
 
@@ -285,12 +361,12 @@ const CustomerCatalog = () => {
         // Canonical display order and display metadata per category
         const CATEGORY_ORDER = ['Beef', 'Pork', 'Chicken', 'Goat', 'Rabbit', 'Others'];
         const CATEGORY_META = {
-          'Beef':    { emoji: '🥩', color: '#991b1b', borderColor: '#fca5a5' },
-          'Pork':    { emoji: '🐷', color: '#9a3412', borderColor: '#fdba74' },
-          'Chicken': { emoji: '🍗', color: '#854d0e', borderColor: '#fde047' },
-          'Goat':    { emoji: '🐐', color: '#3730a3', borderColor: '#a5b4fc' },
-          'Rabbit':  { emoji: '🐇', color: '#6b21a8', borderColor: '#d8b4fe' },
-          'Others':  { emoji: '🥦', color: '#334155', borderColor: '#cbd5e1' },
+          'Beef':    { emoji: '🥩' },
+          'Pork':    { emoji: '🐷' },
+          'Chicken': { emoji: '🍗' },
+          'Goat':    { emoji: '🐐' },
+          'Rabbit':  { emoji: '🐇' },
+          'Others':  { emoji: '🥦' },
         };
 
         // Group products by normalized meat_type (Title Case)
@@ -320,15 +396,24 @@ const CustomerCatalog = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                borderBottom: `3px solid ${meta.borderColor}`,
+                borderBottom: '2px solid rgba(248, 113, 113, 0.4)',
                 paddingBottom: '14px',
                 marginBottom: '24px'
               }}>
                 <span style={{ fontSize: '28px', lineHeight: 1 }}>{meta.emoji}</span>
-                <h2 style={{ fontSize: '22px', fontWeight: '800', color: meta.color, margin: 0, letterSpacing: '-0.01em' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fdf2e3', margin: 0, letterSpacing: '-0.01em' }}>
                   {meatType}
                 </h2>
-                <span style={{ marginLeft: 'auto', fontSize: '12px', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '100px' }}>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#F6EBDD',
+                  background: 'rgba(26, 10, 12, 0.7)',
+                  border: '1px solid rgba(246, 235, 221, 0.15)',
+                  padding: '4px 12px',
+                  borderRadius: '100px'
+                }}>
                   {prods.length} {prods.length === 1 ? 'product' : 'products'}
                 </span>
               </div>
@@ -356,19 +441,21 @@ const CustomerCatalog = () => {
                   padding: 0,
                   overflow: 'hidden',
                   borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
-                  background: '#ffffff',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  border: '1px solid rgba(246, 235, 221, 0.12)',
+                  background: 'linear-gradient(170deg, var(--ox3, #3a1219) 0%, var(--ox2, #2a0a0e) 100%)',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(246, 235, 221, 0.08)',
+                  transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
                   position: 'relative'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 12px 20px -5px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.borderColor = 'rgba(229, 56, 74, 0.5)';
+                  e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(229, 56, 74, 0.2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(246, 235, 221, 0.12)';
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(246, 235, 221, 0.08)';
                 }}
               >
                 {/* Product Image Box */}
@@ -376,7 +463,7 @@ const CustomerCatalog = () => {
                   position: 'relative',
                   width: '100%',
                   height: '180px',
-                  background: '#f8fafc',
+                  background: '#1a0a0c',
                   overflow: 'hidden'
                 }}>
                   <img
@@ -397,9 +484,10 @@ const CustomerCatalog = () => {
                     position: 'absolute',
                     top: '12px',
                     left: '12px',
-                    background: 'rgba(15, 23, 42, 0.85)',
+                    background: 'rgba(18, 4, 6, 0.88)',
                     backdropFilter: 'blur(6px)',
-                    color: '#ffffff',
+                    border: '1px solid rgba(246, 235, 221, 0.2)',
+                    color: '#F6EBDD',
                     fontSize: '11px',
                     fontWeight: '800',
                     textTransform: 'uppercase',
@@ -422,10 +510,10 @@ const CustomerCatalog = () => {
                     background: isOutOfStock
                       ? '#ef4444'
                       : isLowStock
-                      ? '#f59e0b'
-                      : '#10b981',
+                      ? '#d97706'
+                      : '#15803d',
                     color: '#ffffff',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                   }}>
                     {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
                   </span>
@@ -435,7 +523,7 @@ const CustomerCatalog = () => {
                 <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                   
                   {/* Cut / Type Hierarchy */}
-                  <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary-customer)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
                     {p.meat_type} • Cut: {p.meat_cut}
                   </div>
 
@@ -443,7 +531,7 @@ const CustomerCatalog = () => {
                   <h3 style={{
                     fontSize: '16px',
                     fontWeight: '800',
-                    color: '#0f172a',
+                    color: '#fdf2e3',
                     margin: '0 0 6px 0',
                     lineHeight: '1.3'
                   }}>
@@ -454,7 +542,7 @@ const CustomerCatalog = () => {
                   {p.description && (
                     <p style={{
                       fontSize: '12px',
-                      color: '#64748b',
+                      color: '#d9c7b5',
                       margin: '0 0 12px 0',
                       lineHeight: '1.4',
                       display: '-webkit-box',
@@ -470,24 +558,24 @@ const CustomerCatalog = () => {
                   <div style={{
                     marginTop: 'auto',
                     paddingTop: '12px',
-                    borderTop: '1px solid #f1f5f9',
+                    borderTop: '1px solid rgba(246, 235, 221, 0.1)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'baseline',
                     marginBottom: '14px'
                   }}>
                     <div>
-                      <span style={{ fontSize: '20px', fontWeight: '800', color: 'var(--primary-customer)' }}>
+                      <span style={{ fontSize: '20px', fontWeight: '800', color: '#fbbf24' }}>
                         ₱{Number(p.price_per_kg).toFixed(2)}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}> / kg</span>
+                      <span style={{ fontSize: '12px', color: '#c9b4a6', fontWeight: '600' }}> / kg</span>
                     </div>
 
                     {/* Stock Indicator */}
                     <div style={{
                       fontSize: '12px',
                       fontWeight: '700',
-                      color: isOutOfStock ? '#dc2626' : isLowStock ? '#d97706' : '#16a34a',
+                      color: isOutOfStock ? '#f87171' : isLowStock ? '#fbbf24' : '#86efac',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
@@ -506,7 +594,15 @@ const CustomerCatalog = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     
                     {/* Stepper Controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '4px' }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#1a0a0c',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(246, 235, 221, 0.15)',
+                      padding: '4px'
+                    }}>
                       <button
                         type="button"
                         onClick={() => handleDecrement(p.id)}
@@ -516,9 +612,9 @@ const CustomerCatalog = () => {
                           height: '32px',
                           borderRadius: '8px',
                           border: 'none',
-                          background: currentQty <= 1 || isOutOfStock ? 'transparent' : '#ffffff',
-                          color: currentQty <= 1 || isOutOfStock ? '#cbd5e1' : '#0f172a',
-                          boxShadow: currentQty > 1 && !isOutOfStock ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: currentQty <= 1 || isOutOfStock ? 'transparent' : 'rgba(246, 235, 221, 0.08)',
+                          color: currentQty <= 1 || isOutOfStock ? 'rgba(246, 235, 221, 0.2)' : '#F6EBDD',
+                          boxShadow: 'none',
                           cursor: currentQty <= 1 || isOutOfStock ? 'not-allowed' : 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -543,13 +639,13 @@ const CustomerCatalog = () => {
                             textAlign: 'center',
                             fontWeight: '800',
                             fontSize: '14px',
-                            color: '#0f172a',
+                            color: '#F6EBDD',
                             border: 'none',
                             background: 'transparent',
                             outline: 'none'
                           }}
                         />
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>kg</span>
+                        <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
                       </div>
 
                       <button
@@ -561,9 +657,9 @@ const CustomerCatalog = () => {
                           height: '32px',
                           borderRadius: '8px',
                           border: 'none',
-                          background: currentQty >= stock || isOutOfStock ? 'transparent' : '#ffffff',
-                          color: currentQty >= stock || isOutOfStock ? '#cbd5e1' : '#0f172a',
-                          boxShadow: currentQty < stock && !isOutOfStock ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                          background: currentQty >= stock || isOutOfStock ? 'transparent' : 'rgba(246, 235, 221, 0.08)',
+                          color: currentQty >= stock || isOutOfStock ? 'rgba(246, 235, 221, 0.2)' : '#F6EBDD',
+                          boxShadow: 'none',
                           cursor: currentQty >= stock || isOutOfStock ? 'not-allowed' : 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -586,12 +682,12 @@ const CustomerCatalog = () => {
                         height: '42px',
                         borderRadius: '10px',
                         background: isOutOfStock
-                          ? '#f1f5f9'
+                          ? 'rgba(246, 235, 221, 0.08)'
                           : isAdded
-                          ? '#10b981'
-                          : 'var(--primary-customer)',
-                        color: isOutOfStock ? '#94a3b8' : '#ffffff',
-                        borderColor: 'transparent',
+                          ? '#15803d'
+                          : 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
+                        color: isOutOfStock ? 'rgba(246, 235, 221, 0.3)' : '#ffffff',
+                        border: isOutOfStock ? '1px solid rgba(246, 235, 221, 0.1)' : 'none',
                         fontWeight: '800',
                         fontSize: '13px',
                         display: 'flex',
@@ -600,7 +696,7 @@ const CustomerCatalog = () => {
                         gap: '8px',
                         cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                         transition: 'background 0.2s ease, transform 0.15s ease',
-                        boxShadow: isOutOfStock ? 'none' : '0 2px 4px rgba(16, 185, 129, 0.2)'
+                        boxShadow: isOutOfStock ? 'none' : '0 4px 12px rgba(193, 18, 31, 0.4)'
                       }}
                     >
                       {isAdded ? (
@@ -627,18 +723,19 @@ const CustomerCatalog = () => {
       {/* ── Empty State ──────────────────────────────────────────────────── */}
       {!loading && filteredProducts.length === 0 && (
         <div style={{
-          background: '#ffffff',
+          background: 'linear-gradient(170deg, var(--ox3, #3a1219) 0%, var(--ox2, #2a0a0e) 100%)',
           borderRadius: '16px',
-          border: '1px solid #e2e8f0',
+          border: '1px solid rgba(246, 235, 221, 0.12)',
           padding: '60px 20px',
           textAlign: 'center',
-          color: '#64748b'
+          color: '#e5d5c3',
+          boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>🥩</div>
-          <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', marginBottom: '6px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fdf2e3', marginBottom: '6px' }}>
             No Meat Products Found
           </h3>
-          <p style={{ fontSize: '13px', color: '#64748b', maxWidth: '420px', margin: '0 auto 18px auto' }}>
+          <p style={{ fontSize: '13px', color: '#d9c7b5', maxWidth: '420px', margin: '0 auto 18px auto' }}>
             We couldn't find any meat products matching your current category filter or search query "{search}".
           </p>
           <button
@@ -647,7 +744,14 @@ const CustomerCatalog = () => {
               setSearch('');
               setSelectedCat('');
             }}
-            style={{ borderRadius: '100px', fontWeight: '700', padding: '8px 20px' }}
+            style={{
+              borderRadius: '100px',
+              fontWeight: '700',
+              padding: '8px 20px',
+              color: '#F6EBDD',
+              borderColor: 'rgba(246, 235, 221, 0.3)',
+              background: 'transparent'
+            }}
           >
             Clear Filters & View All
           </button>

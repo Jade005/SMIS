@@ -3,13 +3,15 @@ import { useCart } from '../../context/CartContext';
 import { createOrderApi } from '../../api/orderApi';
 import { getProductImage } from '../../utils/meatImages';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Trash2, CheckCircle, ArrowLeft, Plus, Minus } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Trash2, CheckCircle, ArrowLeft, Plus, Minus, Loader2 } from 'lucide-react';
+import Toast from '../../components/common/Toast';
 
 const CustomerCart = () => {
   const { cart, updateWeight, removeFromCart, clearCart, subtotal } = useCart();
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: 'success' });
   const navigate = useNavigate();
 
   const handlePlaceOrder = async () => {
@@ -38,10 +40,17 @@ const CustomerCart = () => {
     }
   };
 
+  const handleRemoveItem = (itemKey, productName) => {
+    if (window.confirm(`Remove "${productName || 'this item'}" from your cart?`)) {
+      removeFromCart(itemKey);
+      setToast({ message: `Removed "${productName || 'Item'}" from cart.`, type: 'info' });
+    }
+  };
+
   return (
-    <div className="page-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div className="card" style={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="page-container" style={{ maxWidth: '1140px', margin: '0 auto', paddingBottom: '60px' }}>
+      <div className="card" style={{ borderRadius: '16px', border: '1px solid rgba(246, 235, 221, 0.12)', boxShadow: '0 16px 36px rgba(0,0,0,0.5)' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
           <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
             Shopping Cart & Pre-Order Checkout
           </span>
@@ -59,10 +68,27 @@ const CustomerCart = () => {
         )}
 
         {!orderSuccess && cart.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🛒</div>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', marginBottom: '6px' }}>Your Cart is Empty</h3>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#e5d5c3' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#E5384A',
+                userSelect: 'none',
+                WebkitUserSelect: 'none'
+              }}
+            >
+              <ShoppingCart size={32} />
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fdf2e3', marginBottom: '6px' }}>Your Cart is Empty</h3>
+            <p style={{ fontSize: '13px', color: '#e5d5c3', marginBottom: '20px' }}>
               You haven't added any fresh meat cuts to your cart yet.
             </p>
             <button className="btn btn-customer" onClick={() => navigate('/customer')} style={{ borderRadius: '100px', fontWeight: '700' }}>
@@ -70,136 +96,401 @@ const CustomerCart = () => {
             </button>
           </div>
         ) : !orderSuccess && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', padding: '20px' }}>
+          <div className="cart-layout-grid" style={{ padding: '20px' }}>
             
-            {/* Cart Items List */}
-            <div className="table-responsive">
-              <table style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Price / kg</th>
-                    <th style={{ textAlign: 'center' }}>Weight (kg)</th>
-                    <th style={{ textAlign: 'right' }}>Subtotal</th>
-                    <th style={{ textAlign: 'center' }}>Remove</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map((item) => {
-                    const itemKey = item.cart_item_id || item.product_id;
-                    const itemImg = getProductImage(item);
-                    const itemSubtotal = (item.price_per_kg * item.weight_kg);
+            {/* Cart Items List Container */}
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* Desktop Table View */}
+              <div className="table-responsive cart-desktop-table" style={{ width: '100%', overflowX: 'auto', background: 'var(--ox2)', borderRadius: '12px', border: '1px solid rgba(246, 235, 221, 0.12)' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40%', padding: '14px 18px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRODUCT</th>
+                      <th style={{ width: '18%', padding: '14px 18px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRICE / KG</th>
+                      <th style={{ width: '22%', padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>WEIGHT (KG)</th>
+                      <th style={{ width: '12%', padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>SUBTOTAL</th>
+                      <th style={{ width: '8%', padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>REMOVE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cart.map((item) => {
+                      const itemKey = item.cart_item_id || item.product_id;
+                      const itemImg = getProductImage(item);
+                      const itemSubtotal = (item.price_per_kg * item.weight_kg);
 
-                    return (
-                      <tr key={itemKey}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <img
-                              src={itemImg}
-                              alt={item.product_name}
-                              style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', background: '#f1f5f9' }}
-                            />
-                            <div>
-                              <strong style={{ fontSize: '14px', color: '#0f172a' }}>{item.product_name}</strong>
-                              <div style={{ fontSize: '11px', color: '#64748b' }}>
-                                {item.meat_type} • Cut: {item.meat_cut}
+                      return (
+                        <tr key={itemKey} style={{ borderBottom: '1px solid rgba(246, 235, 221, 0.08)' }}>
+                          <td style={{ padding: '16px 18px', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                              <img
+                                src={itemImg}
+                                alt={item.product_name}
+                                style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', background: '#1a0a0c', flexShrink: 0, border: '1px solid rgba(246, 235, 221, 0.15)' }}
+                              />
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '14px', fontWeight: '800', color: '#fdf2e3', lineHeight: '1.3' }}>
+                                  {item.product_name}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#d9c7b5', marginTop: '3px', fontWeight: '500' }}>
+                                  {item.meat_type} • Cut: {item.meat_cut}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: '600' }}>₱{Number(item.price_per_kg).toFixed(2)}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          </td>
+                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', whiteSpace: 'nowrap', fontWeight: '600', color: '#fdf2e3' }}>
+                            ₱{Number(item.price_per_kg).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
+                              <button
+                                type="button"
+                                onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
+                                disabled={item.weight_kg <= 0.5}
+                                style={{
+                                  width: '26px',
+                                  height: '26px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(246, 235, 221, 0.18)',
+                                  background: 'rgba(246, 235, 221, 0.06)',
+                                  cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title="Decrease weight"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0.5"
+                                style={{
+                                  width: '54px',
+                                  padding: '2px',
+                                  textAlign: 'center',
+                                  fontWeight: '800',
+                                  fontSize: '13px',
+                                  borderRadius: '4px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#fdf2e3',
+                                  outline: 'none'
+                                }}
+                                value={item.weight_kg}
+                                onChange={(e) => updateWeight(itemKey, Math.max(0.5, parseFloat(e.target.value) || 0.5))}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateWeight(itemKey, item.weight_kg + 0.5)}
+                                style={{
+                                  width: '26px',
+                                  height: '26px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(246, 235, 221, 0.18)',
+                                  background: 'rgba(246, 235, 221, 0.06)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fdf2e3',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title="Increase weight"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '15px' }}>
+                            ₱{itemSubtotal.toFixed(2)}
+                          </td>
+                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', textAlign: 'center' }}>
                             <button
                               type="button"
-                              onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
-                              style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              className="btn btn-sm"
+                              style={{
+                                color: '#ef4444',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                padding: '6px 10px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                              onClick={() => handleRemoveItem(itemKey, item.product_name)}
+                              title="Remove item"
                             >
-                              <Minus size={12} />
+                              <Trash2 size={14} />
                             </button>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0.5"
-                              style={{ width: '56px', padding: '4px', textAlign: 'center', fontWeight: 'bold', borderRadius: '6px', border: '1px solid #e2e8f0' }}
-                              value={item.weight_kg}
-                              onChange={(e) => updateWeight(itemKey, parseFloat(e.target.value) || 0.5)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => updateWeight(itemKey, item.weight_kg + 0.5)}
-                              style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Plus size={12} />
-                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card Items View (Visible <= 680px) */}
+              <div className="cart-mobile-cards">
+                {cart.map((item) => {
+                  const itemKey = item.cart_item_id || item.product_id;
+                  const itemImg = getProductImage(item);
+                  const itemSubtotal = (item.price_per_kg * item.weight_kg);
+
+                  return (
+                    <div
+                      key={itemKey}
+                      style={{
+                        background: 'var(--ox2)',
+                        borderRadius: '14px',
+                        border: '1px solid rgba(246, 235, 221, 0.12)',
+                        padding: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <img
+                          src={itemImg}
+                          alt={item.product_name}
+                          style={{ width: '56px', height: '56px', borderRadius: '10px', objectFit: 'cover', background: '#1a0a0c', border: '1px solid rgba(246, 235, 221, 0.15)', flexShrink: 0 }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#fdf2e3', lineHeight: '1.3' }}>
+                            {item.product_name}
                           </div>
-                        </td>
-                        <td style={{ fontWeight: '800', textAlign: 'right', color: 'var(--primary-customer)' }}>
-                          ₱{itemSubtotal.toFixed(2)}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#d9c7b5', marginTop: '2px' }}>
+                            {item.meat_type} • Cut: {item.meat_cut}
+                          </div>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#fbbf24', marginTop: '4px' }}>
+                            ₱{Number(item.price_per_kg).toFixed(2)} / kg
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(itemKey, item.product_name)}
+                          style={{
+                            color: '#ef4444',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            padding: '8px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                          title="Remove item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(246, 235, 221, 0.08)' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
                           <button
-                            className="btn btn-outline btn-sm"
-                            style={{ color: '#ef4444', borderColor: '#fca5a5', padding: '6px' }}
-                            onClick={() => removeFromCart(itemKey)}
-                            title="Remove item"
+                            type="button"
+                            onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
+                            disabled={item.weight_kg <= 0.5}
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(246, 235, 221, 0.18)',
+                              background: 'rgba(246, 235, 221, 0.06)',
+                              color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+                              cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
                           >
-                            <Trash2 size={14} />
+                            <Minus size={12} />
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            style={{
+                              width: '50px',
+                              padding: '2px',
+                              textAlign: 'center',
+                              fontWeight: '800',
+                              fontSize: '13px',
+                              border: 'none',
+                              background: 'transparent',
+                              color: '#fdf2e3',
+                              outline: 'none'
+                            }}
+                            value={item.weight_kg}
+                            onChange={(e) => updateWeight(itemKey, Math.max(0.5, parseFloat(e.target.value) || 0.5))}
+                          />
+                          <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
+                          <button
+                            type="button"
+                            onClick={() => updateWeight(itemKey, item.weight_kg + 0.5)}
+                            style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(246, 235, 221, 0.18)',
+                              background: 'rgba(246, 235, 221, 0.06)',
+                              color: '#fdf2e3',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '11px', color: '#c9b4a6', textTransform: 'uppercase', fontWeight: '600' }}>Subtotal</div>
+                          <div style={{ fontSize: '16px', fontWeight: '800', color: '#fbbf24' }}>₱{itemSubtotal.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
             </div>
 
-            {/* Checkout Card */}
-            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '14px', color: '#0f172a' }}>Order Summary</h3>
+            {/* Sticky Order Summary Card */}
+            <div style={{
+              background: 'linear-gradient(170deg, var(--ox3, #3a1219) 0%, var(--ox2, #2a0a0e) 100%)',
+              padding: '24px',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(246, 235, 221, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'sticky',
+              top: '24px'
+            }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px', color: '#fdf2e3', letterSpacing: '-0.01em' }}>
+                Order Summary
+              </h3>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#64748b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px', color: '#d9c7b5' }}>
                 <span>Total Items:</span>
-                <span style={{ fontWeight: '700', color: '#0f172a' }}>{cart.length} item(s)</span>
+                <span style={{ fontWeight: '700', color: '#ffffff' }}>{cart.length} item(s)</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#64748b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '13px', color: '#d9c7b5' }}>
                 <span>Subtotal:</span>
-                <span style={{ fontWeight: '700', color: '#0f172a' }}>₱{subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: '700', color: '#ffffff' }}>₱{subtotal.toFixed(2)}</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: '800', fontSize: '18px', borderTop: '1.5px solid #e2e8f0', paddingTop: '10px' }}>
-                <span>Total Amount:</span>
-                <span style={{ color: 'var(--primary-customer)' }}>₱{subtotal.toFixed(2)}</span>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginBottom: '18px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                paddingTop: '14px'
+              }}>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#fdf2e3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  TOTAL AMOUNT:
+                </span>
+                <span style={{ fontSize: '22px', fontWeight: '800', color: '#fbbf24' }}>
+                  ₱{subtotal.toFixed(2)}
+                </span>
               </div>
 
               <div className="form-group" style={{ marginBottom: '18px' }}>
-                <label style={{ fontWeight: '700', fontSize: '12px', color: '#334155' }}>Special Cutting / Packaging Instructions</label>
+                <label style={{
+                  display: 'block',
+                  fontWeight: '700',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: '#fdf2e3',
+                  marginBottom: '8px'
+                }}>
+                  Special Cutting / Packaging Instructions
+                </label>
                 <textarea
                   className="form-control"
                   placeholder="e.g. Please slice into 1kg vacuum packs, remove excess fat"
                   rows="3"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  style={{ fontSize: '12px' }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: '#1a0a0c',
+                    border: '1px solid rgba(246, 235, 221, 0.15)',
+                    color: '#F6EBDD',
+                    fontSize: '12px',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#E5384A';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(246, 235, 221, 0.15)';
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
               <button
-                className="btn btn-customer btn-lg"
-                style={{ width: '100%', justifyContent: 'center', borderRadius: '10px', fontWeight: '800' }}
+                type="button"
+                className="btn btn-lg"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  borderRadius: '10px',
+                  fontWeight: '800',
+                  fontSize: '14px',
+                  padding: '12px',
+                  background: (loading || cart.length === 0)
+                    ? 'rgba(246, 235, 221, 0.1)'
+                    : 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
+                  color: (loading || cart.length === 0) ? 'rgba(246, 235, 221, 0.35)' : '#ffffff',
+                  border: (loading || cart.length === 0) ? '1px solid rgba(246, 235, 221, 0.15)' : 'none',
+                  boxShadow: (loading || cart.length === 0) ? 'none' : '0 4px 14px rgba(193, 18, 31, 0.4)',
+                  cursor: (loading || cart.length === 0) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={handlePlaceOrder}
-                disabled={loading}
+                disabled={loading || cart.length === 0}
               >
-                <CheckCircle size={18} />
-                {loading ? 'Placing Pre-Order...' : 'Place Pre-Order'}
+                {loading ? <Loader2 className="spin" size={18} /> : <CheckCircle size={18} />}
+                <span>{loading ? 'Placing Pre-Order...' : 'Place Pre-Order'}</span>
               </button>
             </div>
           </div>
         )}
       </div>
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: '', type: 'success' })}
+      />
     </div>
   );
 };
 
 export default CustomerCart;
+
