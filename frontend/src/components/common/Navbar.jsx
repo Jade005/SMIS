@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { LogOut, User, Lock, ChevronDown, Shield } from 'lucide-react';
-import EditProfileModal from '../customer/EditProfileModal';
-import ChangePasswordModal from '../customer/ChangePasswordModal';
+import EditProfileModal from '../shared/EditProfileModal';
+import ChangePasswordModal from '../shared/ChangePasswordModal';
 
 const resolveAvatarUrl = (userObj) => {
   if (!userObj) return null;

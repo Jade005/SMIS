@@ -129,7 +129,7 @@ const ProductMgmt = () => {
                         {p.category_name || p.meat_type}
                       </span>
                     </td>
-                    <td><code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{p.meat_cut}</code></td>
+                    <td><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{p.meat_cut}</code></td>
                     <td style={{ fontWeight: 'bold', color: 'var(--primary-admin)' }}>₱{Number(p.price_per_kg).toFixed(2)}</td>
                     <td>
                       <span className={`badge ${stock > 10 ? 'badge-success' : stock > 0 ? 'badge-warning' : 'badge-danger'}`}>
