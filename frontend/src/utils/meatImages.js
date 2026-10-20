@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Meat Cut Image Resolver and Realistic Photography Library
  * Provides high-resolution realistic meat cut photography and category fallbacks.
  * Each cut has a DISTINCT image - no reuse of the same URL across different cuts.
@@ -100,6 +100,8 @@ export const CATEGORY_COLORS = {
   'Others':  { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1', badge: 'badge-gray' },
 };
 
+export const DEFAULT_MEAT_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='none' stroke='%23e5384a' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m19 5-3-3'/%3E%3Cpath d='m2 22 3-3'/%3E%3Cpath d='M6.3 20.3a2.4 2.4 0 0 0 3.4 0L18 12l-6-6-8.3 8.3a2.4 2.4 0 0 0 0 3.4Z'/%3E%3Ccircle cx='14.5' cy='9.5' r='.5' fill='%23e5384a'/%3E%3C/svg%3E";
+
 /**
  * Resolves the appropriate image URL for a product.
  * Priority:
@@ -108,9 +110,10 @@ export const CATEGORY_COLORS = {
  *   3. Partial/substring match on meat_cut key
  *   4. Partial match on product name
  *   5. Category / meat_type fallback
+ *   6. Default meat placeholder icon
  */
 export const getProductImage = (product) => {
-  if (!product) return CATEGORY_FALLBACKS['Others'];
+  if (!product) return DEFAULT_MEAT_PLACEHOLDER;
 
   // 1. Direct explicit image_url if valid
   if (product.image_url && product.image_url.trim()) {
@@ -118,8 +121,11 @@ export const getProductImage = (product) => {
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
       return url;
     }
-    if (url.startsWith('/uploads/')) {
-      return `http://localhost:5000${url}`;
+    if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+      const rel = url.startsWith('/') ? url : '/' + url;
+      const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:5000/api';
+      const serverOrigin = apiBase.replace(/\/api\/?$/, '');
+      return `${serverOrigin}${rel}`;
     }
     return url;
   }
@@ -150,5 +156,5 @@ export const getProductImage = (product) => {
 
   // 5. Category / meat_type fallback
   const cat = product.category_name || product.meat_type || 'Others';
-  return CATEGORY_FALLBACKS[cat] || CATEGORY_FALLBACKS['Others'];
+  return CATEGORY_FALLBACKS[cat] || CATEGORY_FALLBACKS['Others'] || DEFAULT_MEAT_PLACEHOLDER;
 };

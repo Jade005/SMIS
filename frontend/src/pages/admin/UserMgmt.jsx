@@ -874,7 +874,6 @@ const UserMgmt = () => {
                 >
                   <option value="cashier">Cashier</option>
                   <option value="customer">User (Customer)</option>
-                  <option value="admin">Admin</option>
                 </select>
               </div>
 
@@ -1286,9 +1285,11 @@ const UserMgmt = () => {
                     value={editFormData.role}
                     onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                   >
-                    <option value="customer">User</option>
                     <option value="cashier">Cashier</option>
-                    <option value="admin">Admin</option>
+                    <option value="customer">User (Customer)</option>
+                    {editingUser?.role === 'admin' && (
+                      <option value="admin">Admin</option>
+                    )}
                   </select>
                 </div>
 

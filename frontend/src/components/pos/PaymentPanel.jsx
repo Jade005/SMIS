@@ -128,7 +128,12 @@ const PaymentPanel = ({
       >
         {/* ── DRAWER HEADER ── */}
         <div style={{
-          padding: '18px 24px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          flexShrink: 0,
+          boxSizing: 'border-box',
+          padding: '16px 20px',
           borderBottom: '1px solid #cbd5e1',
           display: 'flex',
           alignItems: 'center',
@@ -147,7 +152,10 @@ const PaymentPanel = ({
               fontWeight: '700',
               color: '#0f172a',
               background: '#f1f5f9',
-              borderColor: '#94a3b8'
+              borderColor: '#94a3b8',
+              lineHeight: '1.2',
+              minHeight: '34px',
+              boxSizing: 'border-box'
             }}
           >
             <ArrowLeft size={14} color="#0f172a" /> Back to Billing
@@ -174,18 +182,19 @@ const PaymentPanel = ({
           <div style={{ padding: '32px 24px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
             <div style={{
               width: '68px', height: '68px', borderRadius: '50%',
-              background: 'var(--success-soft)', color: 'var(--success)',
+              background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80',
+              border: '2px solid rgba(74, 222, 128, 0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '16px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)'
+              marginBottom: '16px', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
             }}>
               <CheckCircle size={38} />
             </div>
 
-            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#FFF1F2', marginBottom: '8px' }}>
               Payment Successful!
             </h3>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>
-              Receipt <strong>{lastCompletedSale.receipt_no}</strong> processed successfully.
+            <p style={{ fontSize: '13px', color: '#E5D5C3', marginBottom: '24px' }}>
+              Receipt <strong style={{ color: '#FFFFFF', fontWeight: '800' }}>{lastCompletedSale.receipt_no}</strong> processed successfully.
             </p>
 
             {/* Recap Card */}
@@ -199,30 +208,30 @@ const PaymentPanel = ({
               textAlign: 'left'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Customer:</span>
+                <span style={{ color: '#334155', fontWeight: '600' }}>Customer:</span>
                 <strong style={{ color: '#0f172a' }}>{lastCompletedSale.customer_name || 'Walk-in Customer'}</strong>
               </div>
               {lastCompletedSale.fulfilled_order_no && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>Order Ref:</span>
+                  <span style={{ color: '#334155', fontWeight: '600' }}>Order Ref:</span>
                   <strong style={{ color: '#92400e' }}>#{lastCompletedSale.fulfilled_order_no}</strong>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Payment:</span>
+                <span style={{ color: '#334155', fontWeight: '600' }}>Payment:</span>
                 <strong style={{ color: '#0f172a' }}>Cash</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Amount Tendered:</span>
+                <span style={{ color: '#334155', fontWeight: '600' }}>Amount Tendered:</span>
                 <strong style={{ color: '#0f172a' }}>₱{Number(lastCompletedSale.amount_tendered || 0).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '14px' }}>
-                <span style={{ color: '#64748b', fontWeight: '600' }}>Total Paid:</span>
-                <strong style={{ color: 'var(--primary-cashier)', fontSize: '16px' }}>₱{Number(lastCompletedSale.total_amount).toFixed(2)}</strong>
+                <span style={{ color: '#334155', fontWeight: '700' }}>Total Paid:</span>
+                <strong style={{ color: 'var(--primary-cashier)', fontSize: '16px', fontWeight: '800' }}>₱{Number(lastCompletedSale.total_amount).toFixed(2)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Change:</span>
-                <strong style={{ color: 'var(--success)' }}>₱{Number(lastCompletedSale.change_amount || 0).toFixed(2)}</strong>
+                <span style={{ color: '#334155', fontWeight: '600' }}>Change:</span>
+                <strong style={{ color: '#15803d', fontWeight: '800' }}>₱{Number(lastCompletedSale.change_amount || 0).toFixed(2)}</strong>
               </div>
             </div>
 
@@ -260,23 +269,23 @@ const PaymentPanel = ({
               flexDirection: 'column',
               gap: '10px'
             }}>
-              <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
+              <div style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569' }}>
                 Order Summary Recap
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Customer:</span>
+                <span style={{ fontSize: '13px', color: '#334155', fontWeight: '600' }}>Customer:</span>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
                   {activeOrder ? activeOrder.customerName : 'Walk-in Customer'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Order Type / #:</span>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: activeOrder ? '#92400e' : '#64748b' }}>
+                <span style={{ fontSize: '13px', color: '#334155', fontWeight: '600' }}>Order Type / #:</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: activeOrder ? '#92400e' : '#475569' }}>
                   {activeOrder ? `#${activeOrder.orderNo}` : 'Direct Sale'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>Items in Cart:</span>
+                <span style={{ fontSize: '13px', color: '#334155', fontWeight: '600' }}>Items in Cart:</span>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
                   {cart.length} item{cart.length !== 1 ? 's' : ''} ({cart.reduce((s, i) => s + (Number(i.weight_kg) || 0), 0).toFixed(2)} kg)
                 </span>
