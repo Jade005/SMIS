@@ -20,6 +20,7 @@ import SupplierMgmt from '../pages/admin/SupplierMgmt';
 import OrderMgmt from '../pages/admin/OrderMgmt';
 import UserMgmt from '../pages/admin/UserMgmt';
 import RegisterCustomer from '../pages/admin/RegisterCustomer';
+import PendingAccounts from '../pages/admin/PendingAccounts';
 import ReportsPage from '../pages/admin/ReportsPage';
 
 // Cashier Pages
@@ -57,6 +58,7 @@ const AppRoutes = () => {
             <Route path="/cashier/login" element={<Login defaultRole="cashier" />} />
             <Route path="/customer/login" element={<Login defaultRole="customer" />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/open-account" element={<Navigate to="/register" replace />} />
             <Route path="/set-password" element={<SetPassword />} />
 
             {/* Admin Portal Routes */}
@@ -66,6 +68,7 @@ const AppRoutes = () => {
                     <Route path="/admin/products" element={<ProductMgmt />} />
                     <Route path="/admin/inventory" element={<InventoryMgmt />} />
                     <Route path="/admin/suppliers" element={<SupplierMgmt />} />
+                    <Route path="/admin/pending-accounts" element={<PendingAccounts />} />
                     <Route path="/admin/users" element={<UserMgmt />} />
                     <Route path="/admin/register-customer" element={<RegisterCustomer />} />
                     <Route path="/admin/reports" element={<ReportsPage />} />

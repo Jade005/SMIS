@@ -389,7 +389,7 @@ const Login = ({ defaultRole }) => {
           }}>
             Need a fresh meat customer account?{' '}
             <Link to="/register" style={{ color: '#7BD36B', fontWeight: 'bold', textDecoration: 'none' }}>
-              Register Online
+              Open account
             </Link>
           </div>
         </div>

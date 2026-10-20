@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS users (
   email            VARCHAR(255)      NOT NULL,
   password_hash    VARCHAR(255)      NOT NULL,
   role             ENUM('admin','cashier','customer') NOT NULL DEFAULT 'customer',
+  status           ENUM('pending','active','rejected') NOT NULL DEFAULT 'pending',
   is_active        TINYINT(1)        NOT NULL DEFAULT 1,
   is_temp_password TINYINT(1)        NOT NULL DEFAULT 0,
   created_at       TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,

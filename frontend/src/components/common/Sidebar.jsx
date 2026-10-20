@@ -14,7 +14,8 @@ import {
   Monitor,
   CheckCircle,
   History,
-  UserPlus
+  UserPlus,
+  Clock
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -27,6 +28,7 @@ const Sidebar = () => {
     { to: '/admin/products', label: 'Products & Cuts', icon: Beef },
     { to: '/admin/inventory', label: 'Inventory Batches', icon: Package },
     { to: '/admin/suppliers', label: 'Suppliers & Delivery', icon: Truck },
+    { to: '/admin/pending-accounts', label: 'Pending Accounts', icon: Clock },
     { to: '/admin/users', label: 'User Accounts', icon: Users },
     { to: '/admin/register-customer', label: 'Register Customer', icon: UserPlus },
     { to: '/admin/reports', label: 'Sales & Analytics', icon: FileText }

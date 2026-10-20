@@ -120,14 +120,25 @@ const Register = () => {
             fontSize: '22px',
             fontWeight: 400,
             color: '#F6EBDD',
-            marginBottom: '8px'
+            marginBottom: '12px'
           }}>
-            Registration Submitted!
+            Account Request Submitted
           </h1>
+          <p style={{
+            fontSize: '15px',
+            color: '#7BD36B',
+            fontWeight: 600,
+            lineHeight: '1.6',
+            marginBottom: '20px',
+            background: 'rgba(95, 138, 78, 0.15)',
+            border: '1px solid rgba(123, 211, 107, 0.3)',
+            borderRadius: '10px',
+            padding: '12px 16px'
+          }}>
+            Your account request was submitted. Please wait for admin approval.
+          </p>
           <p style={{ fontSize: '13px', color: '#C9B4A6', lineHeight: '1.6', marginBottom: '22px' }}>
-            Your customer profile for <strong style={{ color: '#F6EBDD' }}>{formData.first_name} {formData.last_name}</strong> has been logged to the head office queue.
-            <br /><br />
-            An administrator must review and approve your account before you can log in.
+            Your customer application for <strong style={{ color: '#F6EBDD' }}>{formData.first_name} {formData.last_name}</strong> ({formData.email}) is currently pending administrator verification. Once registered and approved by an administrator, you will be able to log in to place orders.
           </p>
 
           <div style={{

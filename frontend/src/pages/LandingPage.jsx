@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Scale, Clock, ShieldCheck, TrendingUp, ArrowRight, CheckCircle2,
@@ -557,8 +557,8 @@ const LandingPage = () => {
             <button className="btn btn-primary" style={{ padding: '15px 30px', fontSize: 15 }} onClick={() => goTo('portals')}>
               Choose your portal <ArrowRight size={16} className="arr" />
             </button>
-            <button className="btn btn-ghost" style={{ padding: '15px 30px', fontSize: 15 }} onClick={() => navigate('/register')}>
-              Register customer account
+            <button className="btn btn-ghost" style={{ padding: '15px 30px', fontSize: 15 }} onClick={() => navigate('/customer/login')}>
+              Registered account
             </button>
           </div>
 

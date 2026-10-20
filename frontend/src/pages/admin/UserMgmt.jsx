@@ -347,7 +347,7 @@ const UserMgmt = () => {
   };
 
   const handleApprove = async (id, isReject = false) => {
-    if (!window.confirm(isReject ? 'Are you sure you want to reject this registration application?' : 'Are you sure you want to approve this registration application?')) return;
+    if (!window.confirm(isReject ? 'Are you sure you want to reject this registration application?' : 'Are you sure you want to register (approve) this customer account?')) return;
     setApprovingId(id);
     try {
       if (isReject) {
@@ -938,7 +938,7 @@ const UserMgmt = () => {
                               title="Approve registration"
                             >
                               <ShieldCheck size={14} />
-                              <span className="action-btn-text">{approvingId === u.id ? 'Approving...' : 'Approve'}</span>
+                              <span className="action-btn-text">{approvingId === u.id ? 'Registering...' : 'Register'}</span>
                             </button>
                             <button
                               className="btn btn-sm action-btn"
