@@ -31,7 +31,9 @@ import {
   Search,
   X,
   Pencil,
-  Trash2
+  Trash2,
+  Ban,
+  Power
 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -153,7 +155,7 @@ const UserMgmt = () => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+    setTimeout(() => setCopiedKey(null), 1500);
   };
 
   // Auto-fill username (firstname.lastname) and email (firstname.lastname@smis.local)
@@ -509,6 +511,68 @@ const UserMgmt = () => {
         .user-search-input::placeholder {
           color: #94a3b8 !important;
         }
+        .user-mgmt-table-responsive {
+          width: 100%;
+          overflow-x: auto;
+          border-radius: var(--radius-sm);
+          border: 1px solid var(--line);
+          background: var(--ox2);
+        }
+        .user-mgmt-table {
+          width: 100%;
+          min-width: 1180px;
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+        .user-mgmt-table th,
+        .user-mgmt-table td {
+          vertical-align: middle !important;
+          padding: 12px 14px;
+        }
+        .action-btn {
+          height: 35px;
+          padding: 0 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          white-space: nowrap;
+          font-size: 12px;
+          font-weight: 600;
+          border-radius: 8px;
+          flex-shrink: 0;
+          box-sizing: border-box;
+          line-height: 1;
+          transition: all 0.2s ease;
+        }
+        .action-btn-text {
+          display: inline;
+          white-space: nowrap;
+        }
+        .actions-cell-container {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: nowrap;
+        }
+        @media (max-width: 1280px) {
+          .action-btn-text {
+            display: none;
+          }
+          .action-btn {
+            padding: 0 10px;
+            width: 35px;
+          }
+          .actions-col-header,
+          .actions-col-cell {
+            min-width: 150px !important;
+            width: 150px !important;
+          }
+          .user-mgmt-table {
+            min-width: 980px;
+          }
+        }
       `}</style>
 
       {/* Tab Navigation */}
@@ -581,18 +645,18 @@ const UserMgmt = () => {
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table>
+          <div className="table-responsive user-mgmt-table-responsive">
+            <table className="user-mgmt-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Full Name</th>
-                  <th>Username</th>
-                  <th>Email Address</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Registered</th>
-                  <th>Actions</th>
+                  <th style={{ width: '60px', minWidth: '60px' }}>ID</th>
+                  <th style={{ minWidth: '160px', whiteSpace: 'nowrap' }}>Full Name</th>
+                  <th style={{ minWidth: '140px' }}>Username</th>
+                  <th style={{ minWidth: '190px' }}>Email Address</th>
+                  <th style={{ width: '80px', minWidth: '80px' }}>Role</th>
+                  <th style={{ minWidth: '130px' }}>Status</th>
+                  <th style={{ width: '110px', minWidth: '110px', whiteSpace: 'nowrap' }}>Registered</th>
+                  <th className="actions-col-header" style={{ minWidth: '320px', width: '320px', textAlign: 'left' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -605,122 +669,195 @@ const UserMgmt = () => {
                 ) : (
                   filteredUsers.map((u) => (
                     <tr key={u.id}>
-                      <td>#{u.id}</td>
-                      <td><strong>{u.first_name} {u.last_name}</strong></td>
-                      <td><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px' }}>{u.username || '—'}</code></td>
-                      <td>{u.email}</td>
-                    <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-danger' : u.role === 'cashier' ? 'badge-warning' : 'badge-gray'}`}>
-                        {u.role === 'customer' ? 'USER' : u.role.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`} style={{ letterSpacing: '0.04em' }}>
-                          {u.is_active ? 'ACTIVE' : 'INACTIVE'}
+                      <td style={{ verticalAlign: 'middle' }}>#{u.id}</td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{u.first_name} {u.last_name}</strong></td>
+                      <td style={{ verticalAlign: 'middle' }}><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px' }}>{u.username || '—'}</code></td>
+                      <td style={{ verticalAlign: 'middle' }}>{u.email}</td>
+                      <td style={{ verticalAlign: 'middle' }}>
+                        <span className={`badge ${u.role === 'admin' ? 'badge-danger' : u.role === 'cashier' ? 'badge-warning' : 'badge-gray'}`}>
+                          {u.role === 'customer' ? 'USER' : u.role.toUpperCase()}
                         </span>
-                        {Boolean(u.is_temp_password) && (
-                          <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            background: '#fffbeb',
-                            border: '1px solid #fde68a',
-                            borderRadius: '6px',
-                            padding: '3px 7px',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                          }}>
-                            <span style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', fontFamily: 'monospace' }}>
-                              ⚡ {revealedPasswords[u.id] ? (u.temp_password_plain || 'Temp Set') : '••••••••'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleReveal(u.id)}
-                              title={revealedPasswords[u.id] ? "Hide password" : "View temporary password"}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
-                            >
-                              {revealedPasswords[u.id] ? <EyeOff size={13} /> : <Eye size={13} />}
-                            </button>
-                            {u.temp_password_plain && (
+                      </td>
+                      <td style={{ verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                          <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`} style={{ letterSpacing: '0.04em' }}>
+                            {u.is_active ? 'ACTIVE' : 'INACTIVE'}
+                          </span>
+                          {Boolean(u.is_temp_password) && (
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: '#fffbeb',
+                              border: '1px solid #fde68a',
+                              borderRadius: '6px',
+                              padding: '3px 7px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                            }}>
+                              <span style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', fontFamily: 'monospace' }}>
+                                ⚡ {revealedPasswords[u.id] ? (u.temp_password_plain || 'Temp Set') : '••••••••'}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => handleCopy(u.temp_password_plain, `user-${u.id}`)}
-                                title="Copy temporary password"
+                                onClick={() => toggleReveal(u.id)}
+                                title={revealedPasswords[u.id] ? "Hide password" : "View temporary password"}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
                               >
-                                {copiedKey === `user-${u.id}` ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                                {revealedPasswords[u.id] ? <EyeOff size={13} /> : <Eye size={13} />}
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>{new Date(u.created_at).toLocaleDateString()}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          onClick={() => handleOpenEdit(u)}
-                          title={`Edit user #${u.id}`}
-                        >
-                          <Pencil size={12} />
-                          Edit
-                        </button>
+                              {u.temp_password_plain && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(u.temp_password_plain, `user-${u.id}`)}
+                                  title="Copy temporary password"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
+                                >
+                                  {copiedKey === `user-${u.id}` ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                      <td className="actions-col-cell" style={{ minWidth: '320px', width: '320px', textAlign: 'left', verticalAlign: 'middle' }}>
+                        <div className="actions-cell-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+                          {u.status === 'pending' || u.is_pending ? (
+                            <>
+                              <button
+                                className="btn btn-outline btn-sm action-btn"
+                                onClick={() => handleOpenEdit(u)}
+                                title={`Edit user #${u.id}`}
+                              >
+                                <Pencil size={12} />
+                                <span className="action-btn-text">Edit</span>
+                              </button>
+                              <button
+                                className="btn btn-sm action-btn"
+                                style={{
+                                  background: '#16a34a',
+                                  color: '#fff',
+                                  border: 'none',
+                                  fontWeight: '700'
+                                }}
+                                onClick={() => handleApprove(u.id, false)}
+                                disabled={approvingId === u.id}
+                                title="Approve registration"
+                              >
+                                <ShieldCheck size={14} />
+                                <span className="action-btn-text">{approvingId === u.id ? 'Approving...' : 'Approve'}</span>
+                              </button>
+                              <button
+                                className="btn btn-outline btn-sm action-btn"
+                                style={{
+                                  color: '#22c55e',
+                                  borderColor: 'rgba(34, 197, 94, 0.4)',
+                                  background: 'rgba(34, 197, 94, 0.08)'
+                                }}
+                                onClick={() => handleOpenActivate(u)}
+                                title={`Activate user #${u.id}`}
+                              >
+                                <Power size={12} />
+                                <span className="action-btn-text">Activate</span>
+                              </button>
+                              <button
+                                className="btn btn-outline btn-sm action-btn"
+                                style={{
+                                  color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
+                                  borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
+                                  opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
+                                  cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
+                                }}
+                                onClick={() => handleOpenDelete(u)}
+                                disabled={isSelf(u) || isLastAdmin(u)}
+                                title={
+                                  isSelf(u)
+                                    ? 'You cannot delete your own account'
+                                    : isLastAdmin(u)
+                                    ? 'Cannot delete the last remaining administrator'
+                                    : `Delete user #${u.id}`
+                                }
+                              >
+                                <Trash2 size={12} />
+                                <span className="action-btn-text">Delete</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="btn btn-outline btn-sm action-btn"
+                                onClick={() => handleOpenEdit(u)}
+                                title={`Edit user #${u.id}`}
+                              >
+                                <Pencil size={12} />
+                                <span className="action-btn-text">Edit</span>
+                              </button>
 
-                        {u.is_active ? (
-                          <button
-                            className="btn btn-outline btn-sm"
-                            onClick={() => handleOpenDeactivate(u)}
-                            disabled={isSelf(u) || isLastAdmin(u)}
-                            title={
-                              isSelf(u)
-                                ? 'You cannot deactivate your own account'
-                                : isLastAdmin(u)
-                                ? 'Cannot deactivate the last remaining administrator'
-                                : `Deactivate user #${u.id}`
-                            }
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-outline btn-sm btn-success"
-                            onClick={() => handleOpenActivate(u)}
-                            title={`Activate user #${u.id}`}
-                          >
-                            Activate
-                          </button>
-                        )}
+                              {u.is_active ? (
+                                <button
+                                  className="btn btn-outline btn-sm action-btn"
+                                  onClick={() => handleOpenDeactivate(u)}
+                                  disabled={isSelf(u) || isLastAdmin(u)}
+                                  style={{
+                                    opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
+                                    cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer',
+                                    color: isSelf(u) || isLastAdmin(u) ? '#64748b' : undefined,
+                                    borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : undefined
+                                  }}
+                                  title={
+                                    isSelf(u)
+                                      ? 'You cannot deactivate your own account'
+                                      : isLastAdmin(u)
+                                      ? 'Cannot deactivate the last remaining administrator'
+                                      : `Deactivate user #${u.id}`
+                                  }
+                                >
+                                  <Ban size={12} />
+                                  <span className="action-btn-text">Deactivate</span>
+                                </button>
+                              ) : (
+                                <button
+                                  className="btn btn-outline btn-sm action-btn"
+                                  style={{
+                                    color: '#22c55e',
+                                    borderColor: 'rgba(34, 197, 94, 0.4)',
+                                    background: 'rgba(34, 197, 94, 0.08)'
+                                  }}
+                                  onClick={() => handleOpenActivate(u)}
+                                  title={`Activate user #${u.id}`}
+                                >
+                                  <Power size={12} />
+                                  <span className="action-btn-text">Activate</span>
+                                </button>
+                              )}
 
-                        <button
-                          className="btn btn-outline btn-sm"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
-                            borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
-                            opacity: isSelf(u) || isLastAdmin(u) ? 0.5 : 1,
-                            cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
-                          }}
-                          onClick={() => handleOpenDelete(u)}
-                          disabled={isSelf(u) || isLastAdmin(u)}
-                          title={
-                            isSelf(u)
-                              ? 'You cannot delete your own account'
-                              : isLastAdmin(u)
-                              ? 'Cannot delete the last remaining administrator'
-                              : `Delete user #${u.id}`
-                          }
-                        >
-                          <Trash2 size={12} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )))}
+                              <button
+                                className="btn btn-outline btn-sm action-btn"
+                                style={{
+                                  color: isSelf(u) || isLastAdmin(u) ? '#64748b' : '#ef4444',
+                                  borderColor: isSelf(u) || isLastAdmin(u) ? 'rgba(100, 116, 139, 0.3)' : '#ef4444',
+                                  opacity: isSelf(u) || isLastAdmin(u) ? 0.45 : 1,
+                                  cursor: isSelf(u) || isLastAdmin(u) ? 'not-allowed' : 'pointer'
+                                }}
+                                onClick={() => handleOpenDelete(u)}
+                                disabled={isSelf(u) || isLastAdmin(u)}
+                                title={
+                                  isSelf(u)
+                                    ? 'You cannot delete your own account'
+                                    : isLastAdmin(u)
+                                    ? 'Cannot delete the last remaining administrator'
+                                    : `Delete user #${u.id}`
+                                }
+                              >
+                                <Trash2 size={12} />
+                                <span className="action-btn-text">Delete</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )))}
               </tbody>
             </table>
           </div>
@@ -751,16 +888,16 @@ const UserMgmt = () => {
               <div style={{ background: '#fffbeb', borderBottom: '1px solid #fcd34d', padding: '10px 16px', fontSize: '12px', color: '#92400e' }}>
                 ⚠️ The following customer accounts are pending approval. Approved accounts will immediately be able to log in.
               </div>
-              <div className="table-responsive">
-                <table>
+              <div className="table-responsive user-mgmt-table-responsive">
+                <table className="user-mgmt-table" style={{ minWidth: '1080px' }}>
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Phone</th>
-                      <th>Address</th>
-                      <th>Registered On</th>
-                      <th>Action</th>
+                      <th style={{ minWidth: '160px', whiteSpace: 'nowrap' }}>Name</th>
+                      <th style={{ minWidth: '180px' }}>Email</th>
+                      <th style={{ minWidth: '130px' }}>Phone</th>
+                      <th style={{ minWidth: '160px' }}>Address</th>
+                      <th style={{ minWidth: '150px', whiteSpace: 'nowrap' }}>Registered On</th>
+                      <th className="actions-col-header" style={{ minWidth: '320px', width: '320px', textAlign: 'left' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -773,39 +910,50 @@ const UserMgmt = () => {
                     ) : (
                       filteredPendingUsers.map((u) => (
                         <tr key={u.id}>
-                        <td><strong>{u.first_name} {u.last_name}</strong></td>
-                        <td>{u.email}</td>
-                        <td>{u.phone || <span style={{ color: '#94a3b8' }}>—</span>}</td>
-                        <td>{u.address || <span style={{ color: '#94a3b8' }}>—</span>}</td>
-                        <td>{new Date(u.created_at).toLocaleString()}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{u.first_name} {u.last_name}</strong></td>
+                        <td style={{ verticalAlign: 'middle' }}>{u.email}</td>
+                        <td style={{ verticalAlign: 'middle' }}>{u.phone || <span style={{ color: '#94a3b8' }}>—</span>}</td>
+                        <td style={{ verticalAlign: 'middle' }}>{u.address || <span style={{ color: '#94a3b8' }}>—</span>}</td>
+                        <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleString()}</td>
+                        <td className="actions-col-cell" style={{ minWidth: '320px', width: '320px', textAlign: 'left', verticalAlign: 'middle' }}>
+                          <div className="actions-cell-container" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
                             <button
-                              className="btn btn-outline btn-sm"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              className="btn btn-outline btn-sm action-btn"
                               onClick={() => handleOpenEdit(u)}
                               title={`Edit user #${u.id}`}
                             >
                               <Pencil size={12} />
-                              Edit
+                              <span className="action-btn-text">Edit</span>
                             </button>
                             <button
-                              className="btn btn-sm"
-                              style={{ background: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
+                              className="btn btn-sm action-btn"
+                              style={{
+                                background: '#16a34a',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: '700'
+                              }}
                               onClick={() => handleApprove(u.id, false)}
                               disabled={approvingId === u.id}
+                              title="Approve registration"
                             >
                               <ShieldCheck size={14} />
-                              {approvingId === u.id ? 'Approving...' : 'Approve'}
+                              <span className="action-btn-text">{approvingId === u.id ? 'Approving...' : 'Approve'}</span>
                             </button>
                             <button
-                              className="btn btn-sm"
-                              style={{ background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', border: 'none', cursor: 'pointer', borderRadius: '6px', padding: '6px 12px', fontWeight: '700', fontSize: '12px' }}
+                              className="btn btn-sm action-btn"
+                              style={{
+                                background: '#ef4444',
+                                color: '#fff',
+                                border: 'none',
+                                fontWeight: '700'
+                              }}
                               onClick={() => handleApprove(u.id, true)}
                               disabled={approvingId === u.id}
+                              title="Reject registration"
                             >
                               <AlertCircle size={14} />
-                              Reject
+                              <span className="action-btn-text">Reject</span>
                             </button>
                           </div>
                         </td>
@@ -931,8 +1079,8 @@ const UserMgmt = () => {
       {/* ---- Newly Created / Approved Credentials Popup Modal ---- */}
       {createdCredentials && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '440px', borderRadius: '14px', padding: '24px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div className="modal-content" style={{ maxWidth: '460px', borderRadius: '16px', padding: '28px', background: 'linear-gradient(170deg, #2A0C10 0%, #1B0709 100%)', border: '1px solid rgba(246, 235, 221, 0.16)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <div style={{
                 width: '52px',
                 height: '52px',
@@ -942,94 +1090,252 @@ const UserMgmt = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 12px'
+                margin: '0 auto 12px',
+                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)'
               }}>
                 <CheckCircle size={28} />
               </div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#fdf2e3',
+                fontFamily: "var(--font-display, 'Alfa Slab One', 'Rockwell', 'Georgia', serif)",
+                letterSpacing: '0.02em',
+                lineHeight: 1.2
+              }}>
                 {createdCredentials.role === 'customer' ? 'Registration Approved!' : 'Account Created Successfully!'}
               </h3>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>
-                Credentials for <strong>{createdCredentials.fullName}</strong>
+              <p style={{ fontSize: '13px', color: '#e5d5c3', margin: '6px 0 0', lineHeight: 1.5 }}>
+                Credentials for <strong style={{ color: '#ffffff', fontWeight: '700' }}>{createdCredentials.fullName}</strong>
               </p>
             </div>
 
+            {/* Credentials Card (Dark Maroon-Black #1a0a0c) */}
             <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              padding: '16px',
+              background: '#1a0a0c',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '16px 18px',
               marginBottom: '18px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
-              fontSize: '13px'
+              gap: '12px',
+              fontSize: '13px',
+              boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.5)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b', fontSize: '12px' }}>Username:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <code style={{ background: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
+              {/* Username row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ color: '#d9c7b5', fontSize: '12px', fontWeight: '600' }}>Username:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <code style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fdf2e3',
+                    padding: '3px 9px',
+                    borderRadius: '6px',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+                    wordBreak: 'break-all'
+                  }}>
                     {createdCredentials.username}
                   </code>
                   <button
                     type="button"
                     onClick={() => handleCopy(createdCredentials.username, 'modal-username')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#64748b', display: 'flex' }}
-                    title="Copy Username"
+                    style={{
+                      background: copiedKey === 'modal-username' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid ' + (copiedKey === 'modal-username' ? 'rgba(134, 239, 172, 0.4)' : 'rgba(255, 255, 255, 0.15)'),
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      color: copiedKey === 'modal-username' ? '#86efac' : '#e5d5c3',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title={copiedKey === 'modal-username' ? 'Copied!' : 'Copy Username'}
+                    onMouseEnter={(e) => {
+                      if (copiedKey !== 'modal-username') {
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (copiedKey !== 'modal-username') {
+                        e.currentTarget.style.color = '#e5d5c3';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
                   >
-                    {copiedKey === 'modal-username' ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                    {copiedKey === 'modal-username' ? (
+                      <>
+                        <Check size={13} color="#86efac" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b', fontSize: '12px' }}>Email (Login ID):</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <strong style={{ fontSize: '12px' }}>{createdCredentials.email}</strong>
+              {/* Email row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ color: '#d9c7b5', fontSize: '12px', fontWeight: '600' }}>Email (Login ID):</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '100%' }}>
+                  <code style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#fdf2e3',
+                    padding: '3px 9px',
+                    borderRadius: '6px',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+                    wordBreak: 'break-all',
+                    maxWidth: '220px'
+                  }}>
+                    {createdCredentials.email}
+                  </code>
                   <button
                     type="button"
                     onClick={() => handleCopy(createdCredentials.email, 'modal-email')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#64748b', display: 'flex' }}
-                    title="Copy Email"
+                    style={{
+                      background: copiedKey === 'modal-email' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid ' + (copiedKey === 'modal-email' ? 'rgba(134, 239, 172, 0.4)' : 'rgba(255, 255, 255, 0.15)'),
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      color: copiedKey === 'modal-email' ? '#86efac' : '#e5d5c3',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title={copiedKey === 'modal-email' ? 'Copied!' : 'Copy Email'}
+                    onMouseEnter={(e) => {
+                      if (copiedKey !== 'modal-email') {
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (copiedKey !== 'modal-email') {
+                        e.currentTarget.style.color = '#e5d5c3';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
                   >
-                    {copiedKey === 'modal-email' ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                    {copiedKey === 'modal-email' ? (
+                      <>
+                        <Check size={13} color="#86efac" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
 
+              {/* Generated Password row */}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                borderTop: '1px dashed #cbd5e1',
-                paddingTop: '10px',
+                flexWrap: 'wrap',
+                gap: '8px',
+                borderTop: '1px dashed rgba(255, 255, 255, 0.15)',
+                paddingTop: '12px',
                 marginTop: '4px'
               }}>
-                <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '700' }}>Generated Password:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <code style={{ background: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '13px' }}>
+                <span style={{ color: '#d9c7b5', fontSize: '12px', fontWeight: '700' }}>Generated Password:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <code style={{
+                    background: '#fbbf24',
+                    color: '#451a03',
+                    border: '1px solid #f59e0b',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontWeight: '800',
+                    fontSize: '14px',
+                    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+                    letterSpacing: '0.12em',
+                    boxShadow: '0 2px 6px rgba(245, 158, 11, 0.35)',
+                    userSelect: 'all'
+                  }}>
                     {createdCredentials.tempPassword}
                   </code>
                   <button
                     type="button"
                     onClick={() => handleCopy(createdCredentials.tempPassword, 'modal-temp')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#b45309', display: 'flex' }}
-                    title="Copy Password"
+                    style={{
+                      background: copiedKey === 'modal-temp' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid ' + (copiedKey === 'modal-temp' ? 'rgba(134, 239, 172, 0.4)' : 'rgba(255, 255, 255, 0.15)'),
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      color: copiedKey === 'modal-temp' ? '#86efac' : '#e5d5c3',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title={copiedKey === 'modal-temp' ? 'Copied!' : 'Copy Password'}
+                    onMouseEnter={(e) => {
+                      if (copiedKey !== 'modal-temp') {
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (copiedKey !== 'modal-temp') {
+                        e.currentTarget.style.color = '#e5d5c3';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }
+                    }}
                   >
-                    {copiedKey === 'modal-temp' ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                    {copiedKey === 'modal-temp' ? (
+                      <>
+                        <Check size={13} color="#86efac" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={13} />
+                        <span>Copy</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
 
+            {/* Info Box */}
             <div style={{
-              background: createdCredentials.role === 'customer' ? '#f0fdf4' : '#eff6ff',
-              border: `1px solid ${createdCredentials.role === 'customer' ? '#bbf7d0' : '#bfdbfe'}`,
-              borderRadius: '8px',
-              padding: '10px 12px',
-              fontSize: '11px',
-              color: createdCredentials.role === 'customer' ? '#166534' : '#1e40af',
-              marginBottom: '16px'
+              background: createdCredentials.role === 'customer' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+              border: `1px solid ${createdCredentials.role === 'customer' ? 'rgba(134, 239, 172, 0.35)' : 'rgba(147, 197, 253, 0.35)'}`,
+              borderRadius: '10px',
+              padding: '12px 14px',
+              fontSize: '14px',
+              lineHeight: 1.55,
+              color: createdCredentials.role === 'customer' ? '#bbf7d0' : '#bfdbfe',
+              marginBottom: '20px'
             }}>
               {createdCredentials.role === 'customer'
                 ? '✅ The customer can now log in using their Email and the generated password above. Please share these credentials with them directly.'
