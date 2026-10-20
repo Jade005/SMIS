@@ -1,195 +1,144 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   getSalesReportApi,
   getInventoryReportApi,
   getExpiryReportApi,
   getSupplierReportApi
 } from '../../api/reportApi';
-import {
-  getRevenueTrendsApi,
-  getBestSellersApi,
-  getSalesByCategoryApi
-} from '../../api/analyticsApi';
-import DonutChart from '../../components/reports/DonutChart';
-import RevenueTrendChart from '../../components/reports/RevenueTrendChart';
+import ReportBarChart from '../../components/reports/ReportBarChart';
 import {
   Trophy,
-  PieChart as PieChartIcon,
   TrendingUp,
   Package,
   AlertTriangle,
   Truck,
   DollarSign,
-  Receipt
+  Receipt,
+  Calendar
 } from 'lucide-react';
+
+const formatDateYMD = (d) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultDateRange = (granularity) => {
+  const now = new Date();
+  const toStr = formatDateYMD(now);
+  const fromDate = new Date(now);
+
+  if (granularity === 'daily') {
+    fromDate.setDate(now.getDate() - 13); // 14 days
+  } else if (granularity === 'monthly') {
+    fromDate.setMonth(now.getMonth() - 11);
+    fromDate.setDate(1); // 12 months
+  } else if (granularity === 'yearly') {
+    fromDate.setFullYear(now.getFullYear() - 4);
+    fromDate.setMonth(0);
+    fromDate.setDate(1); // 5 years
+  }
+  return { from: formatDateYMD(fromDate), to: toStr };
+};
+
+const formatPeso = (val) =>
+  `₱${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatWeight = (val, decimals = 2) =>
+  `${Number(val || 0).toFixed(decimals)} kg`;
 
 /**
  * Merged Reports & Analytics Page
- * Combines high-level visual charts (pie/donut/trends) and detailed data tables across:
- * - Sales Report (revenue metrics, meat category donut, best sellers pie, daily trends, receipt table)
- * - Inventory Report (category stock donut, stock status donut, inventory table)
- * - Expiry Report (expiry flag pie, monitor table)
- * - Suppliers Report (supplier volume pie, activity table)
+ * Contains 4 tabs: Sales Report, Inventory Report, Expiry Report, Suppliers Report.
+ * Each tab contains exactly ONE bar graph and follows the shared date filter.
  */
 const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('sales');
-  const [salesPeriod, setSalesPeriod] = useState('daily');
-  const [categoryMetric, setCategoryMetric] = useState('revenue'); // 'revenue' | 'volume'
+
+  // Shared Date Filter State
+  const [granularity, setGranularity] = useState('daily');
+  const defaultRange = getDefaultDateRange('daily');
+  const [fromDate, setFromDate] = useState(defaultRange.from);
+  const [toDate, setToDate] = useState(defaultRange.to);
+
+  // Sales metric toggle: 'revenue' | 'volume'
+  const [salesMetric, setSalesMetric] = useState('revenue');
+
+  // Data states
   const [loading, setLoading] = useState(true);
-
-  // Tab Data States
   const [salesReport, setSalesReport] = useState(null);
-  const [inventoryReport, setInventoryReport] = useState([]);
-  const [expiryReport, setExpiryReport] = useState([]);
-  const [supplierReport, setSupplierReport] = useState([]);
+  const [inventoryReport, setInventoryReport] = useState({ summary: {}, chartData: [], batches: [] });
+  const [expiryReport, setExpiryReport] = useState({ summary: {}, chartData: [], batches: [] });
+  const [supplierReport, setSupplierReport] = useState({ summary: {}, chartData: [], suppliers: [] });
 
-  // Analytics States (for Sales Report tab)
-  const [revenueTrends, setRevenueTrends] = useState([]);
-  const [bestSellers, setBestSellers] = useState([]);
-  const [categorySales, setCategorySales] = useState([]);
+  // Handle Granularity change
+  const handleGranularityChange = (newGran) => {
+    setGranularity(newGran);
+    const range = getDefaultDateRange(newGran);
+    setFromDate(range.from);
+    setToDate(range.to);
+  };
 
-  // Days for revenue trend based on selected period
-  const trendDays = salesPeriod === 'daily' ? 7 : salesPeriod === 'weekly' ? 14 : 30;
-
-  // ── Data Fetching ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
+  // Fetch report for the currently active tab and filter
+  const fetchReportData = useCallback(() => {
     setLoading(true);
+    const params = {
+      granularity,
+      from: fromDate,
+      to: toDate
+    };
 
     if (activeTab === 'sales') {
-      Promise.all([
-        getSalesReportApi({ period: salesPeriod }),
-        getRevenueTrendsApi(trendDays),
-        getBestSellersApi(5),
-        getSalesByCategoryApi({ period: salesPeriod })
-      ])
-        .then(([salesRes, revRes, sellersRes, catRes]) => {
-          setSalesReport(salesRes.data || null);
-          setRevenueTrends(revRes.data || []);
-          setBestSellers(sellersRes.data || []);
-          setCategorySales(catRes.data || []);
-        })
+      getSalesReportApi(params)
+        .then((res) => setSalesReport(res.data || null))
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'inventory') {
-      getInventoryReportApi()
-        .then((res) => setInventoryReport(res.data || []))
+      getInventoryReportApi(params)
+        .then((res) => setInventoryReport(res.data || { summary: {}, chartData: [], batches: [] }))
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'expiry') {
-      getExpiryReportApi()
-        .then((res) => setExpiryReport(res.data || []))
+      getExpiryReportApi(params)
+        .then((res) => setExpiryReport(res.data || { summary: {}, chartData: [], batches: [] }))
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'suppliers') {
-      getSupplierReportApi()
-        .then((res) => setSupplierReport(res.data || []))
+      getSupplierReportApi(params)
+        .then((res) => setSupplierReport(res.data || { summary: {}, chartData: [], suppliers: [] }))
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [activeTab, salesPeriod, trendDays]);
+  }, [activeTab, granularity, fromDate, toDate]);
 
-  // ── Derived Data for Charts ───────────────────────────────────────────────
+  useEffect(() => {
+    fetchReportData();
+  }, [fetchReportData]);
 
-  // 1. Inventory Chart: Stock (kg) by Category
-  const inventoryByCategory = useMemo(() => {
-    const map = {};
-    inventoryReport.forEach((item) => {
-      const cat = item.category_name || 'Uncategorized';
-      map[cat] = (map[cat] || 0) + (Number(item.available_stock_kg) || 0);
-    });
-    return Object.entries(map).map(([label, value]) => ({
-      label,
-      value: Number(value.toFixed(2))
-    }));
-  }, [inventoryReport]);
-
-  const totalInventoryKg = useMemo(() => {
-    return inventoryReport.reduce((sum, item) => sum + (Number(item.available_stock_kg) || 0), 0);
-  }, [inventoryReport]);
-
-  // 2. Inventory Chart: Stock Status (In Stock, Low Stock, Depleted)
-  const inventoryByStatus = useMemo(() => {
-    const map = { 'In Stock': 0, 'Low Stock': 0, 'Out of Stock': 0 };
-    inventoryReport.forEach((item) => {
-      const status = (item.status || '').toLowerCase();
-      if (status === 'available') map['In Stock'] += 1;
-      else if (status === 'low') map['Low Stock'] += 1;
-      else if (status === 'depleted') map['Out of Stock'] += 1;
-      else map['In Stock'] += 1;
-    });
-    return Object.entries(map).map(([label, value]) => ({ label, value }));
-  }, [inventoryReport]);
-
-  // 3. Expiry Chart: Items by status flag (Expired, Expiring Soon, Fresh)
-  const expiryByFlag = useMemo(() => {
-    const map = { Expired: 0, 'Expiring Soon': 0, Fresh: 0 };
-    expiryReport.forEach((item) => {
-      const flag = item.expiry_flag || 'Valid';
-      if (flag === 'Expired') map['Expired'] += 1;
-      else if (flag === 'Expiring Soon') map['Expiring Soon'] += 1;
-      else map['Fresh'] += 1;
-    });
-    return Object.entries(map).map(([label, value]) => ({ label, value }));
-  }, [expiryReport]);
-
-  // 4. Supplier Chart: Supply volume (kg) per supplier
-  const supplierVolumeData = useMemo(() => {
-    return supplierReport.map((s) => ({
-      label: s.supplier_name,
-      value: Number(Number(s.total_weight_supplied_kg || 0).toFixed(2))
-    }));
-  }, [supplierReport]);
-
-  const totalSuppliedKg = useMemo(() => {
-    return supplierReport.reduce((sum, s) => sum + (Number(s.total_weight_supplied_kg) || 0), 0);
-  }, [supplierReport]);
-
-  // Meat Category Sales Distribution Data (toggled between Revenue and Volume)
-  const categorySalesDonutData = useMemo(() => {
-    const STANDARD_CATEGORIES = ['Beef', 'Pork', 'Goat', 'Chicken', 'Rabbit'];
-    const map = {};
-    categorySales.forEach((c) => {
-      map[c.category_name] = {
-        revenue: Number(c.total_revenue || 0),
-        volume: Number(c.total_kg_sold || 0)
-      };
-    });
-
-    const extraCategories = categorySales
-      .map((c) => c.category_name)
-      .filter((name) => !STANDARD_CATEGORIES.includes(name) && name !== 'Others');
-
-    const allCategoryNames = [...STANDARD_CATEGORIES, ...extraCategories];
-
-    return allCategoryNames.map((name) => {
-      const data = map[name] || { revenue: 0, volume: 0 };
-      return {
-        label: name,
-        value: categoryMetric === 'revenue' ? data.revenue : data.volume
-      };
-    });
-  }, [categorySales, categoryMetric]);
-
-  const totalCategoryDonut = useMemo(() => {
-    return categorySalesDonutData.reduce((sum, i) => sum + i.value, 0);
-  }, [categorySalesDonutData]);
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  // Stacked datasets definition for Expiry Report
+  const expiryStackedDatasets = [
+    { key: 'expired', label: 'Expired', color: '#ef4444', hoverColor: '#dc2626' },
+    { key: 'expiring_7d', label: 'Expiring ≤7d', color: '#f97316', hoverColor: '#ea580c' },
+    { key: 'expiring_30d', label: 'Expiring ≤30d', color: '#eab308', hoverColor: '#ca8a04' },
+    { key: 'safe', label: 'Safe', color: '#10b981', hoverColor: '#059669' }
+  ];
 
   return (
     <div className="page-container">
       {/* ── Page Header & Top Tabs ── */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '20px',
-        borderBottom: '2px solid var(--border-color)',
-        paddingBottom: '12px'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+          marginBottom: '20px',
+          borderBottom: '2px solid var(--border-color)',
+          paddingBottom: '12px'
+        }}
+      >
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
             { id: 'sales', label: 'Sales Report', icon: DollarSign },
@@ -219,23 +168,112 @@ const ReportsPage = () => {
             );
           })}
         </div>
+      </div>
 
-        {/* Global Period Selector (for Sales tab) */}
-        {activeTab === 'sales' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '700' }}>Period:</span>
-            <select
-              className="form-control"
-              style={{ width: 'auto', minWidth: '130px', fontWeight: '700' }}
-              value={salesPeriod}
-              onChange={(e) => setSalesPeriod(e.target.value)}
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly (Last 7d)</option>
-              <option value="monthly">Monthly (Last 30d)</option>
-            </select>
+      {/* ── Shared Filter Bar (All 4 Tabs) ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          background: 'rgba(42, 12, 16, 0.85)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '10px',
+          padding: '12px 18px',
+          marginBottom: '24px'
+        }}
+      >
+        {/* View By Toggle: Daily / Monthly / Yearly */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '700' }}>
+            View by:
+          </span>
+          <div
+            style={{
+              display: 'inline-flex',
+              background: 'rgba(20, 5, 8, 0.65)',
+              borderRadius: '8px',
+              padding: '3px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}
+          >
+            {[
+              { id: 'daily', label: 'Daily' },
+              { id: 'monthly', label: 'Monthly' },
+              { id: 'yearly', label: 'Yearly' }
+            ].map((g) => {
+              const isSelected = granularity === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  style={{
+                    border: 'none',
+                    background: isSelected ? 'var(--primary-admin, #be123c)' : 'transparent',
+                    color: isSelected ? '#ffffff' : '#d9c7b5',
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => handleGranularityChange(g.id)}
+                >
+                  {g.label}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
+
+        {/* Date Range: From and To Inputs */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={15} color="#e5d5c3" />
+            <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600' }}>From:</span>
+            <input
+              type="date"
+              className="form-control"
+              style={{
+                width: 'auto',
+                minWidth: '140px',
+                padding: '6px 10px',
+                fontSize: '13px',
+                fontWeight: '600',
+                background: 'rgba(20, 5, 8, 0.7)',
+                color: '#fdf2e3',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '6px'
+              }}
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600' }}>To:</span>
+            <input
+              type="date"
+              className="form-control"
+              style={{
+                width: 'auto',
+                minWidth: '140px',
+                padding: '6px 10px',
+                fontSize: '13px',
+                fontWeight: '600',
+                background: 'rgba(20, 5, 8, 0.7)',
+                color: '#fdf2e3',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '6px'
+              }}
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -243,64 +281,80 @@ const ReportsPage = () => {
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'sales' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-          {/* 1. Summary Cards */}
+          {/* 1. Summary KPI Cards */}
           <div className="kpi-grid">
             <div className="kpi-card">
-              <div className="kpi-label">Total Revenue</div>
-              <div className="kpi-value" style={{ color: 'var(--primary-admin)' }}>
-                ₱{Number(salesReport?.summary?.total_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <div className="kpi-label">TOTAL REVENUE</div>
+              <div className="kpi-value" style={{ color: 'var(--primary-admin, #f43f5e)' }}>
+                {formatPeso(salesReport?.summary?.total_revenue)}
               </div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">Total Transactions</div>
+              <div className="kpi-label">TOTAL TRANSACTIONS</div>
               <div className="kpi-value">
                 {salesReport?.summary?.total_transactions || 0}
               </div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">Avg Transaction Value</div>
+              <div className="kpi-label">AVG TRANSACTION VALUE</div>
               <div className="kpi-value">
-                ₱{Number(salesReport?.summary?.average_transaction_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatPeso(salesReport?.summary?.average_transaction_value)}
               </div>
             </div>
           </div>
 
-          {/* 2. Meat Category Sales Distribution (Single Full-Width Pie Chart) */}
+          {/* 2. ONE Single Bar Graph: Sales Over Time */}
           <div className="card" style={{ marginBottom: 0, width: '100%' }}>
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div
+              className="card-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginBottom: '16px'
+              }}
+            >
               <div>
                 <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <PieChartIcon size={18} color="var(--primary-admin)" />
-                  Sales Volume by Meat Category
+                  <TrendingUp size={18} color="var(--primary-admin, #f43f5e)" />
+                  Sales Volume &amp; Revenue Over Time
                 </span>
-                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '600', marginTop: '3px' }}>
-                  Total {categoryMetric === 'revenue' ? 'Revenue' : 'Volume'}:{' '}
-                  <span style={{ color: 'var(--primary-admin)', fontWeight: '700' }}>
-                    {categoryMetric === 'revenue'
-                      ? `₱${Number(totalCategoryDonut).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      : `${Number(totalCategoryDonut).toFixed(2)} kg`}
+                <div style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600', marginTop: '3px' }}>
+                  Total {salesMetric === 'revenue' ? 'Revenue' : 'Volume'}:{' '}
+                  <span style={{ color: 'var(--primary-admin, #f43f5e)', fontWeight: '700' }}>
+                    {salesMetric === 'revenue'
+                      ? formatPeso(salesReport?.summary?.total_revenue)
+                      : formatWeight(salesReport?.summary?.total_volume_kg)}
                   </span>
                 </div>
               </div>
 
-              {/* Metric Toggle */}
-              <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: '8px', padding: '3px' }}>
+              {/* Metric Toggle: Revenue (₱) / Volume (kg) */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  background: 'rgba(20, 5, 8, 0.65)',
+                  borderRadius: '8px',
+                  padding: '3px',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
                 <button
                   type="button"
                   style={{
                     border: 'none',
-                    background: categoryMetric === 'revenue' ? '#ffffff' : 'transparent',
-                    color: categoryMetric === 'revenue' ? 'var(--primary-admin)' : '#64748b',
+                    background: salesMetric === 'revenue' ? 'var(--primary-admin, #be123c)' : 'transparent',
+                    color: salesMetric === 'revenue' ? '#ffffff' : '#d9c7b5',
                     fontWeight: '700',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    boxShadow: categoryMetric === 'revenue' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
-                  onClick={() => setCategoryMetric('revenue')}
+                  onClick={() => setSalesMetric('revenue')}
                 >
                   Revenue (₱)
                 </button>
@@ -308,44 +362,44 @@ const ReportsPage = () => {
                   type="button"
                   style={{
                     border: 'none',
-                    background: categoryMetric === 'volume' ? '#ffffff' : 'transparent',
-                    color: categoryMetric === 'volume' ? 'var(--primary-admin)' : '#64748b',
+                    background: salesMetric === 'volume' ? 'var(--primary-admin, #be123c)' : 'transparent',
+                    color: salesMetric === 'volume' ? '#ffffff' : '#d9c7b5',
                     fontWeight: '700',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    boxShadow: categoryMetric === 'volume' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
-                  onClick={() => setCategoryMetric('volume')}
+                  onClick={() => setSalesMetric('volume')}
                 >
                   Volume (kg)
                 </button>
               </div>
             </div>
 
-            <DonutChart
-              data={categorySalesDonutData}
-              isDoughnut={false}
+            <ReportBarChart
+              data={salesReport?.chartData || []}
+              type="standard"
+              metricKey={salesMetric === 'revenue' ? 'revenue' : 'volume_kg'}
+              labelKey="label"
+              barLabel={salesMetric === 'revenue' ? 'Revenue (₱)' : 'Volume (kg)'}
+              barColor={salesMetric === 'revenue' ? 'rgba(225, 29, 72, 0.85)' : 'rgba(245, 158, 11, 0.85)'}
+              hoverColor={salesMetric === 'revenue' ? 'rgba(225, 29, 72, 1)' : 'rgba(245, 158, 11, 1)'}
               loading={loading}
-              fullWidth={true}
-              chartSize={260}
-              thresholdPercent={0}
-              emptyMessage="No sales data for this period"
+              emptyMessage="No data for the selected period."
               formatValue={(val) =>
-                categoryMetric === 'revenue'
-                  ? `₱${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : `${Number(val).toFixed(2)} kg`
+                salesMetric === 'revenue' ? formatPeso(val) : formatWeight(val)
               }
+              height={280}
             />
           </div>
 
-          {/* 3. Top Selling Meat Cuts (Table) */}
+          {/* 3. Top Selling Meat Cuts Table */}
           <div className="card" style={{ marginBottom: 0 }}>
             <div className="card-header">
               <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Trophy size={18} color="var(--warning)" />
+                <Trophy size={18} color="var(--warning, #eab308)" />
                 Top Selling Meat Cuts Summary
               </span>
             </div>
@@ -353,29 +407,29 @@ const ReportsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Rank</th>
-                    <th>Product</th>
-                    <th>Cut</th>
-                    <th>Volume Sold</th>
-                    <th>Revenue</th>
+                    <th>RANK</th>
+                    <th>PRODUCT</th>
+                    <th>CUT</th>
+                    <th>VOLUME SOLD</th>
+                    <th>REVENUE</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bestSellers.map((b, idx) => (
+                  {salesReport?.topSellingCuts?.map((b, idx) => (
                     <tr key={idx}>
                       <td><strong>#{idx + 1}</strong></td>
                       <td><strong>{b.product_name}</strong></td>
                       <td>{b.meat_cut}</td>
-                      <td>{Number(b.total_kg_sold).toFixed(3)} kg</td>
-                      <td style={{ fontWeight: 'bold', color: 'var(--primary-admin)' }}>
-                        ₱{Number(b.total_revenue_generated).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td>{formatWeight(b.total_kg_sold, 3)}</td>
+                      <td style={{ fontWeight: 'bold', color: 'var(--primary-admin, #f43f5e)' }}>
+                        {formatPeso(b.total_revenue_generated)}
                       </td>
                     </tr>
                   ))}
-                  {bestSellers.length === 0 && (
+                  {(!salesReport?.topSellingCuts || salesReport.topSellingCuts.length === 0) && (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No sales analytics available yet
+                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
+                        No data for the selected period.
                       </td>
                     </tr>
                   )}
@@ -384,57 +438,11 @@ const ReportsPage = () => {
             </div>
           </div>
 
-          {/* 4. Daily Revenue Trends */}
+          {/* 4. Sales Transactions & Receipts Table */}
           <div className="card" style={{ marginBottom: 0 }}>
             <div className="card-header">
               <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <TrendingUp size={18} color="var(--success)" />
-                Daily Revenue Trends ({salesPeriod === 'daily' ? 'Last 7 Days' : salesPeriod === 'weekly' ? 'Last 14 Days' : 'Last 30 Days'})
-              </span>
-            </div>
-
-            {/* Bar/Line Trend Chart */}
-            <div style={{ marginBottom: '20px' }}>
-              <RevenueTrendChart data={revenueTrends} loading={loading} />
-            </div>
-
-            {/* Trends Table */}
-            <div className="table-responsive">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Transactions Count</th>
-                    <th>Daily Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {revenueTrends.map((t, idx) => (
-                    <tr key={idx}>
-                      <td>{t.date}</td>
-                      <td>{t.total_sales_count} sale(s)</td>
-                      <td style={{ fontWeight: 'bold', color: 'var(--success)' }}>
-                        ₱{Number(t.daily_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                  {revenueTrends.length === 0 && (
-                    <tr>
-                      <td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No trend data recorded for this period
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* 5. Sales Receipts Table */}
-          <div className="card" style={{ marginBottom: 0 }}>
-            <div className="card-header">
-              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Receipt size={18} color="var(--primary-admin)" />
+                <Receipt size={18} color="var(--primary-admin, #f43f5e)" />
                 Sales Transactions &amp; Receipts ({salesReport?.transactions?.length || 0})
               </span>
             </div>
@@ -442,13 +450,13 @@ const ReportsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Receipt No.</th>
-                    <th>Cashier</th>
-                    <th>Subtotal</th>
-                    <th>Discount</th>
-                    <th>Total Amount</th>
-                    <th>Payment</th>
-                    <th>Date &amp; Time</th>
+                    <th>RECEIPT NO.</th>
+                    <th>CASHIER</th>
+                    <th>SUBTOTAL</th>
+                    <th>DISCOUNT</th>
+                    <th>TOTAL AMOUNT</th>
+                    <th>PAYMENT</th>
+                    <th>DATE &amp; TIME</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -456,9 +464,9 @@ const ReportsPage = () => {
                     <tr key={t.id}>
                       <td><strong>{t.receipt_no}</strong></td>
                       <td>{t.cashier_name}</td>
-                      <td>₱{Number(t.subtotal).toFixed(2)}</td>
-                      <td>₱{Number(t.discount).toFixed(2)}</td>
-                      <td style={{ fontWeight: 'bold' }}>₱{Number(t.total_amount).toFixed(2)}</td>
+                      <td>{formatPeso(t.subtotal)}</td>
+                      <td>{formatPeso(t.discount)}</td>
+                      <td style={{ fontWeight: 'bold' }}>{formatPeso(t.total_amount)}</td>
                       <td>
                         <span className="badge badge-info">{t.payment_method?.toUpperCase()}</span>
                       </td>
@@ -467,8 +475,8 @@ const ReportsPage = () => {
                   ))}
                   {(!salesReport?.transactions || salesReport.transactions.length === 0) && (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No sales transactions found for this period
+                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
+                        No data for the selected period.
                       </td>
                     </tr>
                   )}
@@ -484,39 +492,27 @@ const ReportsPage = () => {
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'inventory' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-          {/* Inventory Charts Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-
-            {/* Donut of Stock by Meat Category */}
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header" style={{ marginBottom: '16px' }}>
-                <span className="card-title">Stock Volume by Meat Category</span>
-              </div>
-              <DonutChart
-                data={inventoryByCategory}
-                isDoughnut={true}
-                loading={loading}
-                centerLabel="Total Stock"
-                centerValue={`${Number(totalInventoryKg).toFixed(1)} kg`}
-                formatValue={(val) => `${Number(val).toFixed(2)} kg`}
-              />
+          {/* Exactly ONE Bar Graph: Stock Received Over Time */}
+          <div className="card" style={{ marginBottom: 0, width: '100%' }}>
+            <div className="card-header" style={{ marginBottom: '16px' }}>
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Package size={18} color="#10b981" />
+                Stock Received Over Time (kg)
+              </span>
             </div>
-
-            {/* Donut of Stock Status */}
-            <div className="card" style={{ marginBottom: 0 }}>
-              <div className="card-header" style={{ marginBottom: '16px' }}>
-                <span className="card-title">Stock Status Breakdown</span>
-              </div>
-              <DonutChart
-                data={inventoryByStatus}
-                isDoughnut={true}
-                loading={loading}
-                centerLabel="Total Batches"
-                centerValue={`${inventoryReport.length} batches`}
-                formatValue={(val) => `${val} batch${val !== 1 ? 'es' : ''}`}
-              />
-            </div>
+            <ReportBarChart
+              data={inventoryReport?.chartData || []}
+              type="standard"
+              metricKey="received_kg"
+              labelKey="label"
+              barLabel="Stock Received (kg)"
+              barColor="rgba(16, 185, 129, 0.85)"
+              hoverColor="rgba(16, 185, 129, 1)"
+              loading={loading}
+              emptyMessage="No data for the selected period."
+              formatValue={(val) => formatWeight(val)}
+              height={280}
+            />
           </div>
 
           {/* Current Inventory Status Table */}
@@ -528,41 +524,43 @@ const ReportsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Batch</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Supplier</th>
-                    <th>Available Stock</th>
-                    <th>Expiry Date</th>
-                    <th>Status</th>
+                    <th>BATCH</th>
+                    <th>PRODUCT</th>
+                    <th>CATEGORY</th>
+                    <th>SUPPLIER</th>
+                    <th>AVAILABLE STOCK</th>
+                    <th>EXPIRY DATE</th>
+                    <th>STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {inventoryReport.map((i) => (
+                  {inventoryReport?.batches?.map((i) => (
                     <tr key={i.id}>
                       <td>{i.batch_no}</td>
                       <td><strong>{i.product_name}</strong></td>
                       <td>{i.category_name}</td>
                       <td>{i.supplier_name}</td>
-                      <td>{Number(i.available_stock_kg).toFixed(3)} kg</td>
+                      <td>{formatWeight(i.available_stock_kg, 3)}</td>
                       <td>{i.expiration_date}</td>
                       <td>
-                        <span className={`badge ${
-                          i.status === 'available'
-                            ? 'badge-success'
-                            : i.status === 'low'
-                              ? 'badge-warning'
-                              : 'badge-danger'
-                        }`}>
-                          {i.status.toUpperCase()}
+                        <span
+                          className={`badge ${
+                            i.status === 'available'
+                              ? 'badge-success'
+                              : i.status === 'low'
+                                ? 'badge-warning'
+                                : 'badge-danger'
+                          }`}
+                        >
+                          {i.status?.toUpperCase()}
                         </span>
                       </td>
                     </tr>
                   ))}
-                  {inventoryReport.length === 0 && (
+                  {(!inventoryReport?.batches || inventoryReport.batches.length === 0) && (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No inventory batches recorded
+                      <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
+                        No data for the selected period.
                       </td>
                     </tr>
                   )}
@@ -578,19 +576,23 @@ const ReportsPage = () => {
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'expiry' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-          {/* Expiry Status Pie Chart */}
-          <div className="card" style={{ marginBottom: 0 }}>
+          {/* Exactly ONE Bar Graph (Stacked): Batches Expiring Over Time */}
+          <div className="card" style={{ marginBottom: 0, width: '100%' }}>
             <div className="card-header" style={{ marginBottom: '16px' }}>
-              <span className="card-title">Batches by Expiry Status</span>
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} color="#eab308" />
+                Batches Expiring Over Time
+              </span>
             </div>
-            <DonutChart
-              data={expiryByFlag}
-              isDoughnut={false}
+            <ReportBarChart
+              data={expiryReport?.chartData || []}
+              type="stacked"
+              stackedDatasets={expiryStackedDatasets}
+              labelKey="label"
               loading={loading}
-              centerLabel="Monitored"
-              centerValue={`${expiryReport.length} batches`}
+              emptyMessage="No data for the selected period."
               formatValue={(val) => `${val} batch${val !== 1 ? 'es' : ''}`}
+              height={280}
             />
           </div>
 
@@ -603,39 +605,43 @@ const ReportsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Batch</th>
-                    <th>Product</th>
-                    <th>Supplier</th>
-                    <th>Stock Remaining</th>
-                    <th>Expiration Date</th>
-                    <th>Flag</th>
+                    <th>BATCH</th>
+                    <th>PRODUCT</th>
+                    <th>SUPPLIER</th>
+                    <th>STOCK REMAINING</th>
+                    <th>EXPIRATION DATE</th>
+                    <th>FLAG</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {expiryReport.map((e) => (
+                  {expiryReport?.batches?.map((e) => (
                     <tr key={e.id}>
                       <td>{e.batch_no}</td>
                       <td><strong>{e.product_name}</strong></td>
                       <td>{e.supplier_name}</td>
-                      <td>{Number(e.available_stock_kg).toFixed(3)} kg</td>
+                      <td>{formatWeight(e.available_stock_kg, 3)}</td>
                       <td>{e.expiration_date}</td>
                       <td>
-                        <span className={`badge ${
-                          e.expiry_flag === 'Expired'
-                            ? 'badge-danger'
-                            : e.expiry_flag === 'Expiring Soon'
-                              ? 'badge-warning'
-                              : 'badge-success'
-                        }`}>
+                        <span
+                          className={`badge ${
+                            e.expiry_flag === 'Expired'
+                              ? 'badge-danger'
+                              : e.expiry_flag === 'Expiring ≤7d'
+                                ? 'badge-danger'
+                                : e.expiry_flag === 'Expiring ≤30d'
+                                  ? 'badge-warning'
+                                  : 'badge-success'
+                          }`}
+                        >
                           {e.expiry_flag}
                         </span>
                       </td>
                     </tr>
                   ))}
-                  {expiryReport.length === 0 && (
+                  {(!expiryReport?.batches || expiryReport.batches.length === 0) && (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No batches near expiration or expired
+                      <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
+                        No data for the selected period.
                       </td>
                     </tr>
                   )}
@@ -651,23 +657,30 @@ const ReportsPage = () => {
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'suppliers' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-          {/* Supply Volume Pie Chart */}
-          <div className="card" style={{ marginBottom: 0 }}>
+          {/* Exactly ONE Bar Graph: Supply Volume Over Time */}
+          <div className="card" style={{ marginBottom: 0, width: '100%' }}>
             <div className="card-header" style={{ marginBottom: '16px' }}>
-              <span className="card-title">Supply Volume by Supplier (kg)</span>
+              <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Truck size={18} color="#38bdf8" />
+                Supply Volume Over Time (kg)
+              </span>
             </div>
-            <DonutChart
-              data={supplierVolumeData}
-              isDoughnut={true}
+            <ReportBarChart
+              data={supplierReport?.chartData || []}
+              type="standard"
+              metricKey="supply_volume_kg"
+              labelKey="label"
+              barLabel="Supply Volume (kg)"
+              barColor="rgba(56, 189, 248, 0.85)"
+              hoverColor="rgba(56, 189, 248, 1)"
               loading={loading}
-              centerLabel="Total Supplied"
-              centerValue={`${Number(totalSuppliedKg).toFixed(1)} kg`}
-              formatValue={(val) => `${Number(val).toFixed(2)} kg`}
+              emptyMessage="No data for the selected period."
+              formatValue={(val) => formatWeight(val)}
+              height={280}
             />
           </div>
 
-          {/* Supplier Activity Table */}
+          {/* Supplier Activity & Volume Report Table */}
           <div className="card" style={{ marginBottom: 0 }}>
             <div className="card-header">
               <span className="card-title">Supplier Activity &amp; Volume Report</span>
@@ -676,29 +689,29 @@ const ReportsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Supplier</th>
-                    <th>Contact Person</th>
-                    <th>Phone</th>
-                    <th>Batches Delivered</th>
-                    <th>Total Weight Delivered (kg)</th>
+                    <th>SUPPLIER</th>
+                    <th>CONTACT PERSON</th>
+                    <th>PHONE</th>
+                    <th>BATCHES DELIVERED</th>
+                    <th>TOTAL WEIGHT DELIVERED</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {supplierReport.map((s) => (
+                  {supplierReport?.suppliers?.map((s) => (
                     <tr key={s.id}>
                       <td><strong>{s.supplier_name}</strong></td>
                       <td>{s.contact_person || '—'}</td>
                       <td>{s.phone || '—'}</td>
                       <td>{s.total_batches_supplied} batch(es)</td>
-                      <td style={{ fontWeight: 'bold', color: 'var(--primary-admin)' }}>
-                        {Number(s.total_weight_supplied_kg).toFixed(3)} kg
+                      <td style={{ fontWeight: 'bold', color: 'var(--primary-admin, #f43f5e)' }}>
+                        {formatWeight(s.total_weight_supplied_kg, 3)}
                       </td>
                     </tr>
                   ))}
-                  {supplierReport.length === 0 && (
+                  {(!supplierReport?.suppliers || supplierReport.suppliers.length === 0) && (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No supplier activity recorded
+                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted, #d9c7b5)' }}>
+                        No data for the selected period.
                       </td>
                     </tr>
                   )}
