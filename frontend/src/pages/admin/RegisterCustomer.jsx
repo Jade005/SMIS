@@ -165,11 +165,10 @@ const RegisterCustomer = () => {
               <input
                 type="email"
                 name="email"
-                className="form-control"
+                className="form-control auto-filled-input"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="customer@email.com"
-                style={{ background: formData.email ? '#f0fdf4' : undefined }}
                 required
               />
             </div>
@@ -180,8 +179,8 @@ const RegisterCustomer = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  className="form-control"
-                  style={{ width: '100%', paddingRight: '40px', background: formData.password ? '#f0fdf4' : undefined }}
+                  className="form-control auto-filled-input"
+                  style={{ width: '100%', paddingRight: '40px' }}
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Set account password"
@@ -190,9 +189,22 @@ const RegisterCustomer = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, display: 'flex', alignItems: 'center' }}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#111111',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={16} color="#111111" /> : <Eye size={16} color="#111111" />}
                 </button>
               </div>
             </div>

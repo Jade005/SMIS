@@ -700,6 +700,42 @@ select.form-control option {
   color: var(--fat);
 }
 
+/* Auto-filled input on Register Customer page */
+.auto-filled-input {
+  background-color: #f0fdf4 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000 !important;
+  font-weight: 500 !important;
+}
+
+.auto-filled-input::placeholder {
+  color: #4b5563 !important;
+  -webkit-text-fill-color: #4b5563 !important;
+  opacity: 1 !important;
+}
+
+.auto-filled-input:focus {
+  background-color: #f0fdf4 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000 !important;
+  border-color: #86efac !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2) !important;
+}
+
+.auto-filled-input:-webkit-autofill,
+.auto-filled-input:-webkit-autofill:hover,
+.auto-filled-input:-webkit-autofill:focus,
+.auto-filled-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #000000 !important;
+  caret-color: #000000 !important;
+  font-weight: 500 !important;
+  -webkit-box-shadow: 0 0 0 1000px #f0fdf4 inset !important;
+  box-shadow: 0 0 0 1000px #f0fdf4 inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
 /* ════════════════════════════════════════════════════════
    MODALS & DRAWERS
    ════════════════════════════════════════════════════════ */
