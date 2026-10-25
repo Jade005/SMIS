@@ -5,16 +5,7 @@ import { User, Mail, Phone, Edit2, Lock, AtSign, Clock } from 'lucide-react';
 import EditProfileModal from '../../components/shared/EditProfileModal';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal';
 import PageLoader from '../../components/common/PageLoader';
-
-const resolveAvatarUrl = (userObj) => {
-  if (!userObj) return null;
-  const path = userObj.profile_picture || userObj.profile_image;
-  if (!path) return null;
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path;
-  }
-  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { resolveAvatarUrl } from '../../utils/urlHelper';
 
 const CustomerProfile = () => {
   const { user } = useAuth();

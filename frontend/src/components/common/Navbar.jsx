@@ -3,16 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LogOut, User, Lock, ChevronDown } from 'lucide-react';
 import EditProfileModal from '../shared/EditProfileModal';
 import ChangePasswordModal from '../shared/ChangePasswordModal';
-
-const resolveAvatarUrl = (userObj) => {
-  if (!userObj) return null;
-  const path = userObj.profile_picture || userObj.profile_image;
-  if (!path) return null;
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path;
-  }
-  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { resolveAvatarUrl } from '../../utils/urlHelper';
 
 const Navbar = ({ title }) => {
   const { user, logout } = useAuth();

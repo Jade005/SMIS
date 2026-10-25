@@ -95,13 +95,16 @@ const CustomerCatalog = () => {
 
   // Add to cart handler
   const handleAdd = (product) => {
-    const stock = Number(product.total_available_stock_kg) || 0;
-    if (stock <= 0) return;
+    const stock = Number(product.total_available_stock_kg ?? product.available_stock_kg) || 0;
+    if (stock <= 0) {
+      alert(`"${product.name}" is currently out of stock.`);
+      return;
+    }
 
     const requestedQty = getQty(product.id);
     const finalQty = Math.min(requestedQty, stock);
 
-    addToCart({
+    const result = addToCart({
       product_id: product.id,
       product_name: product.name,
       meat_cut: product.meat_cut,
@@ -109,13 +112,19 @@ const CustomerCatalog = () => {
       category_name: product.category_name,
       price_per_kg: Number(product.price_per_kg),
       weight_kg: finalQty,
+      available_stock_kg: stock,
+      total_available_stock_kg: stock,
       image_url: product.image_url
     });
 
-    setAddedIds((prev) => ({ ...prev, [product.id]: true }));
-    setTimeout(() => {
-      setAddedIds((prev) => ({ ...prev, [product.id]: false }));
-    }, 1200);
+    if (result && result.success) {
+      setAddedIds((prev) => ({ ...prev, [product.id]: true }));
+      setTimeout(() => {
+        setAddedIds((prev) => ({ ...prev, [product.id]: false }));
+      }, 1400);
+    } else {
+      alert(result?.message || `Unable to add ${product.name} to cart.`);
+    }
   };
 
   // Calculate total items in cart

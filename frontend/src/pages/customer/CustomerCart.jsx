@@ -118,6 +118,8 @@ const CustomerCart = () => {
                       const itemKey = item.cart_item_id || item.product_id;
                       const itemImg = getProductImage(item);
                       const itemSubtotal = (item.price_per_kg * item.weight_kg);
+                      const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg) || 0;
+                      const isAtMax = maxStock > 0 && item.weight_kg >= maxStock;
 
                       return (
                         <tr key={itemKey} style={{ borderBottom: '1px solid rgba(246, 235, 221, 0.08)' }}>
@@ -168,6 +170,7 @@ const CustomerCart = () => {
                                 type="number"
                                 step="0.5"
                                 min="0.5"
+                                max={maxStock > 0 ? maxStock : undefined}
                                 style={{
                                   width: '54px',
                                   padding: '2px',
@@ -181,29 +184,41 @@ const CustomerCart = () => {
                                   outline: 'none'
                                 }}
                                 value={item.weight_kg}
-                                onChange={(e) => updateWeight(itemKey, Math.max(0.5, parseFloat(e.target.value) || 0.5))}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val)) {
+                                    const clamped = maxStock > 0 ? Math.min(maxStock, Math.max(0.5, val)) : Math.max(0.5, val);
+                                    updateWeight(itemKey, clamped);
+                                  }
+                                }}
                               />
                               <button
                                 type="button"
-                                onClick={() => updateWeight(itemKey, item.weight_kg + 0.5)}
+                                onClick={() => updateWeight(itemKey, maxStock > 0 ? Math.min(maxStock, item.weight_kg + 0.5) : item.weight_kg + 0.5)}
+                                disabled={isAtMax}
                                 style={{
                                   width: '26px',
                                   height: '26px',
                                   borderRadius: '6px',
                                   border: '1px solid rgba(246, 235, 221, 0.18)',
-                                  background: 'rgba(246, 235, 221, 0.06)',
-                                  cursor: 'pointer',
+                                  background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
+                                  cursor: isAtMax ? 'not-allowed' : 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  color: '#fdf2e3',
+                                  color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
                                   transition: 'all 0.15s ease'
                                 }}
-                                title="Increase weight"
+                                title={isAtMax ? `Maximum available stock (${maxStock} kg) reached` : "Increase weight"}
                               >
                                 <Plus size={12} />
                               </button>
                             </div>
+                            {maxStock > 0 && (
+                              <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '4px', fontWeight: '600' }}>
+                                Stock: {maxStock.toFixed(1)} kg
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '16px 18px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '15px' }}>
                             ₱{itemSubtotal.toFixed(2)}
@@ -245,6 +260,8 @@ const CustomerCart = () => {
                   const itemKey = item.cart_item_id || item.product_id;
                   const itemImg = getProductImage(item);
                   const itemSubtotal = (item.price_per_kg * item.weight_kg);
+                  const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
+                  const isAtMax = maxStock > 0 && item.weight_kg >= maxStock;
 
                   return (
                     <div
@@ -295,63 +312,79 @@ const CustomerCart = () => {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(246, 235, 221, 0.08)' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
-                          <button
-                            type="button"
-                            onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
-                            disabled={item.weight_kg <= 0.5}
-                            style={{
-                              width: '26px',
-                              height: '26px',
-                              borderRadius: '6px',
-                              border: '1px solid rgba(246, 235, 221, 0.18)',
-                              background: 'rgba(246, 235, 221, 0.06)',
-                              color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-                              cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <Minus size={12} />
-                          </button>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0.5"
-                            style={{
-                              width: '50px',
-                              padding: '2px',
-                              textAlign: 'center',
-                              fontWeight: '800',
-                              fontSize: '13px',
-                              border: 'none',
-                              background: 'transparent',
-                              color: '#fdf2e3',
-                              outline: 'none'
-                            }}
-                            value={item.weight_kg}
-                            onChange={(e) => updateWeight(itemKey, Math.max(0.5, parseFloat(e.target.value) || 0.5))}
-                          />
-                          <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
-                          <button
-                            type="button"
-                            onClick={() => updateWeight(itemKey, item.weight_kg + 0.5)}
-                            style={{
-                              width: '26px',
-                              height: '26px',
-                              borderRadius: '6px',
-                              border: '1px solid rgba(246, 235, 221, 0.18)',
-                              background: 'rgba(246, 235, 221, 0.06)',
-                              color: '#fdf2e3',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                          >
-                            <Plus size={12} />
-                          </button>
+                        <div>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
+                            <button
+                              type="button"
+                              onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
+                              disabled={item.weight_kg <= 0.5}
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(246, 235, 221, 0.18)',
+                                background: 'rgba(246, 235, 221, 0.06)',
+                                color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+                                cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0.5"
+                              max={maxStock > 0 ? maxStock : undefined}
+                              style={{
+                                width: '50px',
+                                padding: '2px',
+                                textAlign: 'center',
+                                fontWeight: '800',
+                                fontSize: '13px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#fdf2e3',
+                                outline: 'none'
+                              }}
+                              value={item.weight_kg}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  const clamped = maxStock > 0 ? Math.min(maxStock, Math.max(0.5, val)) : Math.max(0.5, val);
+                                  updateWeight(itemKey, clamped);
+                                }
+                              }}
+                            />
+                            <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
+                            <button
+                              type="button"
+                              onClick={() => updateWeight(itemKey, maxStock > 0 ? Math.min(maxStock, item.weight_kg + 0.5) : item.weight_kg + 0.5)}
+                              disabled={isAtMax}
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(246, 235, 221, 0.18)',
+                                background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
+                                color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+                                cursor: isAtMax ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              title={isAtMax ? `Maximum available stock (${maxStock} kg) reached` : "Increase weight"}
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                          {maxStock > 0 && (
+                            <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '4px', fontWeight: '600' }}>
+                              Stock: {maxStock.toFixed(1)} kg
+                            </div>
+                          )}
                         </div>
 
                         <div style={{ textAlign: 'right' }}>

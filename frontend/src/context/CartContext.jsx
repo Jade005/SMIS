@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 const CartContext = createContext(null);
 
 const getStorageKey = (currentUser) => {
-  if (!currentUser || !currentUser.id) return null;
+  if (!currentUser || !currentUser.id) return 'cart_guest';
   if (currentUser.role === 'cashier') return `cart_cashier_${currentUser.id}`;
   return `cart_${currentUser.id}`;
 };
@@ -67,24 +67,67 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (item) => {
-    const maxStock = Number(item.available_stock_kg) || 0;
-    if (maxStock <= 0) return;
+    const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock ?? 0);
+    const addWeight = Number(item.weight_kg) || 1;
+
+    if (maxStock <= 0) {
+      return { success: false, reason: 'out_of_stock', message: 'Item is currently out of stock.' };
+    }
+
+    let addedSuccessfully = true;
+    let finalAddedWeight = addWeight;
+    let failureReason = '';
 
     updateAndPersistCart((prev) => {
-      const existing = prev.find((i) => i.inventory_id === item.inventory_id);
-      if (existing) {
-        const newWeight = Math.min(maxStock, Number((existing.weight_kg + 1).toFixed(3)));
-        return prev.map((i) => i.cart_item_id === existing.cart_item_id ? { ...i, weight_kg: newWeight } : i);
+      // Find existing item by inventory_id (cashier POS) or product_id (customer catalog)
+      const existingIndex = prev.findIndex((i) => {
+        if (item.inventory_id && i.inventory_id) {
+          return i.inventory_id === item.inventory_id;
+        }
+        return i.product_id === item.product_id;
+      });
+
+      if (existingIndex > -1) {
+        const existing = prev[existingIndex];
+        const effectiveMax = maxStock > 0 ? maxStock : (Number(existing.available_stock_kg) || 9999);
+        const combinedWeight = Number((existing.weight_kg + addWeight).toFixed(3));
+        const cappedWeight = Math.min(effectiveMax, combinedWeight);
+
+        if (existing.weight_kg >= effectiveMax) {
+          addedSuccessfully = false;
+          failureReason = `Cannot add more: you already have the maximum available stock (${effectiveMax} kg) in your cart.`;
+          return prev;
+        }
+
+        finalAddedWeight = Number((cappedWeight - existing.weight_kg).toFixed(3));
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...existing,
+          ...item,
+          weight_kg: cappedWeight,
+          available_stock_kg: effectiveMax,
+          total_available_stock_kg: effectiveMax
+        };
+        return updated;
       }
-      const initialWeight = Math.min(maxStock, Number(item.weight_kg || 1));
+
+      const initialWeight = maxStock > 0 ? Math.min(maxStock, addWeight) : addWeight;
       const cartItem = {
         ...item,
-        cart_item_id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        cart_item_id: item.cart_item_id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         weight_kg: initialWeight,
-        source: item.source || 'walkin' // 'preorder' | 'walkin'
+        available_stock_kg: maxStock,
+        total_available_stock_kg: maxStock,
+        source: item.source || (item.inventory_id ? 'walkin' : 'preorder')
       };
       return [...prev, cartItem];
     });
+
+    return {
+      success: addedSuccessfully,
+      weightAdded: finalAddedWeight,
+      message: addedSuccessfully ? 'Item added to cart.' : failureReason
+    };
   };
 
   /**
@@ -153,7 +196,7 @@ export const CartProvider = ({ children }) => {
           item.inventory_id === cartItemIdOrInventoryId ||
           item.product_id === cartItemIdOrInventoryId
         ) {
-          const maxAllowed = Number(item.available_stock_kg) || 0;
+          const maxAllowed = Number(item.available_stock_kg ?? item.total_available_stock_kg) || 0;
           let clampedWeight = Number(Math.max(0.1, weight).toFixed(3));
           if (maxAllowed > 0 && clampedWeight > maxAllowed) {
             clampedWeight = maxAllowed;

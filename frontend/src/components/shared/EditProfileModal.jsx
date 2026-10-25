@@ -4,14 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { User, Mail, Phone, Camera, X, Check, Loader2, AtSign, Trash2 } from 'lucide-react';
 import Toast from '../common/Toast';
 import ModalWrapper from './ModalWrapper';
-
-const resolveAvatarUrl = (path) => {
-  if (!path) return null;
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path;
-  }
-  return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
-};
+import { resolveAvatarUrl } from '../../utils/urlHelper';
 
 const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) => {
   const { user, setUser } = useAuth();

@@ -356,7 +356,7 @@ const Login = ({ defaultRole }) => {
               className="btn btn-primary btn-lg"
               style={{
                 width: '100%',
-                marginBottom: '16px',
+                marginBottom: 0,
                 background: `linear-gradient(135deg, ${portal.accent}, #A60E1A)`,
                 boxShadow: `0 8px 22px ${portal.accent}55`
               }}
@@ -367,20 +367,6 @@ const Login = ({ defaultRole }) => {
               <ChevronRight size={14} className="arr" />
             </button>
           </form>
-
-          <div style={{
-            textAlign: 'center',
-            marginTop: '16px',
-            fontSize: '12px',
-            color: '#C9B4A6',
-            borderTop: '1px dashed rgba(246, 235, 221, 0.12)',
-            paddingTop: '16px'
-          }}>
-            Need a fresh meat customer account?{' '}
-            <Link to="/register" style={{ color: '#7BD36B', fontWeight: 'bold', textDecoration: 'none' }}>
-              Open account
-            </Link>
-          </div>
         </div>
       </div>
     </div>

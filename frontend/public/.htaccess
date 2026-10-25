@@ -1,0 +1,73 @@
+# ----------------------------------------------------------------------
+# SMIS Frontend - Hostinger Apache / LiteSpeed Production Configuration
+# ----------------------------------------------------------------------
+
+# 1. Single Page Application (SPA) Routing
+# Direct all non-file and non-directory requests to index.html so React Router works.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Don't rewrite if the requested resource exists as an actual file or directory
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Rewrite all other requests to index.html for client-side routing
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# 2. Security Headers
+<IfModule mod_headers.c>
+  # Prevent MIME-type sniffing
+  Header set X-Content-Type-Options "nosniff"
+
+  # Protect against clickjacking
+  Header set X-Frame-Options "SAMEORIGIN"
+
+  # Protect against cross-site scripting
+  Header set X-XSS-Protection "1; mode=block"
+
+  # Control referrer policy
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Never cache index.html so visitors always receive the latest deployment
+  <Files "index.html">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </Files>
+
+  # Cache hashed static assets (JS, CSS, images, fonts) for 1 year
+  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# 3. Gzip / Deflate Compression for high performance
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE application/rss+xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE application/json
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# 4. MIME Types
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType application/json .json
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>
+
+# 5. Disable Directory Browsing
+Options -Indexes

@@ -4,6 +4,8 @@
  * Each cut has a DISTINCT image - no reuse of the same URL across different cuts.
  */
 
+import { resolveServerUrl } from './urlHelper';
+
 // Curated high quality realistic photography for every meat cut
 export const MEAT_CUT_IMAGES = {
   // BEEF
@@ -49,8 +51,8 @@ export const MEAT_CUT_IMAGES = {
   'chicken thigh':        'https://images.unsplash.com/photo-1527477321055-43615852573d?auto=format&fit=crop&w=600&q=80',
   'chicken thigh fillets':'https://images.unsplash.com/photo-1527477321055-43615852573d?auto=format&fit=crop&w=600&q=80',
   'chicken leg':          'https://images.unsplash.com/photo-1518492104633-130d0cc84637?auto=format&fit=crop&w=600&q=80',
-  'chicken drumstick':    'http://localhost:5000/uploads/products/chicken_drumstick.jpg',
-  'chicken drumsticks':   'http://localhost:5000/uploads/products/chicken_drumstick.jpg',
+  'chicken drumstick':    resolveServerUrl('/uploads/products/chicken_drumstick.jpg'),
+  'chicken drumsticks':   resolveServerUrl('/uploads/products/chicken_drumstick.jpg'),
   'chicken wing':         'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=600&q=80',
   'chicken wings':        'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=600&q=80',
   'chicken liver':        'https://images.unsplash.com/photo-1612871689417-26eb7e8b3f96?auto=format&fit=crop&w=600&q=80',
@@ -122,10 +124,7 @@ export const getProductImage = (product) => {
       return url;
     }
     if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-      const rel = url.startsWith('/') ? url : '/' + url;
-      const apiBase = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:5000/api';
-      const serverOrigin = apiBase.replace(/\/api\/?$/, '');
-      return `${serverOrigin}${rel}`;
+      return resolveServerUrl(url);
     }
     return url;
   }
