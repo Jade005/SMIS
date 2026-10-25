@@ -219,6 +219,18 @@ export const CartProvider = ({ children }) => {
     );
   };
 
+  const removeItemsFromCart = (keysToRemove = []) => {
+    const keySet = new Set(keysToRemove.map((k) => String(k)));
+    updateAndPersistCart((prev) =>
+      prev.filter((i) => {
+        const id1 = String(i.cart_item_id || '');
+        const id2 = String(i.inventory_id || '');
+        const id3 = String(i.product_id || '');
+        return !keySet.has(id1) && !keySet.has(id2) && !keySet.has(id3);
+      })
+    );
+  };
+
   const clearCart = () => {
     updateAndPersistCart([]);
     setDiscount(0);
@@ -250,6 +262,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         updateWeight,
         removeFromCart,
+        removeItemsFromCart,
         clearCart,
         // Computed totals
         subtotal,

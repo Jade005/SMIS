@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useCart } from '../../context/CartContext';
 import { createOrderApi } from '../../api/orderApi';
 import { getProductImage } from '../../utils/meatImages';
@@ -7,32 +7,141 @@ import { ShoppingBag, ShoppingCart, Trash2, CheckCircle, ArrowLeft, Plus, Minus,
 import Toast from '../../components/common/Toast';
 
 const CustomerCart = () => {
-  const { cart, updateWeight, removeFromCart, clearCart, subtotal } = useCart();
+  const { cart, updateWeight, removeFromCart, removeItemsFromCart, clearCart } = useCart();
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [lastPartialOrderNotice, setLastPartialOrderNotice] = useState(null);
   const [toast, setToast] = useState({ message: '', type: 'success' });
   const navigate = useNavigate();
 
+  // Selection state: Set of selected item keys
+  const [selectedItemKeys, setSelectedItemKeys] = useState(() => {
+    return new Set(cart.map((i) => i.cart_item_id || i.product_id));
+  });
+
+  // Track known keys to ensure newly added items are checked by default while preserving existing selection states
+  const knownKeysRef = useRef(new Set(cart.map((i) => i.cart_item_id || i.product_id)));
+
+  useEffect(() => {
+    const currentKeys = new Set(cart.map((i) => i.cart_item_id || i.product_id));
+
+    setSelectedItemKeys((prevSelected) => {
+      const nextSelected = new Set();
+      // Keep existing selections that still exist in the cart
+      for (const key of prevSelected) {
+        if (currentKeys.has(key)) {
+          nextSelected.add(key);
+        }
+      }
+      // Newly added items (not in knownKeys) are checked by default
+      for (const key of currentKeys) {
+        if (!knownKeysRef.current.has(key)) {
+          nextSelected.add(key);
+        }
+      }
+      return nextSelected;
+    });
+
+    knownKeysRef.current = currentKeys;
+  }, [cart]);
+
+  // Derived selected items and calculations
+  const selectedItems = useMemo(() => {
+    return cart.filter((i) => selectedItemKeys.has(i.cart_item_id || i.product_id));
+  }, [cart, selectedItemKeys]);
+
+  const selectedCount = selectedItems.length;
+  const allSelected = cart.length > 0 && selectedCount === cart.length;
+  const isIndeterminate = selectedCount > 0 && selectedCount < cart.length;
+
+  const selectedSubtotal = useMemo(() => {
+    return selectedItems.reduce((sum, item) => {
+      return sum + (Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0);
+    }, 0);
+  }, [selectedItems]);
+
+  // Checkbox indeterminate support via ref
+  const selectAllDesktopRef = useRef(null);
+  const selectAllMobileRef = useRef(null);
+
+  useEffect(() => {
+    if (selectAllDesktopRef.current) {
+      selectAllDesktopRef.current.indeterminate = isIndeterminate;
+    }
+    if (selectAllMobileRef.current) {
+      selectAllMobileRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  const handleToggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedItemKeys(new Set());
+    } else {
+      setSelectedItemKeys(new Set(cart.map((i) => i.cart_item_id || i.product_id)));
+    }
+  };
+
+  const handleToggleItem = (itemKey) => {
+    setSelectedItemKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemKey)) {
+        next.delete(itemKey);
+      } else {
+        next.add(itemKey);
+      }
+      return next;
+    });
+  };
+
   const handlePlaceOrder = async () => {
-    if (cart.length === 0) return;
+    if (selectedItems.length === 0) return;
+
+    // Stock check: validate stock only for the selected items
+    for (const item of selectedItems) {
+      const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
+      if (maxStock <= 0) {
+        alert(`"${item.product_name}" is currently out of stock. Please uncheck or remove it before placing your pre-order.`);
+        return;
+      }
+      if (item.weight_kg > maxStock) {
+        alert(`Requested weight for "${item.product_name}" (${item.weight_kg} kg) exceeds available stock (${maxStock.toFixed(1)} kg). Please reduce the weight before placing your pre-order.`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       const orderPayload = {
-        items: cart.map((i) => ({
+        items: selectedItems.map((i) => ({
           product_id: i.product_id,
           weight_kg: i.weight_kg
         })),
-        notes
+        notes: notes.trim() || null
       };
 
       await createOrderApi(orderPayload);
-      clearCart();
-      setOrderSuccess(true);
-      setTimeout(() => {
-        navigate('/customer/orders');
-      }, 1500);
+
+      // Remove ONLY the ordered items from the cart
+      const orderedKeys = selectedItems.map((i) => i.cart_item_id || i.product_id);
+      removeItemsFromCart(orderedKeys);
+      setNotes('');
+
+      const remainingCount = cart.length - selectedItems.length;
+
+      if (remainingCount > 0) {
+        // Customer still has un-ordered items in cart — keep them on page with success notice
+        const noticeMsg = `Pre-order for ${selectedItems.length} item(s) placed successfully! Remaining ${remainingCount} item(s) are saved in your cart.`;
+        setLastPartialOrderNotice(noticeMsg);
+        setToast({ message: noticeMsg, type: 'success' });
+      } else {
+        // All items ordered — show orderSuccess screen / empty state and redirect
+        setOrderSuccess(true);
+        setTimeout(() => {
+          navigate('/customer/orders');
+        }, 1500);
+      }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to place pre-order');
     } finally {
@@ -43,16 +152,79 @@ const CustomerCart = () => {
   const handleRemoveItem = (itemKey, productName) => {
     if (window.confirm(`Remove "${productName || 'this item'}" from your cart?`)) {
       removeFromCart(itemKey);
+      setSelectedItemKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(itemKey);
+        return next;
+      });
       setToast({ message: `Removed "${productName || 'Item'}" from cart.`, type: 'info' });
     }
   };
 
   return (
     <div className="page-container" style={{ maxWidth: '1140px', margin: '0 auto', paddingBottom: '60px' }}>
+      <style>{`
+        .custom-cart-checkbox {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 6px;
+          border: 1.5px solid rgba(246, 235, 221, 0.28);
+          background: #140507;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0;
+          transition: all 0.15s ease;
+          vertical-align: middle;
+          position: relative;
+          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+        .custom-cart-checkbox:hover {
+          border-color: #E5384A;
+          background: #1b0709;
+          box-shadow: 0 0 6px rgba(229, 56, 74, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+        .custom-cart-checkbox:checked {
+          background: linear-gradient(135deg, #E5384A 0%, #C1121F 100%);
+          border-color: #E5384A;
+          box-shadow: 0 0 10px rgba(229, 56, 74, 0.4);
+        }
+        .custom-cart-checkbox:checked::after {
+          content: '';
+          display: block;
+          width: 5px;
+          height: 9px;
+          border: solid #ffffff;
+          border-width: 0 2px 2px 0;
+          transform: rotate(45deg);
+          margin-bottom: 2px;
+        }
+        .custom-cart-checkbox:indeterminate {
+          background: linear-gradient(135deg, #E5384A 0%, #C1121F 100%);
+          border-color: #E5384A;
+          box-shadow: 0 0 10px rgba(229, 56, 74, 0.4);
+        }
+        .custom-cart-checkbox:indeterminate::after {
+          content: '';
+          display: block;
+          width: 10px;
+          height: 2px;
+          background: #ffffff;
+          border-radius: 1px;
+        }
+        .custom-cart-checkbox:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(229, 56, 74, 0.4);
+        }
+      `}</style>
+
       <div className="card" style={{ borderRadius: '16px', border: '1px solid rgba(246, 235, 221, 0.12)', boxShadow: '0 16px 36px rgba(0,0,0,0.5)' }}>
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
           <span className="card-title" style={{ fontSize: '18px', fontWeight: '800' }}>
-            Shopping Cart & Pre-Order Checkout
+            Shopping Cart &amp; Pre-Order Checkout
           </span>
           <button className="btn btn-outline btn-sm" onClick={() => navigate('/customer')} style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '100px' }}>
             <ArrowLeft size={14} /> Continue Shopping
@@ -100,30 +272,88 @@ const CustomerCart = () => {
             
             {/* Cart Items List Container */}
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Partial Order Success Banner (when remaining items stay in cart) */}
+              {lastPartialOrderNotice && (
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.12)',
+                  border: '1px solid rgba(34, 197, 94, 0.35)',
+                  borderRadius: '12px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CheckCircle size={20} color="#22c55e" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', color: '#86efac', fontWeight: '600' }}>
+                      {lastPartialOrderNotice}
+                    </span>
+                  </div>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => navigate('/customer/orders')}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '8px', color: '#86efac', borderColor: 'rgba(34, 197, 94, 0.4)' }}
+                  >
+                    View My Orders
+                  </button>
+                </div>
+              )}
               
               {/* Desktop Table View */}
               <div className="table-responsive cart-desktop-table" style={{ width: '100%', overflowX: 'auto', background: 'var(--ox2)', borderRadius: '12px', border: '1px solid rgba(246, 235, 221, 0.12)' }}>
                 <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '40%', padding: '14px 18px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRODUCT</th>
-                      <th style={{ width: '18%', padding: '14px 18px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRICE / KG</th>
-                      <th style={{ width: '22%', padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>WEIGHT (KG)</th>
-                      <th style={{ width: '12%', padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>SUBTOTAL</th>
-                      <th style={{ width: '8%', padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>REMOVE</th>
+                      <th style={{ width: '44px', padding: '14px 14px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          ref={selectAllDesktopRef}
+                          className="custom-cart-checkbox"
+                          checked={allSelected}
+                          onChange={handleToggleSelectAll}
+                          title={allSelected ? "Uncheck all items" : "Select all items"}
+                          aria-label="Select all items"
+                        />
+                      </th>
+                      <th style={{ width: '38%', padding: '14px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRODUCT</th>
+                      <th style={{ width: '16%', padding: '14px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRICE / KG</th>
+                      <th style={{ width: '22%', padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>WEIGHT (KG)</th>
+                      <th style={{ width: '14%', padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>SUBTOTAL</th>
+                      <th style={{ width: '8%', padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>REMOVE</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cart.map((item) => {
                       const itemKey = item.cart_item_id || item.product_id;
+                      const isSelected = selectedItemKeys.has(itemKey);
                       const itemImg = getProductImage(item);
                       const itemSubtotal = (item.price_per_kg * item.weight_kg);
                       const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg) || 0;
                       const isAtMax = maxStock > 0 && item.weight_kg >= maxStock;
 
                       return (
-                        <tr key={itemKey} style={{ borderBottom: '1px solid rgba(246, 235, 221, 0.08)' }}>
-                          <td style={{ padding: '16px 18px', verticalAlign: 'middle' }}>
+                        <tr
+                          key={itemKey}
+                          style={{
+                            borderBottom: '1px solid rgba(246, 235, 221, 0.08)',
+                            opacity: isSelected ? 1 : 0.65,
+                            transition: 'opacity 0.15s ease'
+                          }}
+                        >
+                          <td style={{ padding: '16px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              className="custom-cart-checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleItem(itemKey)}
+                              title={isSelected ? `Uncheck ${item.product_name}` : `Check ${item.product_name}`}
+                              aria-label={`Select ${item.product_name}`}
+                            />
+                          </td>
+                          <td style={{ padding: '16px 16px', verticalAlign: 'middle' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                               <img
                                 src={itemImg}
@@ -140,10 +370,10 @@ const CustomerCart = () => {
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', whiteSpace: 'nowrap', fontWeight: '600', color: '#fdf2e3' }}>
+                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap', fontWeight: '600', color: '#fdf2e3' }}>
                             ₱{Number(item.price_per_kg).toFixed(2)}
                           </td>
-                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
                               <button
                                 type="button"
@@ -220,10 +450,10 @@ const CustomerCart = () => {
                               </div>
                             )}
                           </td>
-                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '15px' }}>
+                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '15px' }}>
                             ₱{itemSubtotal.toFixed(2)}
                           </td>
-                          <td style={{ padding: '16px 18px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
                             <button
                               type="button"
                               className="btn btn-sm"
@@ -256,8 +486,36 @@ const CustomerCart = () => {
 
               {/* Mobile Card Items View (Visible <= 680px) */}
               <div className="cart-mobile-cards">
+                {/* Mobile Select All Bar */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  background: 'var(--ox2)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(246, 235, 221, 0.12)',
+                  marginBottom: '10px'
+                }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#fdf2e3', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      ref={selectAllMobileRef}
+                      className="custom-cart-checkbox"
+                      checked={allSelected}
+                      onChange={handleToggleSelectAll}
+                      aria-label="Select all items for checkout"
+                    />
+                    <span>Select All ({cart.length} items)</span>
+                  </label>
+                  <span style={{ fontSize: '12px', color: '#fbbf24', fontWeight: '700' }}>
+                    {selectedCount} of {cart.length} selected
+                  </span>
+                </div>
+
                 {cart.map((item) => {
                   const itemKey = item.cart_item_id || item.product_id;
+                  const isSelected = selectedItemKeys.has(itemKey);
                   const itemImg = getProductImage(item);
                   const itemSubtotal = (item.price_per_kg * item.weight_kg);
                   const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
@@ -273,9 +531,46 @@ const CustomerCart = () => {
                         padding: '16px',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px'
+                        gap: '12px',
+                        opacity: isSelected ? 1 : 0.7,
+                        transition: 'opacity 0.15s ease'
                       }}
                     >
+                      {/* Checkbox & Remove Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid rgba(246, 235, 221, 0.08)' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            className="custom-cart-checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleItem(itemKey)}
+                            aria-label={`Select ${item.product_name}`}
+                          />
+                          <span style={{ fontSize: '12px', fontWeight: '700', color: isSelected ? '#fdf2e3' : '#c9b4a6' }}>
+                            {isSelected ? 'Selected for checkout' : 'Select for checkout'}
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(itemKey, item.product_name)}
+                          style={{
+                            color: '#ef4444',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                          title="Remove item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <img
                           src={itemImg}
@@ -293,22 +588,6 @@ const CustomerCart = () => {
                             ₱{Number(item.price_per_kg).toFixed(2)} / kg
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(itemKey, item.product_name)}
-                          style={{
-                            color: '#ef4444',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            padding: '8px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            flexShrink: 0
-                          }}
-                          title="Remove item"
-                        >
-                          <Trash2 size={16} />
-                        </button>
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(246, 235, 221, 0.08)' }}>
@@ -415,14 +694,33 @@ const CustomerCart = () => {
                 Order Summary
               </h3>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px', color: '#d9c7b5' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px', color: '#d9c7b5' }}>
                 <span>Total Items:</span>
-                <span style={{ fontWeight: '700', color: '#ffffff' }}>{cart.length} item(s)</span>
+                <span style={{ fontWeight: '700', color: '#ffffff' }}>{selectedCount} item(s)</span>
+              </div>
+
+              {/* Selection hint */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '14px',
+                fontSize: '11px',
+                color: selectedCount > 0 ? '#fbbf24' : '#ef4444',
+                background: selectedCount > 0 ? 'rgba(251, 191, 36, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: `1px solid ${selectedCount > 0 ? 'rgba(251, 191, 36, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+              }}>
+                <span>Selection:</span>
+                <span style={{ fontWeight: '700' }}>
+                  {selectedCount} of {cart.length} item{cart.length === 1 ? '' : 's'} selected
+                </span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '13px', color: '#d9c7b5' }}>
                 <span>Subtotal:</span>
-                <span style={{ fontWeight: '700', color: '#ffffff' }}>₱{subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: '700', color: '#ffffff' }}>₱{selectedSubtotal.toFixed(2)}</span>
               </div>
 
               <div style={{
@@ -437,7 +735,7 @@ const CustomerCart = () => {
                   TOTAL AMOUNT:
                 </span>
                 <span style={{ fontSize: '22px', fontWeight: '800', color: '#fbbf24' }}>
-                  ₱{subtotal.toFixed(2)}
+                  ₱{selectedSubtotal.toFixed(2)}
                 </span>
               </div>
 
@@ -493,23 +791,29 @@ const CustomerCart = () => {
                   fontWeight: '800',
                   fontSize: '14px',
                   padding: '12px',
-                  background: (loading || cart.length === 0)
+                  background: (loading || selectedCount === 0)
                     ? 'rgba(246, 235, 221, 0.1)'
                     : 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
-                  color: (loading || cart.length === 0) ? 'rgba(246, 235, 221, 0.35)' : '#ffffff',
-                  border: (loading || cart.length === 0) ? '1px solid rgba(246, 235, 221, 0.15)' : 'none',
-                  boxShadow: (loading || cart.length === 0) ? 'none' : '0 4px 14px rgba(193, 18, 31, 0.4)',
-                  cursor: (loading || cart.length === 0) ? 'not-allowed' : 'pointer',
+                  color: (loading || selectedCount === 0) ? 'rgba(246, 235, 221, 0.35)' : '#ffffff',
+                  border: (loading || selectedCount === 0) ? '1px solid rgba(246, 235, 221, 0.15)' : 'none',
+                  boxShadow: (loading || selectedCount === 0) ? 'none' : '0 4px 14px rgba(193, 18, 31, 0.4)',
+                  cursor: (loading || selectedCount === 0) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   transition: 'all 0.15s ease'
                 }}
                 onClick={handlePlaceOrder}
-                disabled={loading || cart.length === 0}
+                disabled={loading || selectedCount === 0}
               >
                 {loading ? <Loader2 className="spin" size={18} /> : <CheckCircle size={18} />}
-                <span>{loading ? 'Placing Pre-Order...' : 'Place Pre-Order'}</span>
+                <span>
+                  {loading
+                    ? 'Placing Pre-Order...'
+                    : selectedCount === 0
+                      ? 'Select items to checkout'
+                      : `Place Pre-Order (${selectedCount})`}
+                </span>
               </button>
             </div>
           </div>
@@ -526,4 +830,3 @@ const CustomerCart = () => {
 };
 
 export default CustomerCart;
-
