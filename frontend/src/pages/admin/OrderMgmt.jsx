@@ -1,11 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { getOrdersApi, updateOrderStatusApi } from '../../api/orderApi';
-import { ShoppingBag, CheckCircle, Clock, XCircle, Search, X } from 'lucide-react';
+import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/orderApi';
+import { ShoppingBag, CheckCircle, Clock, XCircle, Search, X, Printer } from 'lucide-react';
+import PreOrderReceiptModal from '../../components/orders/PreOrderReceiptModal';
 
 const OrderMgmt = () => {
   const [orders, setOrders] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Pre-Order Receipt Preview modal state
+  const [selectedReceiptOrder, setSelectedReceiptOrder] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -26,6 +32,22 @@ const OrderMgmt = () => {
       loadOrders();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleViewReceipt = async (order) => {
+    setSelectedReceiptOrder(order);
+    setShowReceiptModal(true);
+    setReceiptLoading(true);
+    try {
+      const res = await getOrderByIdApi(order.id);
+      if (res.data) {
+        setSelectedReceiptOrder(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load order items for receipt preview:', err);
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
@@ -245,6 +267,16 @@ const OrderMgmt = () => {
                       {o.status === 'ready' && (
                         <button className="btn btn-primary btn-sm" onClick={() => handleStatusChange(o.id, 'completed')}>Fulfill</button>
                       )}
+                      {o.status === 'completed' && (
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={() => handleViewReceipt(o)}
+                          title={`View Receipt for ${o.order_no}`}
+                        >
+                          <Printer size={12} /> View Receipt
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -260,6 +292,17 @@ const OrderMgmt = () => {
           </table>
         </div>
       </div>
+
+      {/* Pre-Order Receipt Preview Modal for Cashier/Admin */}
+      <PreOrderReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => {
+          setShowReceiptModal(false);
+          setSelectedReceiptOrder(null);
+        }}
+        order={selectedReceiptOrder}
+        loading={receiptLoading}
+      />
     </div>
   );
 };

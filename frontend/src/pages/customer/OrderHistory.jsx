@@ -10,7 +10,6 @@ import {
   Eye,
   XCircle,
   RotateCcw,
-  Printer,
   ShoppingBag,
   Clock,
   CheckCircle,
@@ -47,10 +46,10 @@ const OrderHistory = () => {
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
 
-  // Receipt modal state
-  const [receiptOrder, setReceiptOrder] = useState(null);
-  const [receiptLoading, setReceiptLoading] = useState(false);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  // Order Slip modal state (read-only confirmation slip)
+  const [orderSlipData, setOrderSlipData] = useState(null);
+  const [orderSlipLoading, setOrderSlipLoading] = useState(false);
+  const [showOrderSlipModal, setShowOrderSlipModal] = useState(false);
 
   // Reorder loading state
   const [reorderLoadingId, setReorderLoadingId] = useState(null);
@@ -82,7 +81,7 @@ const OrderHistory = () => {
       if (e.key === 'Escape') {
         setShowDetailsModal(false);
         setOrderToCancel(null);
-        setShowReceiptModal(false);
+        setShowOrderSlipModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -250,20 +249,20 @@ const OrderHistory = () => {
     }
   };
 
-  // 4. RECEIPT ACTION
-  const handleOpenReceipt = async (order) => {
-    setReceiptLoading(true);
-    setShowReceiptModal(true);
-    setReceiptOrder(order);
+  // 4. ORDER SLIP ACTION (Read-only confirmation slip, not an official receipt)
+  const handleOpenOrderSlip = async (order) => {
+    setOrderSlipLoading(true);
+    setShowOrderSlipModal(true);
+    setOrderSlipData(order);
     try {
       const fullOrder = await fetchOrderDetails(order.id);
-      setReceiptOrder(fullOrder);
+      setOrderSlipData(fullOrder);
     } catch (err) {
-      console.error('Failed to load receipt details:', err);
-      setToast({ message: 'Could not load receipt details.', type: 'error' });
-      setShowReceiptModal(false);
+      console.error('Failed to load order slip details:', err);
+      setToast({ message: 'Could not load order slip details.', type: 'error' });
+      setShowOrderSlipModal(false);
     } finally {
-      setReceiptLoading(false);
+      setOrderSlipLoading(false);
     }
   };
 
@@ -423,33 +422,6 @@ const OrderHistory = () => {
             width: 160px !important;
           }
         }
-
-        /* Printable Receipt Styles */
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-customer-receipt,
-          #printable-customer-receipt * {
-            visibility: visible !important;
-          }
-          #printable-customer-receipt {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 480px !important;
-            margin: 0 auto !important;
-            padding: 24px !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
       `}</style>
 
       {/* Main Order History Card */}
@@ -479,7 +451,7 @@ const OrderHistory = () => {
               My Pre-Order History
             </span>
             <div style={{ fontSize: '13px', color: '#e5d5c3', marginTop: '4px' }}>
-              View, track, reorder, or get receipts for your fresh meat pre-orders.
+              View, track, reorder, or view order slips for your fresh meat pre-orders.
             </div>
           </div>
 
@@ -741,23 +713,21 @@ const OrderHistory = () => {
                             </button>
                           )}
 
-                          {/* 4. Receipt button (shown only for COMPLETED orders) */}
-                          {isCompleted && (
-                            <button
-                              type="button"
-                              className="action-btn"
-                              style={{
-                                color: '#fbbf24',
-                                borderColor: 'rgba(251, 191, 36, 0.4)',
-                                background: 'rgba(251, 191, 36, 0.08)'
-                              }}
-                              onClick={() => handleOpenReceipt(o)}
-                              title={`View / Print receipt for ${o.order_no}`}
-                            >
-                              <Printer size={13} color="#fbbf24" />
-                              <span className="action-btn-text">Receipt</span>
-                            </button>
-                          )}
+                          {/* 4. Order Slip button */}
+                          <button
+                            type="button"
+                            className="action-btn"
+                            style={{
+                              color: '#fbbf24',
+                              borderColor: 'rgba(251, 191, 36, 0.4)',
+                              background: 'rgba(251, 191, 36, 0.08)'
+                            }}
+                            onClick={() => handleOpenOrderSlip(o)}
+                            title={`View order confirmation slip for ${o.order_no}`}
+                          >
+                            <FileText size={13} color="#fbbf24" />
+                            <span className="action-btn-text">Order Slip</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1074,19 +1044,17 @@ const OrderHistory = () => {
 
             {/* Modal Actions */}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {selectedOrder.status === 'completed' && (
                 <button
                   type="button"
                   className="btn btn-outline"
                   onClick={() => {
                     setShowDetailsModal(false);
-                    handleOpenReceipt(selectedOrder);
+                    handleOpenOrderSlip(selectedOrder);
                   }}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)' }}
                 >
-                  <Printer size={14} /> View Receipt
+                  <FileText size={14} /> View Order Slip
                 </button>
-              )}
               {selectedOrder.status === 'pending' && (
                 <button
                   type="button"
@@ -1195,42 +1163,51 @@ const OrderHistory = () => {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* RECEIPT MODAL & PRINT VIEW                                */}
+      {/* ORDER SLIP MODAL (Read-Only Order Confirmation)           */}
       {/* ────────────────────────────────────────────────────────── */}
-      {showReceiptModal && receiptOrder && (
+      {showOrderSlipModal && orderSlipData && (
         <div
           className="modal-overlay"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowReceiptModal(false);
+            if (e.target === e.currentTarget) setShowOrderSlipModal(false);
           }}
           style={{ zIndex: 1100 }}
         >
           <div
             className="modal-content"
             style={{
-              maxWidth: '460px',
+              maxWidth: '480px',
               width: '95%',
-              background: '#ffffff',
-              color: '#111827',
-              borderRadius: '12px',
+              background: '#20080B',
+              color: '#F6EBDD',
+              borderRadius: '16px',
+              border: '1px solid rgba(246, 235, 221, 0.16)',
               padding: '24px',
               maxHeight: '92vh',
               overflowY: 'auto',
               boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85)'
             }}
           >
-            {/* Modal Screen-Only Controls */}
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '800', color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Pre-Order Receipt Preview
-              </span>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px dashed rgba(246, 235, 221, 0.15)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Logo size={28} inline={true} alt="SMIS Logo" />
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: '#fdf2e3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Order Confirmation
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#c9b4a6' }}>
+                    Customer Pre-Order Slip
+                  </div>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowReceiptModal(false)}
+                onClick={() => setShowOrderSlipModal(false)}
                 style={{
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  color: '#4b5563',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#e5d5c3',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   padding: '4px',
@@ -1242,90 +1219,106 @@ const OrderHistory = () => {
               </button>
             </div>
 
-            {/* Printable Receipt Paper Container */}
+            {/* Pickup Notice Banner */}
+            <div style={{
+              background: 'rgba(251, 191, 36, 0.08)',
+              border: '1px solid rgba(251, 191, 36, 0.25)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              color: '#fbbf24',
+              lineHeight: 1.4
+            }}>
+              <strong>Pickup Reminder:</strong> Show your Order No. to the cashier counter. The official receipt (RCP) will be issued upon payment and release of your items.
+            </div>
+
+            {/* Order Slip Paper Card */}
             <div
-              id="printable-customer-receipt"
               style={{
-                background: '#ffffff',
-                color: '#111827',
+                background: '#140507',
+                color: '#F6EBDD',
                 fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
                 fontSize: '12px',
                 padding: '16px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px'
+                border: '1px solid rgba(246, 235, 221, 0.15)',
+                borderRadius: '10px'
               }}
             >
-              {/* Receipt Header */}
-              <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '1.5px dashed #111827' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                  <Logo size={32} inline={true} alt="SMIS Logo" />
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '900', letterSpacing: '0.05em' }}>
-                  SMIS SLAUGHTERHOUSE
-                </div>
-                <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '2px' }}>
-                  Meat Inventory &amp; Sales Management System
-                </div>
-                <div style={{ fontSize: '11px', color: '#4b5563' }}>
-                  Official Pre-Order Customer Receipt
-                </div>
-              </div>
-
-              {/* Order Meta */}
-              <div style={{ padding: '10px 0', borderBottom: '1px dashed #9ca3af', fontSize: '11.5px', lineHeight: 1.6 }}>
-                <div>Order Ref: <strong>#{receiptOrder.order_no}</strong></div>
-                <div>Date &amp; Time: {new Date(receiptOrder.created_at).toLocaleString()}</div>
+              {/* Slip Meta */}
+              <div style={{ paddingBottom: '10px', borderBottom: '1px dashed rgba(246, 235, 221, 0.2)', fontSize: '12px', lineHeight: 1.6 }}>
+                <div>Order Ref: <strong style={{ color: '#fbbf24', fontSize: '13px' }}>#{orderSlipData.order_no}</strong></div>
+                <div>Date &amp; Time: {new Date(orderSlipData.created_at).toLocaleString()}</div>
                 <div>
                   Customer:{' '}
                   <strong>
-                    {receiptOrder.customer_name || (user ? `${user.first_name} ${user.last_name}` : 'Customer')}
+                    {orderSlipData.customer_name || (user ? `${user.first_name} ${user.last_name}` : 'Customer')}
                   </strong>
                 </div>
-                {receiptOrder.customer_phone && (
-                  <div>Phone: {receiptOrder.customer_phone}</div>
+                {orderSlipData.customer_phone && (
+                  <div>Phone: {orderSlipData.customer_phone}</div>
                 )}
-                <div>Status: <strong style={{ textTransform: 'uppercase' }}>{receiptOrder.status}</strong></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <span>Status:</span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    textTransform: 'uppercase',
+                    background: orderSlipData.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
+                                orderSlipData.status === 'ready' ? 'rgba(56, 189, 248, 0.15)' :
+                                orderSlipData.status === 'confirmed' ? 'rgba(251, 191, 36, 0.15)' :
+                                orderSlipData.status === 'cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+                    color: orderSlipData.status === 'completed' ? '#4ade80' :
+                           orderSlipData.status === 'ready' ? '#38bdf8' :
+                           orderSlipData.status === 'confirmed' ? '#fbbf24' :
+                           orderSlipData.status === 'cancelled' ? '#f87171' : '#fdf2e3'
+                  }}>
+                    {orderSlipData.status}
+                  </span>
+                </div>
               </div>
 
               {/* Items Section */}
-              <div style={{ padding: '10px 0', borderBottom: '1px dashed #9ca3af' }}>
-                <div style={{ fontWeight: '700', fontSize: '11px', textTransform: 'uppercase', marginBottom: '8px', color: '#374151' }}>
-                  Order Items
+              <div style={{ padding: '12px 0', borderBottom: '1px dashed rgba(246, 235, 221, 0.2)' }}>
+                <div style={{ fontWeight: '700', fontSize: '11px', textTransform: 'uppercase', marginBottom: '8px', color: '#d9c7b5' }}>
+                  Pre-Ordered Items ({orderSlipData.items?.length || 0})
                 </div>
-                {receiptLoading ? (
-                  <div style={{ textAlign: 'center', padding: '12px', color: '#6b7280' }}>
+                {orderSlipLoading ? (
+                  <div style={{ textAlign: 'center', padding: '12px', color: '#c9b4a6' }}>
                     <Loader2 size={16} className="animate-spin" style={{ margin: '0 auto 4px' }} />
                     Loading items...
                   </div>
-                ) : receiptOrder.items && receiptOrder.items.length > 0 ? (
-                  receiptOrder.items.map((it, idx) => (
+                ) : orderSlipData.items && orderSlipData.items.length > 0 ? (
+                  orderSlipData.items.map((it, idx) => (
                     <div key={idx} style={{ marginBottom: '8px', fontSize: '11.5px' }}>
-                      <div style={{ fontWeight: '700' }}>
+                      <div style={{ fontWeight: '700', color: '#fdf2e3' }}>
                         {it.product_name} {it.meat_cut ? `(${it.meat_cut})` : ''}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#374151' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d9c7b5' }}>
                         <span>
                           {Number(it.weight_kg).toFixed(2)} kg @ ₱{Number(it.price_per_kg).toFixed(2)}/kg
                         </span>
-                        <span style={{ fontWeight: '700' }}>₱{Number(it.subtotal).toFixed(2)}</span>
+                        <span style={{ fontWeight: '700', color: '#fbbf24' }}>₱{Number(it.subtotal).toFixed(2)}</span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ color: '#6b7280', fontStyle: 'italic' }}>Items included in order total</div>
+                  <div style={{ color: '#887b76', fontStyle: 'italic' }}>Items included in order total</div>
                 )}
               </div>
 
               {/* Totals Section */}
-              <div style={{ padding: '10px 0', borderBottom: '1.5px dashed #111827', fontSize: '12px', lineHeight: 1.6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ padding: '10px 0', borderBottom: '1.5px dashed rgba(246, 235, 221, 0.3)', fontSize: '12px', lineHeight: 1.6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d9c7b5' }}>
                   <span>Subtotal:</span>
-                  <span>₱{Number(receiptOrder.subtotal ?? receiptOrder.total_amount).toFixed(2)}</span>
+                  <span>₱{Number(orderSlipData.subtotal ?? orderSlipData.total_amount).toFixed(2)}</span>
                 </div>
-                {Number(receiptOrder.discount || 0) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#047857' }}>
+                {Number(orderSlipData.discount || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4ade80' }}>
                     <span>Discount:</span>
-                    <span>-₱{Number(receiptOrder.discount).toFixed(2)}</span>
+                    <span>-₱{Number(orderSlipData.discount).toFixed(2)}</span>
                   </div>
                 )}
                 <div
@@ -1336,45 +1329,38 @@ const OrderHistory = () => {
                     fontSize: '14px',
                     marginTop: '4px',
                     paddingTop: '4px',
-                    borderTop: '1px solid #e5e7eb'
+                    borderTop: '1px solid rgba(246, 235, 221, 0.15)',
+                    color: '#fdf2e3'
                   }}
                 >
                   <span>TOTAL AMOUNT:</span>
-                  <span>₱{Number(receiptOrder.total_amount).toFixed(2)}</span>
+                  <span style={{ color: '#fbbf24' }}>₱{Number(orderSlipData.total_amount).toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Special Instructions Note */}
-              {receiptOrder.notes && (
-                <div style={{ padding: '8px 0', borderBottom: '1px dashed #9ca3af', fontSize: '11px', color: '#4b5563' }}>
-                  <strong>Customer Instructions:</strong> {receiptOrder.notes}
+              {orderSlipData.notes && (
+                <div style={{ padding: '8px 0', borderBottom: '1px dashed rgba(246, 235, 221, 0.2)', fontSize: '11px', color: '#d9c7b5' }}>
+                  <strong style={{ color: '#fdf2e3' }}>Customer Instructions:</strong> {orderSlipData.notes}
                 </div>
               )}
 
-              {/* Receipt Footer */}
-              <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '11px', color: '#4b5563', lineHeight: 1.4 }}>
-                Thank you for your pre-order!<br />
-                Please keep this receipt for order verification and pickup.
+              {/* Slip Footer */}
+              <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '11px', color: '#887b76', lineHeight: 1.4 }}>
+                This is a pre-order confirmation slip, not an official sales receipt.<br />
+                Present your Order No. to the cashier upon pickup.
               </div>
             </div>
 
-            {/* Screen Action Buttons */}
-            <div className="no-print" style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+            {/* Modal Screen Action Button */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
               <button
                 type="button"
-                className="btn btn-outline"
-                style={{ flex: 1, borderColor: '#d1d5db', color: '#374151' }}
-                onClick={() => setShowReceiptModal(false)}
+                className="btn btn-customer"
+                style={{ minWidth: '110px', justifyContent: 'center' }}
+                onClick={() => setShowOrderSlipModal(false)}
               >
                 Close
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                onClick={() => window.print()}
-              >
-                <Printer size={15} /> Print Receipt
               </button>
             </div>
           </div>
