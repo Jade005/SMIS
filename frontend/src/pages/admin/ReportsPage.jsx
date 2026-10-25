@@ -429,9 +429,9 @@ const ReportsPage = () => {
                       <td><strong>#{idx + 1}</strong></td>
                       <td><strong>{b.product_name}</strong></td>
                       <td>{b.meat_cut}</td>
-                      <td>{formatWeight(b.total_kg_sold, 3)}</td>
+                      <td>{formatWeight(b.volume_sold ?? b.total_kg_sold, 3)}</td>
                       <td style={{ fontWeight: 'bold', color: 'var(--primary-admin, #f43f5e)' }}>
-                        {formatPeso(b.total_revenue_generated)}
+                        {formatPeso(b.revenue ?? b.total_revenue_generated)}
                       </td>
                     </tr>
                   ))}
