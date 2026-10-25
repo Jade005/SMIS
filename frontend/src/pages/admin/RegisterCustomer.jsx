@@ -27,8 +27,10 @@ const RegisterCustomer = () => {
     if (first || last) {
       const cleanFirst = first.replace(/[^a-z0-9]/g, '');
       const cleanLast = last.replace(/[^a-z0-9]/g, '');
-      const uname = `${cleanFirst}${cleanLast ? '.' + cleanLast : ''}`;
-      updated.email = `${uname}@smis.local`;
+      const uname = (cleanFirst && cleanLast)
+        ? `${cleanFirst}.${cleanLast}`
+        : (cleanFirst || cleanLast);
+      updated.email = uname ? `${uname}@smis.local` : '';
       updated.password = `${cleanFirst}${cleanLast}123`;
     } else {
       updated.email = '';
@@ -130,7 +132,7 @@ const RegisterCustomer = () => {
         )}
 
         {/* Customer Registration Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-grid" style={{ marginBottom: '18px' }}>
             <div className="form-group">
               <label>First Name <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -141,6 +143,7 @@ const RegisterCustomer = () => {
                 value={formData.first_name}
                 onChange={(e) => handleNameChange('first_name', e.target.value)}
                 placeholder="e.g. Juan"
+                autoComplete="off"
                 required
               />
             </div>
@@ -154,6 +157,7 @@ const RegisterCustomer = () => {
                 value={formData.last_name}
                 onChange={(e) => handleNameChange('last_name', e.target.value)}
                 placeholder="e.g. Dela Cruz"
+                autoComplete="off"
                 required
               />
             </div>
@@ -169,6 +173,7 @@ const RegisterCustomer = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="customer@email.com"
+                autoComplete="off"
                 required
               />
             </div>
@@ -184,6 +189,7 @@ const RegisterCustomer = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Set account password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
