@@ -33,6 +33,7 @@ const PendingAccounts = () => {
   // Confirmation modal state
   // confirmModal: { type: 'register' | 'reject', item: object } | null
   const [confirmModal, setConfirmModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Success credentials modal after approving
   const [createdCredentials, setCreatedCredentials] = useState(null);
@@ -70,6 +71,7 @@ const PendingAccounts = () => {
 
   const handleOpenConfirm = (item, type) => {
     setConfirmModal({ type, item });
+    setRejectReason('');
   };
 
   const handleExecuteAction = async () => {
@@ -98,8 +100,9 @@ const PendingAccounts = () => {
           type: 'success'
         });
       } else if (type === 'reject') {
-        const res = await rejectRegistrationApi(item.id);
+        const res = await rejectRegistrationApi(item.id, { reason: rejectReason.trim() || undefined });
         setConfirmModal(null);
+        setRejectReason('');
         await loadPendingAccounts();
 
         setToast({
@@ -533,7 +536,7 @@ const PendingAccounts = () => {
               border: confirmModal.type === 'register' ? '1px dashed #5F8A4E' : '1px dashed #C1121F',
               borderRadius: '8px',
               padding: '12px 14px',
-              marginBottom: '22px',
+              marginBottom: confirmModal.type === 'reject' ? '16px' : '22px',
               fontSize: '12px',
               color: '#E2D3C0',
               lineHeight: 1.5
@@ -548,6 +551,32 @@ const PendingAccounts = () => {
                 </>
               )}
             </div>
+
+            {/* Optional Rejection Reason */}
+            {confirmModal.type === 'reject' && (
+              <div style={{ marginBottom: '22px', textAlign: 'left' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#F6EBDD', marginBottom: '6px' }}>
+                  Rejection Reason <span style={{ color: '#C9B4A6', fontWeight: 'normal' }}>(Optional)</span>
+                </label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  placeholder="e.g., Incomplete address, unable to verify identity, or duplicate application..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#1B0709',
+                    borderColor: 'rgba(246, 235, 221, 0.2)',
+                    color: '#F6EBDD',
+                    fontSize: '13px',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
 
             {/* Modal Buttons */}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

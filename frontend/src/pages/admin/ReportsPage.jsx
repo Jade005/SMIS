@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   getSalesReportApi,
   getInventoryReportApi,
@@ -47,6 +47,35 @@ const getLastMonthStr = () => {
 };
 
 const getCurrentYearNum = () => new Date().getFullYear();
+const getCurrentMonthNum = () => new Date().getMonth() + 1;
+
+const MONTH_OPTIONS = [
+  { value: 'all', label: 'All Months' },
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+];
+
+const getYearOptions = () => {
+  const curY = new Date().getFullYear();
+  const startY = 2023; // from earliest year with sales data (or 2023)
+  const years = [];
+  for (let y = curY; y >= startY; y--) {
+    years.push(y);
+  }
+  return years;
+};
+
+const YEAR_OPTIONS = getYearOptions();
 
 const getDailyPresetRange = (preset) => {
   const now = new Date();
@@ -123,6 +152,14 @@ const ReportsPage = () => {
   const [fromDate, setFromDate] = useState(initialDaily.from);
   const [toDate, setToDate] = useState(initialDaily.to);
 
+  // Active preset state: 'today' | 'yesterday' | 'last7' | 'last14' | 'last30' | 'custom'
+  // Requirement 7: "Default on page load: Last 14 Days preset active, with the Custom dropdowns showing the current month and year but not applied until the admin changes them."
+  const [activePreset, setActivePreset] = useState('last14');
+
+  // Custom month & year dropdown states: default to current month and year (e.g. October 2026)
+  const [customMonth, setCustomMonth] = useState(() => String(getCurrentMonthNum()));
+  const [customYear, setCustomYear] = useState(() => getCurrentYearNum());
+
   // Month state for Monthly view
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr);
 
@@ -140,21 +177,63 @@ const ReportsPage = () => {
   const [supplierReport, setSupplierReport] = useState({ summary: {}, chartData: [], suppliers: [] });
   const [disposals, setDisposals] = useState([]);
 
+  // Helper to compute date range & granularity from Custom Month + Year selection
+  const getCustomRange = (mVal, yVal) => {
+    const y = Number(yVal);
+    const nowDate = new Date();
+    const curY = nowDate.getFullYear();
+    const curM = nowDate.getMonth() + 1;
+    const curD = nowDate.getDate();
+
+    if (mVal === 'all') {
+      // "All Months" + Year selected: range = Jan 1 to Dec 31 (or today if current year)
+      // Granularity = 'yearly' -> groups by month ('%Y-%m'), 1 bar per month (Jan-Dec) with empty bars for zero sales
+      const from = `${y}-01-01`;
+      const to = y === curY ? formatDateYMD(nowDate) : `${y}-12-31`;
+      return {
+        from,
+        to,
+        granularity: 'yearly'
+      };
+    } else {
+      // Month + Year selected: range = 1st to last day of that month (or today if current month)
+      // Granularity = 'daily' -> groups by day, 1 bar per day in that month
+      const m = Number(mVal);
+      const from = `${y}-${String(m).padStart(2, '0')}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      let endDay = lastDay;
+      if (y === curY && m === curM) {
+        endDay = Math.min(lastDay, curD);
+      }
+      const to = `${y}-${String(m).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+      return {
+        from,
+        to,
+        granularity: 'daily'
+      };
+    }
+  };
+
   // Granularity change: auto-set defaults
   // Daily -> Last 14 days, Monthly -> current month, Yearly -> current year
   const handleGranularityChange = (newGran) => {
     setGranularity(newGran);
     if (newGran === 'daily') {
+      setActivePreset('last14');
+      setCustomMonth(String(getCurrentMonthNum()));
+      setCustomYear(getCurrentYearNum());
       const r = getDailyPresetRange('last14');
       setFromDate(r.from);
       setToDate(r.to);
     } else if (newGran === 'monthly') {
+      setActivePreset(null);
       const curM = getCurrentMonthStr();
       setSelectedMonth(curM);
       const r = getMonthRange(curM);
       setFromDate(r.from);
       setToDate(r.to);
     } else if (newGran === 'yearly') {
+      setActivePreset(null);
       const curY = getCurrentYearNum();
       setSelectedYear(curY);
       const r = getYearRange(curY);
@@ -164,7 +243,32 @@ const ReportsPage = () => {
   };
 
   const handleDailyPreset = (preset) => {
+    setActivePreset(preset);
+    setGranularity('daily');
     const r = getDailyPresetRange(preset);
+    setFromDate(r.from);
+    setToDate(r.to);
+    // Reset custom dropdowns to their default state (current month & year)
+    setCustomMonth(String(getCurrentMonthNum()));
+    setCustomYear(getCurrentYearNum());
+  };
+
+  const handleCustomMonthChange = (newMonth) => {
+    setActivePreset('custom');
+    setCustomMonth(newMonth);
+    const r = getCustomRange(newMonth, customYear);
+    setGranularity(r.granularity);
+    setFromDate(r.from);
+    setToDate(r.to);
+  };
+
+  const handleCustomYearChange = (newYear) => {
+    const y = Number(newYear);
+    setActivePreset('custom');
+    setCustomYear(y);
+
+    const r = getCustomRange(customMonth, y);
+    setGranularity(r.granularity);
     setFromDate(r.from);
     setToDate(r.to);
   };
@@ -232,7 +336,9 @@ const ReportsPage = () => {
     const params = {
       granularity,
       from: fromDate,
-      to: toDate
+      to: toDate,
+      start_date: fromDate,
+      end_date: toDate
     };
 
     if (activeTab === 'sales') {
@@ -383,7 +489,15 @@ const ReportsPage = () => {
 
         {/* Date Filter Controls based on Granularity */}
         {granularity === 'daily' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              rowGap: '10px'
+            }}
+          >
             {/* Quick Presets */}
             <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap' }}>
               {[
@@ -393,23 +507,27 @@ const ReportsPage = () => {
                 { id: 'last14', label: 'Last 14 Days' },
                 { id: 'last30', label: 'Last 30 Days' }
               ].map((p) => {
-                const pRange = getDailyPresetRange(p.id);
-                const isSelected = fromDate === pRange.from && toDate === pRange.to;
+                const isSelected = activePreset === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => handleDailyPreset(p.id)}
                     style={{
-                      border: isSelected ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
-                      background: isSelected ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
+                      border: isSelected
+                        ? '1px solid var(--primary-admin, #be123c)'
+                        : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: isSelected
+                        ? 'var(--primary-admin, #be123c)'
+                        : 'rgba(20, 5, 8, 0.65)',
                       color: isSelected ? '#ffffff' : '#d9c7b5',
                       fontWeight: '700',
                       fontSize: '11px',
                       padding: '5px 10px',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      boxShadow: isSelected ? '0 0 10px rgba(190, 18, 60, 0.4)' : 'none'
                     }}
                   >
                     {p.label}
@@ -418,53 +536,100 @@ const ReportsPage = () => {
               })}
             </div>
 
-            {/* From & To Inputs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Calendar size={14} color="#e5d5c3" />
-                <span style={{ fontSize: '12px', color: '#e5d5c3', fontWeight: '600' }}>From:</span>
-                <input
-                  type="date"
-                  max={getTodayStr()}
-                  value={fromDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFromDate(val);
-                    if (val > toDate) setToDate(val);
-                  }}
-                  style={{
-                    padding: '5px 8px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    background: 'rgba(20, 5, 8, 0.7)',
-                    color: '#fdf2e3',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '6px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+            {/* Custom Month + Year Dropdowns */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '3px 8px',
+                borderRadius: '8px',
+                border: activePreset === 'custom'
+                  ? '1px solid var(--primary-admin, #be123c)'
+                  : '1px solid rgba(255, 255, 255, 0.12)',
+                background: activePreset === 'custom'
+                  ? 'rgba(190, 18, 60, 0.28)'
+                  : 'rgba(20, 5, 8, 0.65)',
+                boxShadow: activePreset === 'custom'
+                  ? '0 0 12px rgba(190, 18, 60, 0.35)'
+                  : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: activePreset === 'custom' ? '#ffffff' : '#e5d5c3',
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Custom:
+              </span>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '12px', color: '#e5d5c3', fontWeight: '600' }}>To:</span>
-                <input
-                  type="date"
-                  max={getTodayStr()}
-                  min={fromDate}
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  style={{
-                    padding: '5px 8px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    background: 'rgba(20, 5, 8, 0.7)',
-                    color: '#fdf2e3',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '6px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+              {/* Month Dropdown */}
+              <select
+                value={customMonth}
+                onChange={(e) => handleCustomMonthChange(e.target.value)}
+                autoComplete="off"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  background: 'rgba(20, 5, 8, 0.85)',
+                  color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
+                  border: activePreset === 'custom'
+                    ? '1px solid rgba(225, 29, 72, 0.6)'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.15s ease'
+                }}
+                aria-label="Select custom month"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    style={{
+                      background: '#1B0709',
+                      color: '#ffffff'
+                    }}
+                  >
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Year Dropdown */}
+              <select
+                value={customYear}
+                onChange={(e) => handleCustomYearChange(e.target.value)}
+                autoComplete="off"
+                style={{
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  background: 'rgba(20, 5, 8, 0.85)',
+                  color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
+                  border: activePreset === 'custom'
+                    ? '1px solid rgba(225, 29, 72, 0.6)'
+                    : '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.15s ease'
+                }}
+                aria-label="Select custom year"
+              >
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y} style={{ background: '#1B0709', color: '#ffffff' }}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         )}

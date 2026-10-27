@@ -6,7 +6,8 @@ import {
   toggleUserStatusApi,
   deactivateUserApi,
   activateUserApi,
-  deleteUserApi
+  deleteUserApi,
+  resetPasswordApi
 } from '../../api/userApi';
 import {
   Plus,
@@ -27,7 +28,8 @@ import {
   Pencil,
   Trash2,
   Ban,
-  Power
+  Power,
+  KeyRound
 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -37,7 +39,7 @@ const UserMgmt = () => {
   const { user: currentAdmin } = useAuth();
 
   const [users, setUsers] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'deactivated'
 
   // Edit User state
   const [showModal, setShowModal] = useState(false);
@@ -75,7 +77,11 @@ const UserMgmt = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleteHasHistory, setDeleteHasHistory] = useState(false);
 
-  const [revealedPasswords, setRevealedPasswords] = useState({});
+  // Reset Password Modal state
+  const [resetModalUser, setResetModalUser] = useState(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+
   const [copiedKey, setCopiedKey] = useState(null);
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,8 +98,14 @@ const UserMgmt = () => {
   };
 
   const filteredUsers = users.filter((u) => {
-    if (statusFilter === 'active' && !u.is_active) return false;
-    if (statusFilter === 'inactive' && u.is_active) return false;
+    // Defensively exclude any pending or rejected applicants
+    if (u.status === 'pending' || u.status === 'rejected') return false;
+
+    const isDeactivated = !u.is_active || u.status === 'deactivated';
+    const isActive = Boolean(u.is_active) && u.status !== 'deactivated';
+
+    if (statusFilter === 'active' && !isActive) return false;
+    if (statusFilter === 'deactivated' && !isDeactivated) return false;
 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
@@ -102,7 +114,7 @@ const UserMgmt = () => {
     const username = (u.username || '').toLowerCase();
     const email = (u.email || '').toLowerCase();
     const id = String(u.id ?? '').toLowerCase();
-    const statusText = u.is_active ? 'active' : 'inactive';
+    const statusText = isActive ? 'active' : 'deactivated';
     return (
       displayName.includes(q) ||
       rawNames.includes(q) ||
@@ -149,8 +161,41 @@ const UserMgmt = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
-  const toggleReveal = (userId) => {
-    setRevealedPasswords((prev) => ({ ...prev, [userId]: !prev[userId] }));
+  const handleOpenResetPassword = (user) => {
+    setResetModalUser(user);
+    setResetError('');
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!resetModalUser) return;
+    setResetLoading(true);
+    setResetError('');
+    try {
+      const res = await resetPasswordApi(resetModalUser.id);
+      const tempPassword = res.data?.temp_password;
+      const targetUser = resetModalUser;
+      setResetModalUser(null);
+
+      setCreatedCredentials({
+        fullName: getDisplayName(targetUser),
+        username: targetUser.username,
+        email: targetUser.email,
+        role: targetUser.role,
+        tempPassword: tempPassword,
+        isReset: true
+      });
+
+      setToast({
+        message: `Temporary password generated for ${getDisplayName(targetUser)}.`,
+        type: 'success'
+      });
+      await loadUsers();
+    } catch (err) {
+      console.error('Failed to reset password:', err);
+      setResetError(err.response?.data?.message || 'Failed to reset password.');
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const handleCopy = (text, key) => {
@@ -578,7 +623,7 @@ const UserMgmt = () => {
               fontWeight: '800',
               padding: '2px 9px'
             }}>
-              {users.length}
+              {users.filter(u => u.status !== 'pending' && u.status !== 'rejected').length}
             </span>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -600,9 +645,9 @@ const UserMgmt = () => {
                 }}
                 title="Filter by status"
               >
-                <option value="all">All Statuses ({users.length})</option>
-                <option value="active">Active ({users.filter((u) => Boolean(u.is_active)).length})</option>
-                <option value="inactive">Inactive ({users.filter((u) => !u.is_active).length})</option>
+                <option value="all">All ({users.filter(u => u.status !== 'pending' && u.status !== 'rejected').length})</option>
+                <option value="active">Active ({users.filter(u => u.status !== 'pending' && u.status !== 'rejected' && Boolean(u.is_active) && u.status !== 'deactivated').length})</option>
+                <option value="deactivated">Deactivated ({users.filter(u => u.status !== 'pending' && u.status !== 'rejected' && (!u.is_active || u.status === 'deactivated')).length})</option>
               </select>
               <button className="btn btn-primary" onClick={() => setShowModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <UserPlus size={16} /> Create User / Cashier
@@ -644,44 +689,35 @@ const UserMgmt = () => {
                         </span>
                       </td>
                       <td style={{ verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                          <span className={`badge ${u.is_active ? 'badge-success' : 'badge-danger'}`} style={{ letterSpacing: '0.04em' }}>
-                            {u.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                          <span
+                            className={`badge ${Boolean(u.is_active) && u.status !== 'deactivated' ? 'badge-success' : 'badge-danger'}`}
+                            style={{ letterSpacing: '0.04em' }}
+                          >
+                            {Boolean(u.is_active) && u.status !== 'deactivated' ? 'ACTIVE' : 'DEACTIVATED'}
                           </span>
-                          {Boolean(u.is_temp_password) && (
-                            <div style={{
+                          <button
+                            type="button"
+                            onClick={() => handleOpenResetPassword(u)}
+                            style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
-                              background: '#fffbeb',
-                              border: '1px solid #fde68a',
+                              background: 'rgba(245, 158, 11, 0.1)',
+                              border: '1px solid rgba(245, 158, 11, 0.35)',
                               borderRadius: '6px',
-                              padding: '3px 7px',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                            }}>
-                              <span style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', fontFamily: 'monospace' }}>
-                                ⚡ {revealedPasswords[u.id] ? (u.temp_password_plain || 'Temp Set') : '••••••••'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleReveal(u.id)}
-                                title={revealedPasswords[u.id] ? "Hide password" : "View temporary password"}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
-                              >
-                                {revealedPasswords[u.id] ? <EyeOff size={13} /> : <Eye size={13} />}
-                              </button>
-                              {u.temp_password_plain && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopy(u.temp_password_plain, `user-${u.id}`)}
-                                  title="Copy temporary password"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
-                                >
-                                  {copiedKey === `user-${u.id}` ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
-                                </button>
-                              )}
-                            </div>
-                          )}
+                              padding: '3px 8px',
+                              color: '#fbbf24',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title={`Reset password for ${getDisplayName(u)}`}
+                          >
+                            <KeyRound size={12} />
+                            <span>Reset Password</span>
+                          </button>
                         </div>
                       </td>
                       <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleDateString()}</td>
@@ -950,7 +986,7 @@ const UserMgmt = () => {
                 letterSpacing: '0.02em',
                 lineHeight: 1.2
               }}>
-                {createdCredentials.role === 'customer' ? 'Registration Approved!' : 'Account Created Successfully!'}
+                {createdCredentials.isReset ? 'Temporary Password Reset!' : createdCredentials.role === 'customer' ? 'Registration Approved!' : 'Account Created Successfully!'}
               </h3>
               <p style={{ fontSize: '13px', color: '#e5d5c3', margin: '6px 0 0', lineHeight: 1.5 }}>
                 Credentials for <strong style={{ color: '#ffffff', fontWeight: '700' }}>{createdCredentials.fullName}</strong>
@@ -1174,16 +1210,18 @@ const UserMgmt = () => {
 
             {/* Info Box */}
             <div style={{
-              background: createdCredentials.role === 'customer' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-              border: `1px solid ${createdCredentials.role === 'customer' ? 'rgba(134, 239, 172, 0.35)' : 'rgba(147, 197, 253, 0.35)'}`,
+              background: createdCredentials.isReset ? 'rgba(245, 158, 11, 0.14)' : createdCredentials.role === 'customer' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+              border: `1px solid ${createdCredentials.isReset ? 'rgba(245, 158, 11, 0.35)' : createdCredentials.role === 'customer' ? 'rgba(134, 239, 172, 0.35)' : 'rgba(147, 197, 253, 0.35)'}`,
               borderRadius: '10px',
               padding: '12px 14px',
               fontSize: '14px',
               lineHeight: 1.55,
-              color: createdCredentials.role === 'customer' ? '#bbf7d0' : '#bfdbfe',
+              color: createdCredentials.isReset ? '#fde68a' : createdCredentials.role === 'customer' ? '#bbf7d0' : '#bfdbfe',
               marginBottom: '20px'
             }}>
-              {createdCredentials.role === 'customer'
+              {createdCredentials.isReset
+                ? '🔒 A new temporary password was generated. The password is shown above ONCE. Please copy and securely share it with the user. The user will be required to change their password on first login.'
+                : createdCredentials.role === 'customer'
                 ? '✅ The customer can now log in using their Email and the generated password above. Please share these credentials with them directly.'
                 : 'ℹ️ The user can log in with their credentials. They will be prompted to change their password on first login.'}
             </div>
@@ -1534,6 +1572,94 @@ const UserMgmt = () => {
               >
                 {activateLoading ? <Loader2 className="spin" size={16} /> : null}
                 <span>{activateLoading ? 'Activating...' : 'Yes, Activate'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Reset Temporary Password Confirmation Modal ---- */}
+      {resetModalUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px', borderRadius: '12px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <KeyRound size={20} color="#f59e0b" />
+                Reset Temporary Password?
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setResetModalUser(null); setResetError(''); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {resetError && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: '#f87171',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{resetError}</span>
+              </div>
+            )}
+
+            <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '16px' }}>
+              Generate a new temporary password for <strong style={{ color: 'var(--fat)' }}>{getDisplayName(resetModalUser)}</strong> (<code style={{ color: '#FFD76B', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px' }}>{resetModalUser.username}</code>)?
+            </p>
+
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px dashed rgba(245, 158, 11, 0.35)',
+              borderRadius: '8px',
+              padding: '12px 14px',
+              marginBottom: '20px',
+              fontSize: '12px',
+              color: '#fde68a',
+              lineHeight: '1.5'
+            }}>
+              <strong>Security Protocol:</strong> The temporary password will be generated securely and shown <strong>ONCE</strong> in a modal with a Copy button so you can provide it to the customer. Plaintext passwords are never stored in the database.
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => { setResetModalUser(null); setResetError(''); }}
+                disabled={resetLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleConfirmResetPassword}
+                disabled={resetLoading}
+                style={{
+                  background: 'linear-gradient(135deg, #d97706, #b45309)',
+                  color: '#fff',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: '700',
+                  padding: '10px 18px',
+                  borderRadius: '8px'
+                }}
+              >
+                {resetLoading ? <Loader2 className="spin" size={16} /> : <KeyRound size={16} />}
+                <span>{resetLoading ? 'Generating...' : 'Generate New Password'}</span>
               </button>
             </div>
           </div>
