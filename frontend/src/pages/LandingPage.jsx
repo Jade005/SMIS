@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   Scale, Clock, ShieldCheck, TrendingUp, ArrowRight, CheckCircle2,
   MapPin, Phone, Mail, ChevronRight, Package, BarChart3,
-  Activity, Lock, Menu, X, Flame, Snowflake, Users
+  Activity, Lock, Menu, X, Flame, Snowflake, Users, Sparkles
 } from 'lucide-react';
 import Logo from '../components/common/Logo';
+import { useAuth } from '../context/AuthContext';
+import { getShowcaseProductsApi } from '../api/productApi';
+import { getProductImage } from '../utils/meatImages';
 
 /* ════════════════════════════════════════════════════════
    DESIGN TOKENS — oxblood + butcher-paper + steel hooks
@@ -150,6 +153,18 @@ const Cleaver = () => (
   </svg>
 );
 
+/* Category badge color helper */
+const getCategoryColor = (meatType) => {
+  switch ((meatType || '').toLowerCase()) {
+    case 'beef': return { bg: 'rgba(229, 56, 74, 0.22)', border: '#E5384A', text: '#FF8A8A' };
+    case 'pork': return { bg: 'rgba(244, 114, 182, 0.22)', border: '#F472B6', text: '#FBCFE8' };
+    case 'chicken': return { bg: 'rgba(251, 191, 36, 0.22)', border: '#FBBF24', text: '#FDE68A' };
+    case 'goat': return { bg: 'rgba(167, 139, 250, 0.22)', border: '#A78BFA', text: '#DDD6FE' };
+    case 'rabbit': return { bg: 'rgba(56, 189, 248, 0.22)', border: '#38BDF8', text: '#BAE6FD' };
+    default: return { bg: 'rgba(246, 235, 221, 0.16)', border: '#c9b4a6', text: '#F6EBDD' };
+  }
+};
+
 /* ════════════════════════════════════════════════════════
    SMALL PIECES
    ════════════════════════════════════════════════════════ */
@@ -278,6 +293,55 @@ const LandingPage = () => {
     drift: (Math.random() - 0.5) * 120,
   })), []);
 
+  const { user } = useAuth();
+  const [showcaseProducts, setShowcaseProducts] = useState([]);
+  const [showcaseLoading, setShowcaseLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [activeTabKey, setActiveTabKey] = useState(0);
+
+  // Fetch real database products for public showcase
+  useEffect(() => {
+    let isMounted = true;
+    setShowcaseLoading(true);
+    getShowcaseProductsApi()
+      .then((res) => {
+        if (isMounted) {
+          setShowcaseProducts(res.data || []);
+        }
+      })
+      .catch((err) => {
+        console.warn('Public showcase fetch failed (gracefully hidden):', err);
+        if (isMounted) {
+          setShowcaseProducts([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setShowcaseLoading(false);
+        }
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  // Filter products by active category (All, Beef, Pork, Chicken, Goat, Rabbit)
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'All') return showcaseProducts.slice(0, 12);
+    return showcaseProducts
+      .filter((p) => (p.meat_type || '').toLowerCase() === selectedCategory.toLowerCase())
+      .slice(0, 12);
+  }, [showcaseProducts, selectedCategory]);
+
+  // Dual marquee lists
+  const marqueeList1 = useMemo(() => {
+    if (showcaseProducts.length === 0) return [];
+    return showcaseProducts.slice(0, 10);
+  }, [showcaseProducts]);
+
+  const marqueeList2 = useMemo(() => {
+    if (showcaseProducts.length === 0) return [];
+    return showcaseProducts.length > 10 ? showcaseProducts.slice(10, 20) : showcaseProducts;
+  }, [showcaseProducts]);
+
   const goTo = id => {
     setMenuOpen(false);
     const el = document.getElementById(id);
@@ -285,6 +349,7 @@ const LandingPage = () => {
   };
 
   const navItems = [
+    { t: 'Meats', id: 'showcase' },
     { t: 'Capabilities', id: 'capabilities' },
     { t: 'System portals', id: 'portals' },
     { t: 'Specifications', id: 'specs' },
@@ -441,7 +506,89 @@ const LandingPage = () => {
         @keyframes blink{50%{opacity:.25}}
         .mobile-menu-btn{display:none}
 
+        /* ── floating hero meat bob ── */
+        @keyframes float-bob {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-16px); }
+        }
+        .float-bob {
+          animation: float-bob 5s ease-in-out infinite;
+        }
+
+        /* ── showcase animations ── */
+        @keyframes price-pop {
+          0% { transform: scale(0.75); opacity: 0; }
+          70% { transform: scale(1.12); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .price-stamp {
+          animation: price-pop 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+        }
+
+        @keyframes showcase-fade-in {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .showcase-card-anim {
+          animation: showcase-fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes skeleton-pulse {
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.75; }
+        }
+
+        @keyframes marquee-showcase-left {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes marquee-showcase-right {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+
+        .marquee-row-1 {
+          display: flex;
+          width: max-content;
+          animation: marquee-showcase-left 44s linear infinite;
+        }
+        .marquee-row-2 {
+          display: flex;
+          width: max-content;
+          animation: marquee-showcase-right 44s linear infinite;
+        }
+        .marquee-showcase-wrap:hover .marquee-row-1,
+        .marquee-showcase-wrap:hover .marquee-row-2 {
+          animation-play-state: paused;
+        }
+
+        .showcase-card {
+          transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                      box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                      border-color 0.3s ease;
+        }
+        .showcase-card:hover {
+          transform: translateY(-8px);
+          border-color: rgba(229, 56, 74, 0.55) !important;
+          box-shadow: 0 20px 42px rgba(0, 0, 0, 0.5), 0 0 24px rgba(229, 56, 74, 0.32) !important;
+        }
+        .showcase-card:hover .showcase-card-img {
+          transform: scale(1.08);
+        }
+        .showcase-card-img {
+          transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .showcase-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+
         @media (max-width:1180px){.hang-side{display:none !important}}
+        @media (max-width:1040px){
+          .showcase-grid{grid-template-columns:repeat(2, 1fr) !important; gap:16px}
+        }
         @media (max-width:900px){
           .portal-grid{grid-template-columns:1fr !important}
           .feature-grid{grid-template-columns:1fr 1fr !important}
@@ -450,6 +597,7 @@ const LandingPage = () => {
           .scale-grid{grid-template-columns:1fr !important}
         }
         @media (max-width:600px){
+          .showcase-grid{grid-template-columns:1fr !important}
           .feature-grid,.stat-row{grid-template-columns:1fr !important}
           .nav-center,.nav-right-desktop{display:none !important}
           .mobile-menu-btn{display:flex !important}
@@ -461,6 +609,9 @@ const LandingPage = () => {
           .chop .chop-line{width:calc(50% - 110px)}
           .stamp{opacity:.9}
           .bar>i{width:var(--w)}
+          .float-bob, .marquee-row-1, .marquee-row-2, .showcase-card-anim, .price-stamp {animation:none !important; transform:none !important}
+          .showcase-card:hover{transform:none !important}
+          .showcase-card:hover .showcase-card-img{transform:none !important}
         }
       `}</style>
 
@@ -525,13 +676,21 @@ const LandingPage = () => {
           }} />
         ))}
 
-        {/* steel rail with hanging cuts */}
+        {/* steel rail with hanging cuts & gentle floating bob */}
         <div className="rail" />
         <div className="hang-side" style={{ position: 'absolute', inset: 0, top: 72, zIndex: 3, pointerEvents: 'none' }}>
-          <HangingCut width={96} chain={60} dur={5.2} delay={-1} style={{ left: '4%' }}><Ham /></HangingCut>
-          <HangingCut width={70} chain={120} dur={6.4} delay={-3} style={{ left: '14%' }}><Sausages /></HangingCut>
-          <HangingCut width={92} chain={90} dur={5.8} delay={-2} style={{ right: '14%' }}><Ribs /></HangingCut>
-          <HangingCut width={104} chain={50} dur={6} delay={-4} style={{ right: '3.5%' }}><Steak /></HangingCut>
+          <HangingCut width={96} chain={60} dur={5.2} delay={-1} style={{ left: '4%' }}>
+            <div className="float-bob" style={{ animationDuration: '5.2s' }}><Ham /></div>
+          </HangingCut>
+          <HangingCut width={70} chain={120} dur={6.4} delay={-3} style={{ left: '14%' }}>
+            <div className="float-bob" style={{ animationDuration: '6.4s', animationDelay: '-1.5s' }}><Sausages /></div>
+          </HangingCut>
+          <HangingCut width={92} chain={90} dur={5.8} delay={-2} style={{ right: '14%' }}>
+            <div className="float-bob" style={{ animationDuration: '5.8s', animationDelay: '-2.5s' }}><Ribs /></div>
+          </HangingCut>
+          <HangingCut width={104} chain={50} dur={6} delay={-4} style={{ right: '3.5%' }}>
+            <div className="float-bob" style={{ animationDuration: '6s', animationDelay: '-3.5s' }}><Steak /></div>
+          </HangingCut>
         </div>
 
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 4, textAlign: 'center' }}>
@@ -561,6 +720,335 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ── FRESH CUTS SHOWCASE SECTION ────────────────── */}
+      {(showcaseLoading || showcaseProducts.length > 0) && (
+        <section id="showcase" style={{ padding: '80px 0 65px', position: 'relative', zIndex: 4, background: `linear-gradient(180deg, ${OX} 0%, rgba(20,5,7,0.95) 50%, ${OX} 100%)` }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+            
+            {/* Header */}
+            <div className="reveal" style={{ textAlign: 'center', maxWidth: 720, margin: '0 auto 36px' }}>
+              <div style={{ marginBottom: 14 }}>
+                <Tag text="Fresh Cuts Showcase" color={MEAT_HI} />
+              </div>
+              <h2 style={{ fontFamily: DISPLAY, fontWeight: 400, fontSize: 'clamp(28px, 4.4vw, 48px)', lineHeight: 1.12, marginBottom: 14 }}>
+                Fresh from the butcher room
+              </h2>
+              <p style={{ color: MUTE, fontSize: 16, lineHeight: 1.7, maxWidth: 580, margin: '0 auto' }}>
+                Beef, pork, chicken, goat, and rabbit, weighed and tagged fresh every day.
+              </p>
+
+              {/* Category Filter Tabs */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 26 }}>
+                {['All', 'Beef', 'Pork', 'Chicken', 'Goat', 'Rabbit'].map((cat) => {
+                  const isActive = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setActiveTabKey(k => k + 1);
+                      }}
+                      style={{
+                        padding: '9px 20px',
+                        borderRadius: 100,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        letterSpacing: '.02em',
+                        border: isActive ? `1.5px solid ${MEAT_HI}` : '1.5px solid rgba(246, 235, 221, 0.14)',
+                        background: isActive ? `linear-gradient(135deg, ${MEAT_HI} 0%, ${MEAT} 100%)` : 'rgba(246, 235, 221, 0.05)',
+                        color: isActive ? '#ffffff' : MUTE,
+                        boxShadow: isActive ? '0 4px 18px rgba(229, 56, 74, 0.45)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'rgba(246, 235, 221, 0.12)';
+                          e.currentTarget.style.color = FAT;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'rgba(246, 235, 221, 0.05)';
+                          e.currentTarget.style.color = MUTE;
+                        }
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Skeleton Loading State */}
+            {showcaseLoading && (
+              <div className="showcase-grid">
+                {Array.from({ length: 8 }, (_, idx) => (
+                  <div key={idx} style={{
+                    background: `linear-gradient(170deg, ${OX3}, ${OX2})`,
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    height: 330,
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    <div style={{ height: 180, background: 'rgba(246, 235, 221, 0.05)', animation: 'skeleton-pulse 1.4s infinite ease-in-out' }} />
+                    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                      <div style={{ width: '70%', height: 18, borderRadius: 6, background: 'rgba(246, 235, 221, 0.08)', animation: 'skeleton-pulse 1.4s infinite ease-in-out' }} />
+                      <div style={{ width: '45%', height: 12, borderRadius: 4, background: 'rgba(246, 235, 221, 0.05)', animation: 'skeleton-pulse 1.4s infinite ease-in-out' }} />
+                      <div style={{ marginTop: 'auto', width: '50%', height: 20, borderRadius: 6, background: 'rgba(246, 235, 221, 0.08)', animation: 'skeleton-pulse 1.4s infinite ease-in-out' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Product Cards Grid */}
+            {!showcaseLoading && filteredProducts.length > 0 && (
+              <div key={activeTabKey} className="showcase-grid">
+                {filteredProducts.map((p, i) => {
+                  const img = getProductImage(p);
+                  const catColor = getCategoryColor(p.meat_type);
+                  return (
+                    <div
+                      key={p.id}
+                      className="showcase-card showcase-card-anim"
+                      style={{
+                        animationDelay: `${i * 80}ms`,
+                        background: `linear-gradient(170deg, ${OX3}, ${OX2})`,
+                        border: `1px solid ${LINE}`,
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        boxShadow: '0 14px 28px rgba(0,0,0,0.4)'
+                      }}
+                    >
+                      {/* Photo Container with hover zoom */}
+                      <div style={{ position: 'relative', height: 180, overflow: 'hidden', background: '#0D0405' }}>
+                        <img
+                          src={img}
+                          alt={p.name}
+                          loading="lazy"
+                          className="showcase-card-img"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+
+                        {/* Category Badge */}
+                        <div style={{
+                          position: 'absolute', top: 12, left: 12,
+                          padding: '4px 10px', borderRadius: 8,
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.05em',
+                          background: catColor.bg, border: `1px solid ${catColor.border}`, color: catColor.text,
+                          backdropFilter: 'blur(8px)', textTransform: 'uppercase'
+                        }}>
+                          {p.meat_type || 'MEAT'}
+                        </div>
+
+                        {/* In Stock / Sold Out Badge (no exact kg numbers shown) */}
+                        <div style={{
+                          position: 'absolute', top: 12, right: 12,
+                          padding: '4px 10px', borderRadius: 8,
+                          fontSize: 10, fontWeight: 700,
+                          background: p.in_stock ? 'rgba(20, 83, 45, 0.88)' : 'rgba(69, 10, 10, 0.88)',
+                          border: `1px solid ${p.in_stock ? '#22c55e' : '#ef4444'}`,
+                          color: p.in_stock ? '#bbf7d0' : '#fecaca',
+                          backdropFilter: 'blur(8px)',
+                          display: 'flex', alignItems: 'center', gap: 5
+                        }}>
+                          <span style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: p.in_stock ? '#22c55e' : '#ef4444',
+                            boxShadow: `0 0 6px ${p.in_stock ? '#22c55e' : '#ef4444'}`
+                          }} />
+                          {p.in_stock ? 'In Stock' : 'Sold Out'}
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', flex: 1, gap: 10 }}>
+                        <div>
+                          <h3 style={{ fontFamily: DISPLAY, fontSize: 17, color: FAT, lineHeight: 1.25, marginBottom: 4 }}>
+                            {p.name}
+                          </h3>
+                          <div style={{ fontSize: 12, color: MUTE, fontWeight: 500 }}>
+                            {p.meat_cut ? `Cut: ${p.meat_cut}` : p.category_name || p.meat_type}
+                          </div>
+                        </div>
+
+                        {p.description && (
+                          <p style={{
+                            fontSize: 12, color: '#d9c7b5', lineHeight: 1.45,
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden', margin: 0
+                          }}>
+                            {p.description}
+                          </p>
+                        )}
+
+                        {/* Price Stamp Section */}
+                        <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div className="price-stamp" style={{ animationDelay: `${i * 80 + 200}ms` }}>
+                            <span style={{ fontSize: 20, fontWeight: 800, color: '#FFD76B', fontVariantNumeric: 'tabular-nums' }}>
+                              ₱{Number(p.price_per_kg).toFixed(2)}
+                            </span>
+                            <span style={{ fontSize: 11, color: MUTE, fontWeight: 600 }}> / kg</span>
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: MEAT_HI, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            Fresh Daily
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* View Full Catalog Button */}
+            <div className="reveal" style={{ textAlign: 'center', marginTop: 44 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '14px 32px', fontSize: 15, borderRadius: 12 }}
+                onClick={() => {
+                  if (user) {
+                    navigate('/customer');
+                  } else {
+                    navigate('/customer/login');
+                  }
+                }}
+              >
+                <span>View Full Catalog</span>
+                <ArrowRight size={16} className="arr" />
+              </button>
+              <div style={{ fontSize: 12, color: MUTE, marginTop: 10 }}>
+                {user
+                  ? `Signed in as ${user.first_name || user.username} — click to browse all available cuts and order`
+                  : 'Sign in or open a free account to place weight-based pre-orders'}
+              </div>
+            </div>
+
+            {/* Continuous Dual Auto-Scrolling Marquee Rows */}
+            {showcaseProducts.length > 0 && (
+              <div style={{ marginTop: 45, position: 'relative' }}>
+                {/* Marquee Row 1 (Moving Left) */}
+                <div
+                  className="marquee-showcase-wrap"
+                  style={{
+                    overflow: 'hidden',
+                    padding: '8px 0',
+                    maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
+                  }}
+                >
+                  <div className="marquee-row-1">
+                    {[...marqueeList1, ...marqueeList1, ...marqueeList1].map((p, idx) => {
+                      const img = getProductImage(p);
+                      const catColor = getCategoryColor(p.meat_type);
+                      return (
+                        <div key={`m1-${p.id}-${idx}`} style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '7px 16px 7px 10px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(246, 235, 221, 0.12)',
+                          borderRadius: 100,
+                          marginRight: 14,
+                          flexShrink: 0
+                        }}>
+                          <img
+                            src={img}
+                            alt={p.name}
+                            loading="lazy"
+                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${catColor.border}` }}
+                          />
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: FAT, whiteSpace: 'nowrap' }}>{p.name}</div>
+                            <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>₱{Number(p.price_per_kg).toFixed(2)}/kg</div>
+                          </div>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 100,
+                            background: p.in_stock ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: p.in_stock ? '#86efac' : '#fca5a5',
+                            border: `1px solid ${p.in_stock ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {p.in_stock ? 'In Stock' : 'Sold Out'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Marquee Row 2 (Moving Right in opposite direction) */}
+                <div
+                  className="marquee-showcase-wrap"
+                  style={{
+                    overflow: 'hidden',
+                    padding: '8px 0',
+                    maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
+                  }}
+                >
+                  <div className="marquee-row-2">
+                    {[...marqueeList2, ...marqueeList2, ...marqueeList2].map((p, idx) => {
+                      const img = getProductImage(p);
+                      const catColor = getCategoryColor(p.meat_type);
+                      return (
+                        <div key={`m2-${p.id}-${idx}`} style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '7px 16px 7px 10px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(246, 235, 221, 0.12)',
+                          borderRadius: 100,
+                          marginRight: 14,
+                          flexShrink: 0
+                        }}>
+                          <img
+                            src={img}
+                            alt={p.name}
+                            loading="lazy"
+                            style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${catColor.border}` }}
+                          />
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: FAT, whiteSpace: 'nowrap' }}>{p.name}</div>
+                            <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>₱{Number(p.price_per_kg).toFixed(2)}/kg</div>
+                          </div>
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 100,
+                            background: p.in_stock ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: p.in_stock ? '#86efac' : '#fca5a5',
+                            border: `1px solid ${p.in_stock ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {p.in_stock ? 'In Stock' : 'Sold Out'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── TICKER ────────────────────────────────────── */}
       <div className="ticker" style={{ background: MEAT, borderTop: '2px dashed rgba(255,255,255,.35)', borderBottom: '2px dashed rgba(255,255,255,.35)', overflow: 'hidden', padding: '14px 0', position: 'relative', zIndex: 4 }}>

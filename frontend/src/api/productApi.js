@@ -6,6 +6,7 @@ export const createCategoryApi = (data) => api.post('/categories', data);
 
 // Products
 export const getProductsApi = (params) => api.get('/products', { params });
+export const getShowcaseProductsApi = (params) => api.get('/products/showcase', { params });
 export const getProductByIdApi = (id) => api.get(`/products/${id}`);
 export const createProductApi = (data) => api.post('/products', data);
 export const updateProductApi = (id, data) => api.put(`/products/${id}`, data);
