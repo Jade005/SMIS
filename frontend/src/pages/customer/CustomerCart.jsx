@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { createOrderApi } from '../../api/orderApi';
 import { getProductImage } from '../../utils/meatImages';
+import { getDisplayName } from '../../utils/nameHelper';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, ShoppingCart, Trash2, CheckCircle, ArrowLeft, Plus, Minus, Loader2 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 
 const CustomerCart = () => {
+  const { user } = useAuth();
   const { cart, updateWeight, removeFromCart, removeItemsFromCart, clearCart } = useCart();
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -693,6 +696,23 @@ const CustomerCart = () => {
               <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px', color: '#fdf2e3', letterSpacing: '-0.01em' }}>
                 Order Summary
               </h3>
+
+              {user && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                  padding: '8px 10px',
+                  background: 'rgba(246, 235, 221, 0.05)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(246, 235, 221, 0.1)',
+                  fontSize: '12.5px'
+                }}>
+                  <span style={{ color: '#d9c7b5' }}>Customer:</span>
+                  <span style={{ fontWeight: '700', color: '#F6EBDD' }}>{getDisplayName(user)}</span>
+                </div>
+              )}
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px', color: '#d9c7b5' }}>
                 <span>Total Items:</span>

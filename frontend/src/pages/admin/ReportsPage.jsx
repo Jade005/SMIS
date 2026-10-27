@@ -16,7 +16,9 @@ import {
   DollarSign,
   Receipt,
   Calendar,
-  Trash2
+  Trash2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const formatDateYMD = (d) => {
@@ -26,22 +28,79 @@ const formatDateYMD = (d) => {
   return `${year}-${month}-${day}`;
 };
 
-const getDefaultDateRange = (granularity) => {
+const getTodayStr = () => formatDateYMD(new Date());
+
+const getCurrentMonthStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getLastMonthStr = () => {
+  const now = new Date();
+  let prevM = now.getMonth();
+  let prevY = now.getFullYear();
+  if (prevM === 0) {
+    prevM = 12;
+    prevY -= 1;
+  }
+  return `${prevY}-${String(prevM).padStart(2, '0')}`;
+};
+
+const getCurrentYearNum = () => new Date().getFullYear();
+
+const getDailyPresetRange = (preset) => {
   const now = new Date();
   const toStr = formatDateYMD(now);
   const fromDate = new Date(now);
 
-  if (granularity === 'daily') {
-    fromDate.setDate(now.getDate() - 13); // 14 days
-  } else if (granularity === 'monthly') {
-    fromDate.setMonth(now.getMonth() - 11);
-    fromDate.setDate(1); // 12 months
-  } else if (granularity === 'yearly') {
-    fromDate.setFullYear(now.getFullYear() - 4);
-    fromDate.setMonth(0);
-    fromDate.setDate(1); // 5 years
+  if (preset === 'today') {
+    return { from: toStr, to: toStr };
   }
-  return { from: formatDateYMD(fromDate), to: toStr };
+  if (preset === 'yesterday') {
+    fromDate.setDate(now.getDate() - 1);
+    const yStr = formatDateYMD(fromDate);
+    return { from: yStr, to: yStr };
+  }
+  if (preset === 'last7') {
+    fromDate.setDate(now.getDate() - 6);
+    return { from: formatDateYMD(fromDate), to: toStr };
+  }
+  if (preset === 'last14') {
+    fromDate.setDate(now.getDate() - 13);
+    return { from: formatDateYMD(fromDate), to: toStr };
+  }
+  if (preset === 'last30') {
+    fromDate.setDate(now.getDate() - 29);
+    return { from: formatDateYMD(fromDate), to: toStr };
+  }
+  return { from: toStr, to: toStr };
+};
+
+const getMonthRange = (yearMonthStr) => {
+  const now = new Date();
+  const currentY = now.getFullYear();
+  const currentM = now.getMonth() + 1;
+  const currentD = now.getDate();
+
+  const [y, m] = yearMonthStr.split('-').map(Number);
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+
+  let endDay = lastDay;
+  if (y === currentY && m === currentM) {
+    endDay = Math.min(lastDay, currentD);
+  }
+  const to = `${y}-${String(m).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+  return { from, to };
+};
+
+const getYearRange = (yearNum) => {
+  const now = new Date();
+  const currentY = now.getFullYear();
+  const y = Number(yearNum);
+  const from = `${y}-01-01`;
+  const to = y === currentY ? formatDateYMD(now) : `${y}-12-31`;
+  return { from, to };
 };
 
 const formatPeso = (val) =>
@@ -60,9 +119,15 @@ const ReportsPage = () => {
 
   // Shared Date Filter State
   const [granularity, setGranularity] = useState('daily');
-  const defaultRange = getDefaultDateRange('daily');
-  const [fromDate, setFromDate] = useState(defaultRange.from);
-  const [toDate, setToDate] = useState(defaultRange.to);
+  const initialDaily = getDailyPresetRange('last14');
+  const [fromDate, setFromDate] = useState(initialDaily.from);
+  const [toDate, setToDate] = useState(initialDaily.to);
+
+  // Month state for Monthly view
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr);
+
+  // Year state for Yearly view
+  const [selectedYear, setSelectedYear] = useState(getCurrentYearNum);
 
   // Sales metric toggle: 'revenue' | 'volume'
   const [salesMetric, setSalesMetric] = useState('revenue');
@@ -75,12 +140,90 @@ const ReportsPage = () => {
   const [supplierReport, setSupplierReport] = useState({ summary: {}, chartData: [], suppliers: [] });
   const [disposals, setDisposals] = useState([]);
 
-  // Handle Granularity change
+  // Granularity change: auto-set defaults
+  // Daily -> Last 14 days, Monthly -> current month, Yearly -> current year
   const handleGranularityChange = (newGran) => {
     setGranularity(newGran);
-    const range = getDefaultDateRange(newGran);
-    setFromDate(range.from);
-    setToDate(range.to);
+    if (newGran === 'daily') {
+      const r = getDailyPresetRange('last14');
+      setFromDate(r.from);
+      setToDate(r.to);
+    } else if (newGran === 'monthly') {
+      const curM = getCurrentMonthStr();
+      setSelectedMonth(curM);
+      const r = getMonthRange(curM);
+      setFromDate(r.from);
+      setToDate(r.to);
+    } else if (newGran === 'yearly') {
+      const curY = getCurrentYearNum();
+      setSelectedYear(curY);
+      const r = getYearRange(curY);
+      setFromDate(r.from);
+      setToDate(r.to);
+    }
+  };
+
+  const handleDailyPreset = (preset) => {
+    const r = getDailyPresetRange(preset);
+    setFromDate(r.from);
+    setToDate(r.to);
+  };
+
+  const handleSelectMonth = (mStr) => {
+    if (!mStr) return;
+    const curMStr = getCurrentMonthStr();
+    const finalMStr = mStr > curMStr ? curMStr : mStr;
+    setSelectedMonth(finalMStr);
+    const r = getMonthRange(finalMStr);
+    setFromDate(r.from);
+    setToDate(r.to);
+  };
+
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    let prevY = y;
+    let prevM = m - 1;
+    if (prevM < 1) {
+      prevM = 12;
+      prevY -= 1;
+    }
+    const newMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+    handleSelectMonth(newMonthStr);
+  };
+
+  const handleNextMonth = () => {
+    const curMStr = getCurrentMonthStr();
+    if (selectedMonth >= curMStr) return;
+    const [y, m] = selectedMonth.split('-').map(Number);
+    let nextY = y;
+    let nextM = m + 1;
+    if (nextM > 12) {
+      nextM = 1;
+      nextY += 1;
+    }
+    const newMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
+    if (newMonthStr > curMStr) return;
+    handleSelectMonth(newMonthStr);
+  };
+
+  const handleSelectYear = (yNum) => {
+    const curY = getCurrentYearNum();
+    const y = Math.min(Number(yNum), curY);
+    setSelectedYear(y);
+    const r = getYearRange(y);
+    setFromDate(r.from);
+    setToDate(r.to);
+  };
+
+  const handlePrevYear = () => {
+    if (selectedYear <= 2020) return;
+    handleSelectYear(selectedYear - 1);
+  };
+
+  const handleNextYear = () => {
+    const curY = getCurrentYearNum();
+    if (selectedYear >= curY) return;
+    handleSelectYear(selectedYear + 1);
   };
 
   // Fetch report for the currently active tab and filter
@@ -238,51 +381,299 @@ const ReportsPage = () => {
           </div>
         </div>
 
-        {/* Date Range: From and To Inputs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={15} color="#e5d5c3" />
-            <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600' }}>From:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{
-                width: 'auto',
-                minWidth: '140px',
-                padding: '6px 10px',
-                fontSize: '13px',
-                fontWeight: '600',
-                background: 'rgba(20, 5, 8, 0.7)',
-                color: '#fdf2e3',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '6px'
-              }}
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
+        {/* Date Filter Controls based on Granularity */}
+        {granularity === 'daily' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* Quick Presets */}
+            <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
+                { id: 'last7', label: 'Last 7 Days' },
+                { id: 'last14', label: 'Last 14 Days' },
+                { id: 'last30', label: 'Last 30 Days' }
+              ].map((p) => {
+                const pRange = getDailyPresetRange(p.id);
+                const isSelected = fromDate === pRange.from && toDate === pRange.to;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleDailyPreset(p.id)}
+                    style={{
+                      border: isSelected ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: isSelected ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
+                      color: isSelected ? '#ffffff' : '#d9c7b5',
+                      fontWeight: '700',
+                      fontSize: '11px',
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600' }}>To:</span>
-            <input
-              type="date"
-              className="form-control"
-              style={{
-                width: 'auto',
-                minWidth: '140px',
-                padding: '6px 10px',
-                fontSize: '13px',
-                fontWeight: '600',
-                background: 'rgba(20, 5, 8, 0.7)',
-                color: '#fdf2e3',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '6px'
-              }}
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
+            {/* From & To Inputs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Calendar size={14} color="#e5d5c3" />
+                <span style={{ fontSize: '12px', color: '#e5d5c3', fontWeight: '600' }}>From:</span>
+                <input
+                  type="date"
+                  max={getTodayStr()}
+                  value={fromDate}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFromDate(val);
+                    if (val > toDate) setToDate(val);
+                  }}
+                  style={{
+                    padding: '5px 8px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    background: 'rgba(20, 5, 8, 0.7)',
+                    color: '#fdf2e3',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '6px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#e5d5c3', fontWeight: '600' }}>To:</span>
+                <input
+                  type="date"
+                  max={getTodayStr()}
+                  min={fromDate}
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  style={{
+                    padding: '5px 8px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    background: 'rgba(20, 5, 8, 0.7)',
+                    color: '#fdf2e3',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '6px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {granularity === 'monthly' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* Monthly Presets */}
+            <div style={{ display: 'inline-flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => handleSelectMonth(getCurrentMonthStr())}
+                style={{
+                  border: selectedMonth === getCurrentMonthStr() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: selectedMonth === getCurrentMonthStr() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
+                  color: selectedMonth === getCurrentMonthStr() ? '#ffffff' : '#d9c7b5',
+                  fontWeight: '700',
+                  fontSize: '11px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                This Month
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectMonth(getLastMonthStr())}
+                style={{
+                  border: selectedMonth === getLastMonthStr() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: selectedMonth === getLastMonthStr() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
+                  color: selectedMonth === getLastMonthStr() ? '#ffffff' : '#d9c7b5',
+                  fontWeight: '700',
+                  fontSize: '11px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Last Month
+              </button>
+            </div>
+
+            {/* Prev / Month Picker / Next */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                title="Previous Month"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: 'rgba(20, 5, 8, 0.7)',
+                  color: '#fdf2e3',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <input
+                type="month"
+                max={getCurrentMonthStr()}
+                value={selectedMonth}
+                onChange={(e) => handleSelectMonth(e.target.value)}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  background: 'rgba(20, 5, 8, 0.7)',
+                  color: '#fdf2e3',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                disabled={selectedMonth >= getCurrentMonthStr()}
+                title="Next Month"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: selectedMonth >= getCurrentMonthStr() ? 'rgba(20, 5, 8, 0.3)' : 'rgba(20, 5, 8, 0.7)',
+                  color: selectedMonth >= getCurrentMonthStr() ? 'rgba(255, 255, 255, 0.2)' : '#fdf2e3',
+                  cursor: selectedMonth >= getCurrentMonthStr() ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {granularity === 'yearly' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* This Year Preset */}
+            <div style={{ display: 'inline-flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => handleSelectYear(getCurrentYearNum())}
+                style={{
+                  border: selectedYear === getCurrentYearNum() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  background: selectedYear === getCurrentYearNum() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
+                  color: selectedYear === getCurrentYearNum() ? '#ffffff' : '#d9c7b5',
+                  fontWeight: '700',
+                  fontSize: '11px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                This Year
+              </button>
+            </div>
+
+            {/* Prev / Year Dropdown / Next */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={handlePrevYear}
+                title="Previous Year"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: 'rgba(20, 5, 8, 0.7)',
+                  color: '#fdf2e3',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => handleSelectYear(Number(e.target.value))}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  background: 'rgba(20, 5, 8, 0.85)',
+                  color: '#fdf2e3',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                {(() => {
+                  const curY = getCurrentYearNum();
+                  const opts = [];
+                  for (let y = curY; y >= 2023; y--) {
+                    opts.push(y);
+                  }
+                  return opts.map((y) => (
+                    <option key={y} value={y} style={{ background: '#1a0a0c', color: '#fdf2e3' }}>
+                      {y}
+                    </option>
+                  ));
+                })()}
+              </select>
+
+              <button
+                type="button"
+                onClick={handleNextYear}
+                disabled={selectedYear >= getCurrentYearNum()}
+                title="Next Year"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: selectedYear >= getCurrentYearNum() ? 'rgba(20, 5, 8, 0.3)' : 'rgba(20, 5, 8, 0.7)',
+                  color: selectedYear >= getCurrentYearNum() ? 'rgba(255, 255, 255, 0.2)' : '#fdf2e3',
+                  cursor: selectedYear >= getCurrentYearNum() ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════

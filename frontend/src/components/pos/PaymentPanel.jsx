@@ -3,6 +3,7 @@ import { useCart } from '../../context/CartContext';
 import {
   ArrowLeft, X, CheckCircle, Printer, AlertCircle, RotateCcw
 } from 'lucide-react';
+import { getDisplayName } from '../../utils/nameHelper';
 
 /**
  * PaymentPanel (Cash-Only Payment Drawer)
@@ -209,7 +210,7 @@ const PaymentPanel = ({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>
                 <span style={{ color: '#334155', fontWeight: '600' }}>Customer:</span>
-                <strong style={{ color: '#0f172a' }}>{lastCompletedSale.customer_name || 'Walk-in Customer'}</strong>
+                <strong style={{ color: '#0f172a' }}>{getDisplayName(lastCompletedSale) || lastCompletedSale.customer_name || 'Walk-in Customer'}</strong>
               </div>
               {lastCompletedSale.fulfilled_order_no && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7', fontSize: '13px' }}>

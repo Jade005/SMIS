@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import Toast from '../../components/common/Toast';
 import Logo from '../../components/common/Logo';
+import { getDisplayName } from '../../utils/nameHelper';
 import {
   Eye,
   XCircle,
@@ -1252,7 +1253,7 @@ const OrderHistory = () => {
                 <div>
                   Customer:{' '}
                   <strong>
-                    {orderSlipData.customer_name || (user ? `${user.first_name} ${user.last_name}` : 'Customer')}
+                    {getDisplayName(orderSlipData) || orderSlipData.customer_name || (user ? getDisplayName(user) : 'Customer')}
                   </strong>
                 </div>
                 {orderSlipData.customer_phone && (

@@ -4,3 +4,5 @@ export const loginApi = (email, password) => api.post('/auth/login', { email, pa
 export const registerApi = (data) => api.post('/auth/register', data);
 export const setPasswordApi = (token, new_password, confirm_password) => api.post('/auth/set-password', { token, new_password, confirm_password });
 export const getMeApi = () => api.get('/auth/me');
+export const suggestEmailApi = (first_name, last_name) => api.get('/auth/suggest-email', { params: { first_name, last_name } });
+

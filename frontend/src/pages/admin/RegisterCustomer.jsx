@@ -1,23 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createUserApi } from '../../api/userApi';
+import { suggestEmailApi } from '../../api/authApi';
+import { getMiddleInitial, formatMiddleNameInput, getDisplayName } from '../../utils/nameHelper';
 import { UserPlus, CheckCircle, ShieldCheck, Eye, EyeOff, Mail, UserCheck } from 'lucide-react';
 
 const RegisterCustomer = () => {
   const [formData, setFormData] = useState({
     first_name: '',
+    middle_name: '',
+    middle_initial: '',
     last_name: '',
     email: '',
     password: '',
     phone: '',
     address: ''
   });
+  const [noMiddleName, setNoMiddleName] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const suggestTimeoutRef = useRef(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleMiddleNameChange = (val) => {
+    const formatted = formatMiddleNameInput(val);
+    const initial = getMiddleInitial(formatted);
+    setFormData((prev) => ({
+      ...prev,
+      middle_name: formatted,
+      middle_initial: initial
+    }));
+    if (noMiddleName && formatted) {
+      setNoMiddleName(false);
+    }
+  };
+
+  const handleToggleNoMiddleName = (checked) => {
+    setNoMiddleName(checked);
+    if (checked) {
+      setFormData((prev) => ({
+        ...prev,
+        middle_name: '',
+        middle_initial: ''
+      }));
+    }
   };
 
   const handleNameChange = (field, value) => {
@@ -37,6 +67,23 @@ const RegisterCustomer = () => {
       updated.password = '';
     }
     setFormData(updated);
+
+    // Debounce query suggest-email to ensure uniqueness if needed
+    if (suggestTimeoutRef.current) clearTimeout(suggestTimeoutRef.current);
+    const cleanF = (field === 'first_name' ? value : formData.first_name).trim();
+    const cleanL = (field === 'last_name' ? value : formData.last_name).trim();
+    if (cleanF && cleanL) {
+      suggestTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await suggestEmailApi(cleanF, cleanL);
+          if (res.data?.email) {
+            setFormData((prev) => ({ ...prev, email: res.data.email }));
+          }
+        } catch (e) {
+          // ignore fallback
+        }
+      }, 400);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -50,7 +97,8 @@ const RegisterCustomer = () => {
       const res = await createUserApi(payload);
       setSuccess(res.data);
       // Reset form after successful registration
-      setFormData({ first_name: '', last_name: '', email: '', password: '', phone: '', address: '' });
+      setFormData({ first_name: '', middle_name: '', middle_initial: '', last_name: '', email: '', password: '', phone: '', address: '' });
+      setNoMiddleName(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
@@ -107,7 +155,7 @@ const RegisterCustomer = () => {
                 Customer Account Created & Activated!
               </div>
               <div style={{ fontSize: '13px', color: '#047857' }}>
-                Account for <strong>{success.user?.first_name} {success.user?.last_name}</strong> (<code>{success.user?.email}</code>) is active and ready for POS & online store orders.
+                Account for <strong>{getDisplayName(success.user)}</strong> (<code>{success.user?.email}</code>) is active and ready for POS & online store orders.
               </div>
             </div>
           </div>
@@ -133,7 +181,7 @@ const RegisterCustomer = () => {
 
         {/* Customer Registration Form */}
         <form onSubmit={handleSubmit} autoComplete="off">
-          <div className="form-grid" style={{ marginBottom: '18px' }}>
+          <div className="form-grid" style={{ marginBottom: '18px', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
             <div className="form-group">
               <label>First Name <span style={{ color: 'var(--danger)' }}>*</span></label>
               <input
@@ -146,6 +194,54 @@ const RegisterCustomer = () => {
                 autoComplete="off"
                 required
               />
+            </div>
+
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ margin: 0 }}>
+                  Middle Name <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(optional)</span>
+                </label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  margin: 0
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={noMiddleName}
+                    onChange={(e) => handleToggleNoMiddleName(e.target.checked)}
+                    style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  />
+                  <span>No middle name</span>
+                </label>
+              </div>
+              <input
+                type="text"
+                name="middle_name"
+                className="form-control"
+                value={formData.middle_name}
+                onChange={(e) => handleMiddleNameChange(e.target.value)}
+                placeholder="Santos"
+                disabled={noMiddleName}
+                maxLength={50}
+                autoComplete="off"
+                style={noMiddleName ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              />
+              <div style={{
+                fontSize: '11.5px',
+                color: formData.middle_initial ? '#16a34a' : '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '2px'
+              }}>
+                <span>Middle Initial: <strong>{formData.middle_initial || (noMiddleName ? 'None' : '—')}</strong></span>
+              </div>
             </div>
 
             <div className="form-group">

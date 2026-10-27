@@ -4,6 +4,7 @@ import { LogOut, User, Lock, ChevronDown } from 'lucide-react';
 import EditProfileModal from '../shared/EditProfileModal';
 import ChangePasswordModal from '../shared/ChangePasswordModal';
 import { resolveAvatarUrl } from '../../utils/urlHelper';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const Navbar = ({ title }) => {
   const { user, logout } = useAuth();
@@ -103,7 +104,7 @@ const Navbar = ({ title }) => {
                 </div>
 
                 <span style={{ fontWeight: '600', fontSize: '13px', color: '#F6EBDD' }}>
-                  {user.first_name} {user.last_name}
+                  {getDisplayName(user)}
                 </span>
 
                 <span

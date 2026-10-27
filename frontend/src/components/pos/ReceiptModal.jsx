@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, X } from 'lucide-react';
 import Logo from '../common/Logo';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const ReceiptModal = ({ isOpen, onClose, sale }) => {
   if (!isOpen || !sale) return null;
@@ -33,7 +34,7 @@ const ReceiptModal = ({ isOpen, onClose, sale }) => {
             {/* Customer info — present when a pending order was fulfilled */}
             {sale.customer_name && (
               <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #ccc' }}>
-                <div>Customer: <strong>{sale.customer_name}</strong></div>
+                <div>Customer: <strong>{getDisplayName(sale) || sale.customer_name}</strong></div>
                 {sale.fulfilled_order_no && (
                   <div>Order Ref: <strong>#{sale.fulfilled_order_no}</strong></div>
                 )}

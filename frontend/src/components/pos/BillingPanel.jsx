@@ -4,6 +4,7 @@ import {
   Users, Search, RefreshCw, X, CheckCircle,
   AlertTriangle, Trash2, Tag, UserCheck, ArrowRight
 } from 'lucide-react';
+import { getDisplayName } from '../../utils/nameHelper';
 
 /**
  * BillingPanel (Order Summary Panel)
@@ -47,7 +48,7 @@ const BillingPanel = ({
   const filteredOrders = searchTerm
     ? orders.filter(
         (o) =>
-          (o.customer_name || '').toLowerCase().includes(searchTerm) ||
+          (getDisplayName(o) || o.customer_name || '').toLowerCase().includes(searchTerm) ||
           (o.order_no || '').toLowerCase().includes(searchTerm)
       )
     : orders;
@@ -262,7 +263,7 @@ const BillingPanel = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <strong style={{ fontSize: '12px', color: '#0f172a' }}>
                     {isActive && <CheckCircle size={12} color="var(--primary-cashier)" style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
-                    {order.customer_name}
+                    {getDisplayName(order) || order.customer_name}
                   </strong>
                   <span style={{ fontSize: '11px', color: '#94a3b8' }}>{formatOrderTime(order.created_at)}</span>
                 </div>

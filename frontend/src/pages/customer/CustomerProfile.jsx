@@ -6,6 +6,7 @@ import EditProfileModal from '../../components/shared/EditProfileModal';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal';
 import PageLoader from '../../components/common/PageLoader';
 import { resolveAvatarUrl } from '../../utils/urlHelper';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const CustomerProfile = () => {
   const { user } = useAuth();
@@ -95,7 +96,7 @@ const CustomerProfile = () => {
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>
-              {activeProfile.first_name} {activeProfile.last_name}
+              {getDisplayName(activeProfile)}
             </h2>
             <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <AtSign size={14} />
@@ -168,7 +169,7 @@ const CustomerProfile = () => {
             <div>
               <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Full Name</div>
               <div style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>
-                {activeProfile.first_name} {activeProfile.last_name}
+                {getDisplayName(activeProfile)}
               </div>
             </div>
           </div>

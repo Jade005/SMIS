@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const PendingAccounts = () => {
   const [pendingList, setPendingList] = useState([]);
@@ -86,14 +87,14 @@ const PendingAccounts = () => {
         await loadPendingAccounts();
 
         setCreatedCredentials({
-          fullName: `${item.first_name || ''} ${item.last_name || ''}`.trim() || approvedUser?.username,
+          fullName: getDisplayName(item) || approvedUser?.username,
           username: approvedUser?.username || item.username,
           email: item.email,
           tempPassword: tempPassword
         });
 
         setToast({
-          message: res.data?.message || `Account for ${item.first_name} ${item.last_name} registered and activated successfully!`,
+          message: res.data?.message || `Account for ${getDisplayName(item)} registered and activated successfully!`,
           type: 'success'
         });
       } else if (type === 'reject') {
@@ -102,7 +103,7 @@ const PendingAccounts = () => {
         await loadPendingAccounts();
 
         setToast({
-          message: res.data?.message || `Account request for ${item.first_name} ${item.last_name} has been rejected.`,
+          message: res.data?.message || `Account request for ${getDisplayName(item)} has been rejected.`,
           type: 'success'
         });
       }
@@ -120,12 +121,14 @@ const PendingAccounts = () => {
   const filteredList = pendingList.filter((item) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
-    const fullName = `${item.first_name || ''} ${item.last_name || ''}`.toLowerCase();
+    const fullName = getDisplayName(item).toLowerCase();
+    const rawNames = `${item.first_name || ''} ${item.middle_name || ''} ${item.last_name || ''}`.toLowerCase();
     const email = (item.email || '').toLowerCase();
     const phone = (item.phone || '').toLowerCase();
     const address = (item.address || '').toLowerCase();
     return (
       fullName.includes(q) ||
+      rawNames.includes(q) ||
       email.includes(q) ||
       phone.includes(q) ||
       address.includes(q)
@@ -339,7 +342,7 @@ const PendingAccounts = () => {
                     {/* Name */}
                     <td style={{ padding: '16px 18px', verticalAlign: 'middle' }}>
                       <div style={{ fontWeight: '700', color: '#F6EBDD', fontSize: '14px' }}>
-                        {item.first_name} {item.last_name}
+                        {getDisplayName(item)}
                       </div>
                       <div style={{ fontSize: '11px', color: '#D99A2B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#D99A2B', display: 'inline-block' }} />
@@ -508,7 +511,7 @@ const PendingAccounts = () => {
                   <>
                     Are you sure you want to register (approve) the account for{' '}
                     <strong style={{ color: '#F6EBDD' }}>
-                      {confirmModal.item.first_name} {confirmModal.item.last_name}
+                      {getDisplayName(confirmModal.item)}
                     </strong>{' '}
                     ({confirmModal.item.email})?
                   </>
@@ -516,7 +519,7 @@ const PendingAccounts = () => {
                   <>
                     Are you sure you want to reject the customer account application for{' '}
                     <strong style={{ color: '#F6EBDD' }}>
-                      {confirmModal.item.first_name} {confirmModal.item.last_name}
+                      {getDisplayName(confirmModal.item)}
                     </strong>{' '}
                     ({confirmModal.item.email})?
                   </>

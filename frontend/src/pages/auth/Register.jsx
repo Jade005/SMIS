@@ -1,20 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { registerApi } from '../../api/authApi';
+import { registerApi, suggestEmailApi } from '../../api/authApi';
+import { getMiddleInitial, formatMiddleNameInput, getDisplayName } from '../../utils/nameHelper';
 import { UserPlus, Clock, CheckCircle, ArrowLeft, Package, Sparkles } from 'lucide-react';
 import Logo from '../../components/common/Logo';
 
 const Register = () => {
   const [formData, setFormData] = useState({
     first_name: '',
+    middle_name: '',
+    middle_initial: '',
     last_name: '',
     email: '',
     phone: '',
     address: ''
   });
+  const [noMiddleName, setNoMiddleName] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const suggestTimeoutRef = useRef(null);
 
   // Floating embers animation
   const embers = useMemo(() => Array.from({ length: 16 }, (_, i) => ({
@@ -30,16 +35,60 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleMiddleNameChange = (val) => {
+    const formatted = formatMiddleNameInput(val);
+    const initial = getMiddleInitial(formatted);
+    setFormData((prev) => ({
+      ...prev,
+      middle_name: formatted,
+      middle_initial: initial
+    }));
+    if (noMiddleName && formatted) {
+      setNoMiddleName(false);
+    }
+  };
+
+  const handleToggleNoMiddleName = (checked) => {
+    setNoMiddleName(checked);
+    if (checked) {
+      setFormData((prev) => ({
+        ...prev,
+        middle_name: '',
+        middle_initial: ''
+      }));
+    }
+  };
+
   const handleNameChange = (field, value) => {
     const updated = { ...formData, [field]: value };
     const first = (field === 'first_name' ? value : formData.first_name).trim().toLowerCase();
     const last  = (field === 'last_name'  ? value : formData.last_name).trim().toLowerCase();
     if (first || last) {
-      updated.email = `${first}${last ? '.' + last : ''}@smis.local`;
+      const cleanFirst = first.replace(/[^a-z0-9]/g, '');
+      const cleanLast = last.replace(/[^a-z0-9]/g, '');
+      const base = (cleanFirst && cleanLast) ? `${cleanFirst}.${cleanLast}` : (cleanFirst || cleanLast);
+      updated.email = base ? `${base}@smis.local` : '';
     } else {
       updated.email = '';
     }
     setFormData(updated);
+
+    // Debounce query suggest-email to ensure uniqueness if name exists
+    if (suggestTimeoutRef.current) clearTimeout(suggestTimeoutRef.current);
+    const cleanF = (field === 'first_name' ? value : formData.first_name).trim();
+    const cleanL = (field === 'last_name' ? value : formData.last_name).trim();
+    if (cleanF && cleanL) {
+      suggestTimeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await suggestEmailApi(cleanF, cleanL);
+          if (res.data?.email) {
+            setFormData((prev) => ({ ...prev, email: res.data.email }));
+          }
+        } catch (e) {
+          // ignore fallback
+        }
+      }, 400);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -139,7 +188,7 @@ const Register = () => {
             Your account request was submitted. Please wait for admin approval.
           </p>
           <p style={{ fontSize: '13px', color: '#C9B4A6', lineHeight: '1.6', marginBottom: '22px' }}>
-            Your customer application for <strong style={{ color: '#F6EBDD' }}>{formData.first_name} {formData.last_name}</strong> ({formData.email}) is currently pending administrator verification. Once registered and approved by an administrator, you will be able to log in to place orders.
+            Your customer application for <strong style={{ color: '#F6EBDD' }}>{getDisplayName(formData)}</strong> ({formData.email}) is currently pending administrator verification. Once registered and approved by an administrator, you will be able to log in to place orders.
           </p>
 
           <div style={{
@@ -304,31 +353,79 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="form-grid" style={{ marginBottom: '14px' }}>
-              <div className="form-group">
-                <label>First Name</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  className="form-control"
-                  value={formData.first_name}
-                  onChange={(e) => handleNameChange('first_name', e.target.value)}
-                  placeholder="Juan"
-                  required
-                />
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <label>First Name</label>
+              <input
+                type="text"
+                name="first_name"
+                className="form-control"
+                value={formData.first_name}
+                onChange={(e) => handleNameChange('first_name', e.target.value)}
+                placeholder="Juan"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ margin: 0 }}>
+                  Middle Name <span style={{ fontSize: '10px', color: '#C9B4A6', fontWeight: 'normal', textTransform: 'none' }}>(optional)</span>
+                </label>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '11px',
+                  color: '#C9B4A6',
+                  textTransform: 'none',
+                  fontWeight: 'normal',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  margin: 0
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={noMiddleName}
+                    onChange={(e) => handleToggleNoMiddleName(e.target.checked)}
+                    style={{ accentColor: '#E5384A', cursor: 'pointer' }}
+                  />
+                  <span>No middle name</span>
+                </label>
               </div>
-              <div className="form-group">
-                <label>Last Name</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  className="form-control"
-                  value={formData.last_name}
-                  onChange={(e) => handleNameChange('last_name', e.target.value)}
-                  placeholder="Dela Cruz"
-                  required
-                />
+              <input
+                type="text"
+                name="middle_name"
+                className="form-control"
+                value={formData.middle_name}
+                onChange={(e) => handleMiddleNameChange(e.target.value)}
+                placeholder="Santos"
+                disabled={noMiddleName}
+                maxLength={50}
+                style={noMiddleName ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              />
+              <div style={{
+                fontSize: '11.5px',
+                color: formData.middle_initial ? '#7BD36B' : '#8C776B',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '2px'
+              }}>
+                <span>Middle Initial: <strong>{formData.middle_initial || (noMiddleName ? 'None' : '—')}</strong></span>
               </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <label>Last Name</label>
+              <input
+                type="text"
+                name="last_name"
+                className="form-control"
+                value={formData.last_name}
+                onChange={(e) => handleNameChange('last_name', e.target.value)}
+                placeholder="Dela Cruz"
+                required
+              />
             </div>
 
             <div className="form-group" style={{ marginBottom: '14px' }}>

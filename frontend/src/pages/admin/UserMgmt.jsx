@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
+import { getDisplayName, formatMiddleNameInput, getMiddleInitial } from '../../utils/nameHelper';
 
 const UserMgmt = () => {
   const { user: currentAdmin } = useAuth();
@@ -44,6 +45,8 @@ const UserMgmt = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editFormData, setEditFormData] = useState({
     first_name: '',
+    middle_name: '',
+    middle_initial: '',
     last_name: '',
     username: '',
     email: '',
@@ -51,6 +54,7 @@ const UserMgmt = () => {
     is_active: true,
     password: ''
   });
+  const [editNoMiddleName, setEditNoMiddleName] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -93,13 +97,15 @@ const UserMgmt = () => {
 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
-    const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
+    const displayName = getDisplayName(u).toLowerCase();
+    const rawNames = `${u.first_name || ''} ${u.middle_name || ''} ${u.last_name || ''}`.toLowerCase();
     const username = (u.username || '').toLowerCase();
     const email = (u.email || '').toLowerCase();
     const id = String(u.id ?? '').toLowerCase();
     const statusText = u.is_active ? 'active' : 'inactive';
     return (
-      fullName.includes(q) ||
+      displayName.includes(q) ||
+      rawNames.includes(q) ||
       username.includes(q) ||
       email.includes(q) ||
       id.includes(q) ||
@@ -110,11 +116,35 @@ const UserMgmt = () => {
 
   const [formData, setFormData] = useState({
     first_name: '',
+    middle_name: '',
+    middle_initial: '',
     last_name: '',
     username: '',
     email: '',
     role: 'cashier'
   });
+  const [addNoMiddleName, setAddNoMiddleName] = useState(false);
+
+  const handleAddMiddleNameChange = (val) => {
+    const formatted = formatMiddleNameInput(val);
+    const initial = getMiddleInitial(formatted);
+    setFormData((prev) => ({
+      ...prev,
+      middle_name: formatted,
+      middle_initial: initial
+    }));
+  };
+
+  const handleToggleAddNoMiddleName = (checked) => {
+    setAddNoMiddleName(checked);
+    if (checked) {
+      setFormData((prev) => ({
+        ...prev,
+        middle_name: '',
+        middle_initial: ''
+      }));
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -167,17 +197,27 @@ const UserMgmt = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await createUserApi(formData);
+      const payload = {
+        first_name: formData.first_name.trim(),
+        middle_name: formData.middle_name ? formData.middle_name.trim() : null,
+        middle_initial: formData.middle_initial ? formData.middle_initial.trim() : null,
+        last_name: formData.last_name.trim(),
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        role: formData.role
+      };
+      const res = await createUserApi(payload);
       setShowModal(false);
       const generatedTemp = res.data?.temp_password || res.data?.user?.temp_password_plain;
       setCreatedCredentials({
-        fullName: `${formData.first_name} ${formData.last_name}`,
+        fullName: getDisplayName(res.data?.user || payload),
         username: res.data?.user?.username || formData.username,
         email: res.data?.user?.email || formData.email,
         role: formData.role,
         tempPassword: generatedTemp
       });
-      setFormData({ first_name: '', last_name: '', username: '', email: '', role: 'cashier' });
+      setFormData({ first_name: '', middle_name: '', middle_initial: '', last_name: '', username: '', email: '', role: 'cashier' });
+      setAddNoMiddleName(false);
       setToast({
         message: res.data?.message || 'Account created successfully! Temporary password generated.',
         type: 'success'
@@ -304,8 +344,12 @@ const UserMgmt = () => {
 
   const handleOpenEdit = (user) => {
     setEditingUser(user);
+    const hasMiddleName = Boolean(user.middle_name && user.middle_name.trim());
+    setEditNoMiddleName(!hasMiddleName);
     setEditFormData({
       first_name: user.first_name || '',
+      middle_name: user.middle_name || '',
+      middle_initial: user.middle_initial || (user.middle_name ? getMiddleInitial(user.middle_name) : ''),
       last_name: user.last_name || '',
       username: user.username || '',
       email: user.email || '',
@@ -315,6 +359,27 @@ const UserMgmt = () => {
     });
     setEditError('');
     setShowEditModal(true);
+  };
+
+  const handleEditMiddleNameChange = (val) => {
+    const formatted = formatMiddleNameInput(val);
+    const initial = getMiddleInitial(formatted);
+    setEditFormData((prev) => ({
+      ...prev,
+      middle_name: formatted,
+      middle_initial: initial
+    }));
+  };
+
+  const handleToggleEditNoMiddleName = (checked) => {
+    setEditNoMiddleName(checked);
+    if (checked) {
+      setEditFormData((prev) => ({
+        ...prev,
+        middle_name: '',
+        middle_initial: ''
+      }));
+    }
   };
 
   const handleSaveEdit = async (e) => {
@@ -343,6 +408,8 @@ const UserMgmt = () => {
     try {
       const payload = {
         first_name: fName,
+        middle_name: editFormData.middle_name ? editFormData.middle_name.trim() : null,
+        middle_initial: editFormData.middle_initial ? editFormData.middle_initial.trim() : null,
         last_name: lName,
         username: uName,
         email: mail,
@@ -568,7 +635,7 @@ const UserMgmt = () => {
                   filteredUsers.map((u) => (
                     <tr key={u.id}>
                       <td style={{ verticalAlign: 'middle' }}>#{u.id}</td>
-                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{u.first_name} {u.last_name}</strong></td>
+                      <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}><strong>{getDisplayName(u)}</strong></td>
                       <td style={{ verticalAlign: 'middle' }}><code style={{ background: '#f1f5f9', color: '#111827', padding: '2px 6px', borderRadius: '4px' }}>{u.username || '—'}</code></td>
                       <td style={{ verticalAlign: 'middle' }}>{u.email}</td>
                       <td style={{ verticalAlign: 'middle' }}>
@@ -716,29 +783,71 @@ const UserMgmt = () => {
             </div>
 
             <form onSubmit={handleCreate}>
-              <div className="form-grid" style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. John"
-                    value={formData.first_name}
-                    onChange={(e) => handleNameChange('first_name', e.target.value)}
-                    required
-                  />
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. John"
+                  value={formData.first_name}
+                  onChange={(e) => handleNameChange('first_name', e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD', margin: 0 }}>
+                    Middle Name <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>(optional)</span>
+                  </label>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    margin: 0
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={addNoMiddleName}
+                      onChange={(e) => handleToggleAddNoMiddleName(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <span>No middle name</span>
+                  </label>
                 </div>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. Doe"
-                    value={formData.last_name}
-                    onChange={(e) => handleNameChange('last_name', e.target.value)}
-                    required
-                  />
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Santos"
+                  value={formData.middle_name}
+                  onChange={(e) => handleAddMiddleNameChange(e.target.value)}
+                  disabled={addNoMiddleName}
+                  maxLength={50}
+                  style={addNoMiddleName ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                />
+                <div style={{
+                  fontSize: '11px',
+                  color: formData.middle_initial ? '#22c55e' : '#94a3b8',
+                  marginTop: '3px'
+                }}>
+                  Middle Initial: <strong>{formData.middle_initial || (addNoMiddleName ? 'None' : '—')}</strong>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. Doe"
+                  value={formData.last_name}
+                  onChange={(e) => handleNameChange('last_name', e.target.value)}
+                  required
+                />
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -1128,29 +1237,71 @@ const UserMgmt = () => {
             )}
 
             <form onSubmit={handleSaveEdit}>
-              <div className="form-grid" style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. John"
-                    value={editFormData.first_name}
-                    onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
-                    required
-                  />
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. John"
+                  value={editFormData.first_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontWeight: '600', fontSize: '12px', margin: 0 }}>
+                    Middle Name <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>(optional)</span>
+                  </label>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    margin: 0
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={editNoMiddleName}
+                      onChange={(e) => handleToggleEditNoMiddleName(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <span>No middle name</span>
+                  </label>
                 </div>
-                <div className="form-group">
-                  <label style={{ fontWeight: '600', fontSize: '12px' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. Doe"
-                    value={editFormData.last_name}
-                    onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
-                    required
-                  />
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Santos"
+                  value={editFormData.middle_name}
+                  onChange={(e) => handleEditMiddleNameChange(e.target.value)}
+                  disabled={editNoMiddleName}
+                  maxLength={50}
+                  style={editNoMiddleName ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                />
+                <div style={{
+                  fontSize: '11px',
+                  color: editFormData.middle_initial ? '#22c55e' : '#94a3b8',
+                  marginTop: '3px'
+                }}>
+                  Middle Initial: <strong>{editFormData.middle_initial || (editNoMiddleName ? 'None' : '—')}</strong>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label style={{ fontWeight: '600', fontSize: '12px' }}>Last Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. Doe"
+                  value={editFormData.last_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
+                  required
+                />
               </div>
 
               <div className="form-group" style={{ marginBottom: '12px' }}>
@@ -1287,7 +1438,7 @@ const UserMgmt = () => {
 
             <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '24px' }}>
               <strong style={{ color: 'var(--fat)' }}>
-                {deactivateModalUser.first_name} {deactivateModalUser.last_name}
+                {getDisplayName(deactivateModalUser)}
               </strong> ({deactivateModalUser.username}) will no longer be able to log in. Their sales and order history will be kept. You can reactivate them anytime.
             </p>
 
@@ -1361,7 +1512,7 @@ const UserMgmt = () => {
 
             <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '24px' }}>
               Are you sure you want to reactivate <strong style={{ color: 'var(--fat)' }}>
-                {activateModalUser.first_name} {activateModalUser.last_name}
+                {getDisplayName(activateModalUser)}
               </strong> ({activateModalUser.username})? They will be able to log in again.
             </p>
 
@@ -1470,7 +1621,7 @@ const UserMgmt = () => {
               <div>
                 <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '16px' }}>
                   This will permanently remove <strong style={{ color: 'var(--fat)' }}>
-                    {deleteModalUser.first_name} {deleteModalUser.last_name}
+                    {getDisplayName(deleteModalUser)}
                   </strong>. This action cannot be undone.
                 </p>
 

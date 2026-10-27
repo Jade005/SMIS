@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { getOrdersApi, getOrderByIdApi, updateOrderStatusApi } from '../../api/orderApi';
 import { ShoppingBag, CheckCircle, Clock, XCircle, Search, X, Printer } from 'lucide-react';
 import PreOrderReceiptModal from '../../components/orders/PreOrderReceiptModal';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const OrderMgmt = () => {
   const [orders, setOrders] = useState([]);
@@ -63,7 +64,7 @@ const OrderMgmt = () => {
 
       if (!term) return true;
 
-      const customerName = (o.customer_name || '').toLowerCase();
+      const customerName = (getDisplayName(o) || o.customer_name || '').toLowerCase();
       const orderNo = (o.order_no || '').toLowerCase();
       const phone = (o.customer_phone || '').toLowerCase();
       const phoneDigits = phone.replace(/[^0-9]/g, '');
@@ -239,7 +240,7 @@ const OrderMgmt = () => {
               {filteredOrders.map((o) => (
                 <tr key={o.id}>
                   <td><strong>{o.order_no}</strong></td>
-                  <td>{o.customer_name}</td>
+                  <td>{getDisplayName(o) || o.customer_name}</td>
                   <td>{o.customer_phone || '—'}</td>
                   <td style={{ fontWeight: 'bold' }}>₱{Number(o.total_amount).toFixed(2)}</td>
                   <td>{new Date(o.created_at).toLocaleString()}</td>

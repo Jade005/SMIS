@@ -5,6 +5,7 @@ import { User, Mail, Phone, Camera, X, Check, Loader2, AtSign, Trash2 } from 'lu
 import Toast from '../common/Toast';
 import ModalWrapper from './ModalWrapper';
 import { resolveAvatarUrl } from '../../utils/urlHelper';
+import { formatMiddleNameInput, getMiddleInitial } from '../../utils/nameHelper';
 
 const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) => {
   const { user, setUser } = useAuth();
@@ -12,12 +13,15 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
 
   const [formData, setFormData] = useState({
     first_name: '',
+    middle_name: '',
+    middle_initial: '',
     last_name: '',
     username: '',
     email: '',
     contact_number: '',
     profile_picture: ''
   });
+  const [noMiddleName, setNoMiddleName] = useState(false);
 
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,8 +32,12 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
     if (isOpen) {
       const currentObj = initialData || user || {};
       const imgPath = currentObj.profile_picture || currentObj.profile_image || '';
+      const hasMiddleName = Boolean(currentObj.middle_name && currentObj.middle_name.trim());
+      setNoMiddleName(!hasMiddleName);
       setFormData({
         first_name: currentObj.first_name || '',
+        middle_name: currentObj.middle_name || '',
+        middle_initial: currentObj.middle_initial || (currentObj.middle_name ? getMiddleInitial(currentObj.middle_name) : ''),
         last_name: currentObj.last_name || '',
         username: currentObj.username || (currentObj.email ? currentObj.email.split('@')[0] : ''),
         email: currentObj.email || '',
@@ -53,6 +61,27 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleMiddleNameChange = (val) => {
+    const formatted = formatMiddleNameInput(val);
+    const initial = getMiddleInitial(formatted);
+    setFormData((prev) => ({
+      ...prev,
+      middle_name: formatted,
+      middle_initial: initial
+    }));
+  };
+
+  const handleToggleNoMiddleName = (checked) => {
+    setNoMiddleName(checked);
+    if (checked) {
+      setFormData((prev) => ({
+        ...prev,
+        middle_name: '',
+        middle_initial: ''
+      }));
     }
   };
 
@@ -108,7 +137,16 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
 
     try {
       setLoading(true);
-      const res = await updateUserProfileApi(formData);
+      const payload = {
+        ...formData,
+        first_name: formData.first_name.trim(),
+        middle_name: formData.middle_name ? formData.middle_name.trim() : null,
+        middle_initial: formData.middle_initial ? formData.middle_initial.trim() : null,
+        last_name: formData.last_name.trim(),
+        username: formData.username.trim(),
+        email: formData.email.trim()
+      };
+      const res = await updateUserProfileApi(payload);
       const updated = res.data.profile || res.data.user;
 
       // Update AuthContext so Navbar and all pages immediately update
@@ -352,64 +390,119 @@ const EditProfileModal = ({ isOpen, onClose, initialData, onProfileUpdated }) =>
               </div>
             </div>
 
-            {/* First Name & Last Name (With gap between first name input and last name label) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '14px',
-              marginBottom: '16px'
-            }}>
-              <div>
-                <label style={labelStyle}>
-                  First Name <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <User size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    placeholder="First Name"
-                    style={inputStyle(!!errors.first_name)}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#E5384A';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = errors.first_name ? '#ef4444' : 'rgba(246, 235, 221, 0.15)';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                </div>
-                {errors.first_name && <span style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'block', fontWeight: '600' }}>{errors.first_name}</span>}
+            {/* First Name */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>
+                First Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  placeholder="First Name"
+                  style={inputStyle(!!errors.first_name)}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#E5384A';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = errors.first_name ? '#ef4444' : 'rgba(246, 235, 221, 0.15)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
               </div>
+              {errors.first_name && <span style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'block', fontWeight: '600' }}>{errors.first_name}</span>}
+            </div>
 
-              <div>
-                <label style={labelStyle}>
-                  Last Name <span style={{ color: '#ef4444' }}>*</span>
+            {/* Middle Name */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ ...labelStyle, margin: 0 }}>
+                  Middle Name <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 'normal' }}>(optional)</span>
                 </label>
-                <div style={{ position: 'relative' }}>
-                  <User size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  margin: 0
+                }}>
                   <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    placeholder="Last Name"
-                    style={inputStyle(!!errors.last_name)}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#E5384A';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = errors.last_name ? '#ef4444' : 'rgba(246, 235, 221, 0.15)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    type="checkbox"
+                    checked={noMiddleName}
+                    onChange={(e) => handleToggleNoMiddleName(e.target.checked)}
+                    style={{ accentColor: '#E5384A', cursor: 'pointer' }}
                   />
-                </div>
-                {errors.last_name && <span style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'block', fontWeight: '600' }}>{errors.last_name}</span>}
+                  <span>No middle name</span>
+                </label>
               </div>
+              <div style={{ position: 'relative' }}>
+                <User size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
+                <input
+                  type="text"
+                  name="middle_name"
+                  value={formData.middle_name}
+                  onChange={(e) => handleMiddleNameChange(e.target.value)}
+                  placeholder="Santos"
+                  disabled={noMiddleName}
+                  maxLength={50}
+                  style={{
+                    ...inputStyle(false),
+                    ...(noMiddleName ? { opacity: 0.5, cursor: 'not-allowed' } : {})
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#E5384A';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(246, 235, 221, 0.15)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+              <div style={{
+                fontSize: '11px',
+                color: formData.middle_initial ? '#22c55e' : '#94a3b8',
+                marginTop: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span>Middle Initial: <strong>{formData.middle_initial || (noMiddleName ? 'None' : '—')}</strong></span>
+              </div>
+            </div>
+
+            {/* Last Name */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>
+                Last Name <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User size={15} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: '#c9b4a6' }} />
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  placeholder="Last Name"
+                  style={inputStyle(!!errors.last_name)}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#E5384A';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(229, 56, 74, 0.35)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = errors.last_name ? '#ef4444' : 'rgba(246, 235, 221, 0.15)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+              {errors.last_name && <span style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'block', fontWeight: '600' }}>{errors.last_name}</span>}
             </div>
 
             {/* Username */}

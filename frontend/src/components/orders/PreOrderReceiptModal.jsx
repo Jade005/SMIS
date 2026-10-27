@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
 import Logo from '../common/Logo';
+import { getDisplayName } from '../../utils/nameHelper';
 
 const PreOrderReceiptModal = ({ isOpen, onClose, order, loading = false }) => {
   useEffect(() => {
@@ -145,7 +146,7 @@ const PreOrderReceiptModal = ({ isOpen, onClose, order, loading = false }) => {
             <div>Order Ref: <strong>#{order.order_no}</strong></div>
             <div>Date &amp; Time: {new Date(order.created_at).toLocaleString()}</div>
             <div>
-              Customer: <strong>{order.customer_name || 'Customer'}</strong>
+              Customer: <strong>{getDisplayName(order) || order.customer_name || 'Customer'}</strong>
             </div>
             {order.customer_phone && (
               <div>Phone: {order.customer_phone}</div>
