@@ -889,11 +889,11 @@ select.form-control option {
 .cart-layout-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 24px;
+  gap: 20px;
   align-items: start;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1040px) {
   .cart-layout-grid {
     grid-template-columns: 1fr;
   }
@@ -907,7 +907,7 @@ select.form-control option {
   display: none;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px) {
   .cart-desktop-table {
     display: none !important;
   }

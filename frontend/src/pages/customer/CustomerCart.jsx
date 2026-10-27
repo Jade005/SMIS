@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { createOrderApi } from '../../api/orderApi';
@@ -7,6 +7,320 @@ import { getDisplayName } from '../../utils/nameHelper';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, ShoppingCart, Trash2, CheckCircle, ArrowLeft, Plus, Minus, Loader2 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
+
+/**
+ * Independent weight controller for each cart row.
+ * Maintains local string state while typing, auto-selects on focus,
+ * updates live totals immediately, and debounces/clamps commits to CartContext.
+ */
+const CartWeightControl = ({
+  itemKey,
+  weight,
+  maxStock,
+  onLiveWeightChange,
+  onCommitWeight,
+  isMobile = false
+}) => {
+  const [typedValue, setTypedValue] = useState(String(weight));
+  const [inputWarning, setInputWarning] = useState(null);
+  const debounceTimerRef = useRef(null);
+  const lastValidWeightRef = useRef(weight);
+  const isFocusedRef = useRef(false);
+
+  // Sync prop changes into local state only when not actively typing/focused
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setTypedValue(String(weight));
+      lastValidWeightRef.current = weight;
+      setInputWarning(null);
+    }
+  }, [weight]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  const commitAndClamp = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    let num = parseFloat(typedValue);
+    const minAllowed = 0.5;
+
+    if (isNaN(num) || num <= 0) {
+      num = lastValidWeightRef.current || 1;
+    }
+
+    if (num < minAllowed) {
+      num = minAllowed;
+    }
+
+    if (maxStock > 0 && num > maxStock) {
+      num = maxStock;
+    }
+
+    const rounded = Math.round(num * 100) / 100;
+    setTypedValue(String(rounded));
+    setInputWarning(null);
+    lastValidWeightRef.current = rounded;
+    onLiveWeightChange(itemKey, rounded, true, false);
+    onCommitWeight(itemKey, rounded);
+  }, [typedValue, maxStock, itemKey, onLiveWeightChange, onCommitWeight]);
+
+  const handleInputChange = (e) => {
+    const raw = e.target.value;
+
+    // Allow empty string so user can clear and type freely
+    if (raw === '') {
+      setTypedValue('');
+      setInputWarning(null);
+      onLiveWeightChange(itemKey, null, false, false);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      return;
+    }
+
+    // Only allow digits and at most one decimal point, up to 2 decimal places
+    if (!/^\d*\.?\d{0,2}$/.test(raw)) {
+      return;
+    }
+
+    setTypedValue(raw);
+
+    const parsed = parseFloat(raw);
+    if (isNaN(parsed) || parsed <= 0) {
+      setInputWarning(null);
+      onLiveWeightChange(itemKey, null, false, false);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    } else {
+      if (maxStock > 0 && parsed > maxStock) {
+        setInputWarning(`Max ${maxStock.toFixed(1)} kg`);
+        onLiveWeightChange(itemKey, parsed, false, true);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      } else {
+        setInputWarning(null);
+        lastValidWeightRef.current = parsed;
+        onLiveWeightChange(itemKey, parsed, true, false);
+
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          onCommitWeight(itemKey, parsed);
+        }, 400);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    commitAndClamp();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleFocus = (e) => {
+    isFocusedRef.current = true;
+    e.target.select();
+  };
+
+  const handleStep = (direction) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    let current = parseFloat(typedValue);
+    if (isNaN(current) || current <= 0) {
+      current = lastValidWeightRef.current || 1;
+    }
+
+    let next;
+    if (direction < 0) {
+      const step = current <= 1 ? 0.5 : 1;
+      next = Math.max(0.5, Math.round((current - step) * 100) / 100);
+    } else {
+      const step = current < 1 ? 0.5 : 1;
+      next = Math.round((current + step) * 100) / 100;
+      if (maxStock > 0 && next > maxStock) next = maxStock;
+    }
+
+    setTypedValue(String(next));
+    setInputWarning(null);
+    lastValidWeightRef.current = next;
+    onLiveWeightChange(itemKey, next, true, false);
+    onCommitWeight(itemKey, next);
+  };
+
+  const handleQuickAdd = (addAmount) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    let current = parseFloat(typedValue);
+    if (isNaN(current) || current <= 0) {
+      current = lastValidWeightRef.current || 1;
+    }
+    let next = Math.round((current + addAmount) * 100) / 100;
+    if (maxStock > 0 && next > maxStock) next = maxStock;
+
+    setTypedValue(String(next));
+    setInputWarning(null);
+    lastValidWeightRef.current = next;
+    onLiveWeightChange(itemKey, next, true, false);
+    onCommitWeight(itemKey, next);
+  };
+
+  const currentNumeric = parseFloat(typedValue) || lastValidWeightRef.current || weight;
+  const isAtMin = currentNumeric <= 0.5;
+  const isAtMax = maxStock > 0 && currentNumeric >= maxStock;
+
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '3px',
+          background: '#1a0a0c',
+          padding: '3px 6px',
+          borderRadius: '8px',
+          border: inputWarning
+            ? '1px solid #ef4444'
+            : isFocusedRef.current
+            ? '1px solid #E5384A'
+            : '1px solid rgba(246, 235, 221, 0.15)',
+          boxShadow: isFocusedRef.current ? '0 0 0 2px rgba(229, 56, 74, 0.25)' : 'none',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => handleStep(-1)}
+          disabled={isAtMin}
+          style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '5px',
+            border: '1px solid rgba(246, 235, 221, 0.18)',
+            background: isAtMin ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
+            cursor: isAtMin ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isAtMin ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+            transition: 'all 0.15s ease'
+          }}
+          title={isAtMin ? "Minimum 0.5 kg" : "Decrease weight"}
+          aria-label="Decrease weight"
+        >
+          <Minus size={12} />
+        </button>
+
+        <input
+          type="text"
+          inputMode="decimal"
+          value={typedValue}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          placeholder="1"
+          style={{
+            width: '46px',
+            padding: '2px 0',
+            textAlign: 'center',
+            fontWeight: '800',
+            fontSize: '13px',
+            borderRadius: '4px',
+            border: 'none',
+            background: 'transparent',
+            color: inputWarning ? '#fbbf24' : '#fdf2e3',
+            outline: 'none'
+          }}
+          aria-label="Weight in kilograms"
+        />
+
+        <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700', userSelect: 'none', marginRight: '2px' }}>
+          kg
+        </span>
+
+        <button
+          type="button"
+          onClick={() => handleStep(1)}
+          disabled={isAtMax}
+          style={{
+            width: '24px',
+            height: '24px',
+            borderRadius: '5px',
+            border: '1px solid rgba(246, 235, 221, 0.18)',
+            background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
+            cursor: isAtMax ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
+            transition: 'all 0.15s ease'
+          }}
+          title={isAtMax ? `Max available stock (${maxStock} kg) reached` : "Increase weight"}
+          aria-label="Increase weight"
+        >
+          <Plus size={12} />
+        </button>
+      </div>
+
+      {/* Quick Add Pills: +0.5, +1, +5 kg */}
+      <div style={{ display: 'flex', gap: '3px', marginTop: '4px', justifyContent: 'center' }}>
+        {[0.5, 1, 5].map((amt) => {
+          const wouldExceed = maxStock > 0 && (currentNumeric + amt > maxStock);
+          return (
+            <button
+              key={amt}
+              type="button"
+              onClick={() => handleQuickAdd(amt)}
+              disabled={wouldExceed}
+              style={{
+                fontSize: '9.5px',
+                fontWeight: '700',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                background: 'rgba(246, 235, 221, 0.05)',
+                border: '1px solid rgba(246, 235, 221, 0.12)',
+                color: wouldExceed ? 'rgba(246, 235, 221, 0.2)' : '#d9c7b5',
+                cursor: wouldExceed ? 'not-allowed' : 'pointer',
+                lineHeight: '1.2',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!wouldExceed) {
+                  e.currentTarget.style.background = 'rgba(229, 56, 74, 0.2)';
+                  e.currentTarget.style.borderColor = '#E5384A';
+                  e.currentTarget.style.color = '#ffffff';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(246, 235, 221, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(246, 235, 221, 0.12)';
+                e.currentTarget.style.color = wouldExceed ? 'rgba(246, 235, 221, 0.2)' : '#d9c7b5';
+              }}
+              title={wouldExceed ? `Exceeds stock` : `Add ${amt} kg`}
+            >
+              +{amt}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Warning or Stock Hint */}
+      {inputWarning ? (
+        <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '3px', fontWeight: '700' }}>
+          {inputWarning}
+        </div>
+      ) : maxStock > 0 ? (
+        <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '3px', fontWeight: '600' }}>
+          Stock: {maxStock.toFixed(1)} kg
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 const CustomerCart = () => {
   const { user } = useAuth();
@@ -49,6 +363,20 @@ const CustomerCart = () => {
     knownKeysRef.current = currentKeys;
   }, [cart]);
 
+  // Local live weights tracking: map of itemKey -> { weight: number | null, isValid: boolean, isOverStock: boolean }
+  const [liveWeights, setLiveWeights] = useState({});
+
+  const handleLiveWeightChange = useCallback((itemKey, liveWeight, isValid, isOverStock) => {
+    setLiveWeights((prev) => ({
+      ...prev,
+      [itemKey]: { weight: liveWeight, isValid, isOverStock }
+    }));
+  }, []);
+
+  const handleCommitWeight = useCallback((itemKey, committedWeight) => {
+    updateWeight(itemKey, committedWeight);
+  }, [updateWeight]);
+
   // Derived selected items and calculations
   const selectedItems = useMemo(() => {
     return cart.filter((i) => selectedItemKeys.has(i.cart_item_id || i.product_id));
@@ -58,11 +386,27 @@ const CustomerCart = () => {
   const allSelected = cart.length > 0 && selectedCount === cart.length;
   const isIndeterminate = selectedCount > 0 && selectedCount < cart.length;
 
+  const isAnySelectedInvalid = useMemo(() => {
+    for (const item of selectedItems) {
+      const key = item.cart_item_id || item.product_id;
+      const live = liveWeights[key];
+      if (live && !live.isValid) {
+        return true;
+      }
+    }
+    return false;
+  }, [selectedItems, liveWeights]);
+
   const selectedSubtotal = useMemo(() => {
     return selectedItems.reduce((sum, item) => {
-      return sum + (Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0);
+      const key = item.cart_item_id || item.product_id;
+      const live = liveWeights[key];
+      const weightToUse = (live && live.weight !== null && live.isValid)
+        ? live.weight
+        : (Number(item.weight_kg) || 0);
+      return sum + (Number(item.price_per_kg) || 0) * weightToUse;
     }, 0);
-  }, [selectedItems]);
+  }, [selectedItems, liveWeights]);
 
   // Checkbox indeterminate support via ref
   const selectAllDesktopRef = useRef(null);
@@ -98,17 +442,20 @@ const CustomerCart = () => {
   };
 
   const handlePlaceOrder = async () => {
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0 || isAnySelectedInvalid) return;
 
     // Stock check: validate stock only for the selected items
     for (const item of selectedItems) {
+      const key = item.cart_item_id || item.product_id;
+      const live = liveWeights[key];
+      const effectiveWeight = (live && live.weight !== null && live.isValid) ? live.weight : item.weight_kg;
       const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
       if (maxStock <= 0) {
         alert(`"${item.product_name}" is currently out of stock. Please uncheck or remove it before placing your pre-order.`);
         return;
       }
-      if (item.weight_kg > maxStock) {
-        alert(`Requested weight for "${item.product_name}" (${item.weight_kg} kg) exceeds available stock (${maxStock.toFixed(1)} kg). Please reduce the weight before placing your pre-order.`);
+      if (effectiveWeight > maxStock) {
+        alert(`Requested weight for "${item.product_name}" (${effectiveWeight} kg) exceeds available stock (${maxStock.toFixed(1)} kg). Please reduce the weight before placing your pre-order.`);
         return;
       }
     }
@@ -117,10 +464,15 @@ const CustomerCart = () => {
 
     try {
       const orderPayload = {
-        items: selectedItems.map((i) => ({
-          product_id: i.product_id,
-          weight_kg: i.weight_kg
-        })),
+        items: selectedItems.map((i) => {
+          const key = i.cart_item_id || i.product_id;
+          const live = liveWeights[key];
+          const finalWeight = (live && live.weight !== null && live.isValid) ? live.weight : i.weight_kg;
+          return {
+            product_id: i.product_id,
+            weight_kg: finalWeight
+          };
+        }),
         notes: notes.trim() || null
       };
 
@@ -129,6 +481,11 @@ const CustomerCart = () => {
       // Remove ONLY the ordered items from the cart
       const orderedKeys = selectedItems.map((i) => i.cart_item_id || i.product_id);
       removeItemsFromCart(orderedKeys);
+      setLiveWeights((prev) => {
+        const next = { ...prev };
+        for (const k of orderedKeys) delete next[k];
+        return next;
+      });
       setNotes('');
 
       const remainingCount = cart.length - selectedItems.length;
@@ -160,12 +517,17 @@ const CustomerCart = () => {
         next.delete(itemKey);
         return next;
       });
+      setLiveWeights((prev) => {
+        const next = { ...prev };
+        delete next[itemKey];
+        return next;
+      });
       setToast({ message: `Removed "${productName || 'Item'}" from cart.`, type: 'info' });
     }
   };
 
   return (
-    <div className="page-container" style={{ maxWidth: '1140px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div className="page-container" style={{ maxWidth: '1240px', margin: '0 auto', paddingBottom: '60px' }}>
       <style>{`
         .custom-cart-checkbox {
           appearance: none;
@@ -306,11 +668,20 @@ const CustomerCart = () => {
               )}
               
               {/* Desktop Table View */}
-              <div className="table-responsive cart-desktop-table" style={{ width: '100%', overflowX: 'auto', background: 'var(--ox2)', borderRadius: '12px', border: '1px solid rgba(246, 235, 221, 0.12)' }}>
-                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+              <div
+                className="table-responsive cart-desktop-table"
+                style={{
+                  width: '100%',
+                  overflowX: 'hidden',
+                  background: 'var(--ox2)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(246, 235, 221, 0.12)'
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'auto' }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '44px', padding: '14px 14px', textAlign: 'center' }}>
+                      <th style={{ width: '38px', padding: '12px 6px', textAlign: 'center' }}>
                         <input
                           type="checkbox"
                           ref={selectAllDesktopRef}
@@ -321,11 +692,21 @@ const CustomerCart = () => {
                           aria-label="Select all items"
                         />
                       </th>
-                      <th style={{ width: '38%', padding: '14px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRODUCT</th>
-                      <th style={{ width: '16%', padding: '14px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>PRICE / KG</th>
-                      <th style={{ width: '22%', padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>WEIGHT (KG)</th>
-                      <th style={{ width: '14%', padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>SUBTOTAL</th>
-                      <th style={{ width: '8%', padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>REMOVE</th>
+                      <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: '11px', letterSpacing: '0.04em' }}>
+                        PRODUCT
+                      </th>
+                      <th style={{ width: '90px', padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.04em' }}>
+                        PRICE / KG
+                      </th>
+                      <th style={{ width: '150px', padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.04em' }}>
+                        WEIGHT (KG)
+                      </th>
+                      <th style={{ width: '100px', padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.04em' }}>
+                        SUBTOTAL
+                      </th>
+                      <th style={{ width: '52px', padding: '12px 6px', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '11px', letterSpacing: '0.04em' }}>
+                        REMOVE
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -333,9 +714,13 @@ const CustomerCart = () => {
                       const itemKey = item.cart_item_id || item.product_id;
                       const isSelected = selectedItemKeys.has(itemKey);
                       const itemImg = getProductImage(item);
-                      const itemSubtotal = (item.price_per_kg * item.weight_kg);
-                      const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg) || 0;
-                      const isAtMax = maxStock > 0 && item.weight_kg >= maxStock;
+                      const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
+                      const liveInfo = liveWeights[itemKey];
+                      const isRowValid = liveInfo ? liveInfo.isValid : true;
+                      const currentWeightNumber = (liveInfo && liveInfo.weight !== null && liveInfo.isValid)
+                        ? liveInfo.weight
+                        : item.weight_kg;
+                      const itemSubtotal = (Number(item.price_per_kg) || 0) * currentWeightNumber;
 
                       return (
                         <tr
@@ -346,7 +731,7 @@ const CustomerCart = () => {
                             transition: 'opacity 0.15s ease'
                           }}
                         >
-                          <td style={{ padding: '16px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <td style={{ width: '38px', padding: '12px 6px', verticalAlign: 'middle', textAlign: 'center' }}>
                             <input
                               type="checkbox"
                               className="custom-cart-checkbox"
@@ -356,107 +741,39 @@ const CustomerCart = () => {
                               aria-label={`Select ${item.product_name}`}
                             />
                           </td>
-                          <td style={{ padding: '16px 16px', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <td style={{ padding: '12px 10px', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <img
                                 src={itemImg}
                                 alt={item.product_name}
-                                style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', background: '#1a0a0c', flexShrink: 0, border: '1px solid rgba(246, 235, 221, 0.15)' }}
+                                style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', background: '#1a0a0c', flexShrink: 0, border: '1px solid rgba(246, 235, 221, 0.15)' }}
                               />
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '14px', fontWeight: '800', color: '#fdf2e3', lineHeight: '1.3' }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#fdf2e3', lineHeight: '1.3', wordBreak: 'break-word' }}>
                                   {item.product_name}
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#d9c7b5', marginTop: '3px', fontWeight: '500' }}>
+                                <div style={{ fontSize: '11px', color: '#d9c7b5', marginTop: '2px', fontWeight: '500' }}>
                                   {item.meat_type} • Cut: {item.meat_cut}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap', fontWeight: '600', color: '#fdf2e3' }}>
+                          <td style={{ width: '90px', padding: '12px 8px', verticalAlign: 'middle', whiteSpace: 'nowrap', textAlign: 'right', fontWeight: '600', color: '#fdf2e3', fontSize: '13px' }}>
                             ₱{Number(item.price_per_kg).toFixed(2)}
                           </td>
-                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
-                              <button
-                                type="button"
-                                onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
-                                disabled={item.weight_kg <= 0.5}
-                                style={{
-                                  width: '26px',
-                                  height: '26px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(246, 235, 221, 0.18)',
-                                  background: 'rgba(246, 235, 221, 0.06)',
-                                  cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                title="Decrease weight"
-                              >
-                                <Minus size={12} />
-                              </button>
-                              <input
-                                type="number"
-                                step="0.5"
-                                min="0.5"
-                                max={maxStock > 0 ? maxStock : undefined}
-                                style={{
-                                  width: '54px',
-                                  padding: '2px',
-                                  textAlign: 'center',
-                                  fontWeight: '800',
-                                  fontSize: '13px',
-                                  borderRadius: '4px',
-                                  border: 'none',
-                                  background: 'transparent',
-                                  color: '#fdf2e3',
-                                  outline: 'none'
-                                }}
-                                value={item.weight_kg}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  if (!isNaN(val)) {
-                                    const clamped = maxStock > 0 ? Math.min(maxStock, Math.max(0.5, val)) : Math.max(0.5, val);
-                                    updateWeight(itemKey, clamped);
-                                  }
-                                }}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => updateWeight(itemKey, maxStock > 0 ? Math.min(maxStock, item.weight_kg + 0.5) : item.weight_kg + 0.5)}
-                                disabled={isAtMax}
-                                style={{
-                                  width: '26px',
-                                  height: '26px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(246, 235, 221, 0.18)',
-                                  background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
-                                  cursor: isAtMax ? 'not-allowed' : 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                title={isAtMax ? `Maximum available stock (${maxStock} kg) reached` : "Increase weight"}
-                              >
-                                <Plus size={12} />
-                              </button>
-                            </div>
-                            {maxStock > 0 && (
-                              <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '4px', fontWeight: '600' }}>
-                                Stock: {maxStock.toFixed(1)} kg
-                              </div>
-                            )}
+                          <td style={{ width: '150px', padding: '12px 8px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            <CartWeightControl
+                              itemKey={itemKey}
+                              weight={item.weight_kg}
+                              maxStock={maxStock}
+                              onLiveWeightChange={handleLiveWeightChange}
+                              onCommitWeight={handleCommitWeight}
+                            />
                           </td>
-                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '15px' }}>
-                            ₱{itemSubtotal.toFixed(2)}
+                          <td style={{ width: '100px', padding: '12px 8px', verticalAlign: 'middle', fontWeight: '800', textAlign: 'right', whiteSpace: 'nowrap', color: '#fbbf24', fontSize: '14px' }}>
+                            {isRowValid ? `₱${itemSubtotal.toFixed(2)}` : <span style={{ color: '#c9b4a6', fontSize: '14px' }}>—</span>}
                           </td>
-                          <td style={{ padding: '16px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                          <td style={{ width: '52px', padding: '12px 6px', verticalAlign: 'middle', textAlign: 'center' }}>
                             <button
                               type="button"
                               className="btn btn-sm"
@@ -464,7 +781,7 @@ const CustomerCart = () => {
                                 color: '#ef4444',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                                padding: '6px 10px',
+                                padding: '6px 8px',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
@@ -487,7 +804,7 @@ const CustomerCart = () => {
                 </table>
               </div>
 
-              {/* Mobile Card Items View (Visible <= 680px) */}
+              {/* Mobile Card Items View (Visible <= 768px) */}
               <div className="cart-mobile-cards">
                 {/* Mobile Select All Bar */}
                 <div style={{
@@ -520,9 +837,13 @@ const CustomerCart = () => {
                   const itemKey = item.cart_item_id || item.product_id;
                   const isSelected = selectedItemKeys.has(itemKey);
                   const itemImg = getProductImage(item);
-                  const itemSubtotal = (item.price_per_kg * item.weight_kg);
                   const maxStock = Number(item.available_stock_kg ?? item.total_available_stock_kg ?? item.stock) || 0;
-                  const isAtMax = maxStock > 0 && item.weight_kg >= maxStock;
+                  const liveInfo = liveWeights[itemKey];
+                  const isRowValid = liveInfo ? liveInfo.isValid : true;
+                  const currentWeightNumber = (liveInfo && liveInfo.weight !== null && liveInfo.isValid)
+                    ? liveInfo.weight
+                    : item.weight_kg;
+                  const itemSubtotal = (Number(item.price_per_kg) || 0) * currentWeightNumber;
 
                   return (
                     <div
@@ -593,85 +914,23 @@ const CustomerCart = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(246, 235, 221, 0.08)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingTop: '10px', borderTop: '1px solid rgba(246, 235, 221, 0.08)' }}>
                         <div>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#1a0a0c', padding: '3px 6px', borderRadius: '8px', border: '1px solid rgba(246, 235, 221, 0.15)' }}>
-                            <button
-                              type="button"
-                              onClick={() => updateWeight(itemKey, Math.max(0.5, item.weight_kg - 0.5))}
-                              disabled={item.weight_kg <= 0.5}
-                              style={{
-                                width: '26px',
-                                height: '26px',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(246, 235, 221, 0.18)',
-                                background: 'rgba(246, 235, 221, 0.06)',
-                                color: item.weight_kg <= 0.5 ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-                                cursor: item.weight_kg <= 0.5 ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                            >
-                              <Minus size={12} />
-                            </button>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0.5"
-                              max={maxStock > 0 ? maxStock : undefined}
-                              style={{
-                                width: '50px',
-                                padding: '2px',
-                                textAlign: 'center',
-                                fontWeight: '800',
-                                fontSize: '13px',
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#fdf2e3',
-                                outline: 'none'
-                              }}
-                              value={item.weight_kg}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                if (!isNaN(val)) {
-                                  const clamped = maxStock > 0 ? Math.min(maxStock, Math.max(0.5, val)) : Math.max(0.5, val);
-                                  updateWeight(itemKey, clamped);
-                                }
-                              }}
-                            />
-                            <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
-                            <button
-                              type="button"
-                              onClick={() => updateWeight(itemKey, maxStock > 0 ? Math.min(maxStock, item.weight_kg + 0.5) : item.weight_kg + 0.5)}
-                              disabled={isAtMax}
-                              style={{
-                                width: '26px',
-                                height: '26px',
-                                borderRadius: '6px',
-                                border: '1px solid rgba(246, 235, 221, 0.18)',
-                                background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
-                                color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-                                cursor: isAtMax ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}
-                              title={isAtMax ? `Maximum available stock (${maxStock} kg) reached` : "Increase weight"}
-                            >
-                              <Plus size={12} />
-                            </button>
-                          </div>
-                          {maxStock > 0 && (
-                            <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '4px', fontWeight: '600' }}>
-                              Stock: {maxStock.toFixed(1)} kg
-                            </div>
-                          )}
+                          <CartWeightControl
+                            itemKey={itemKey}
+                            weight={item.weight_kg}
+                            maxStock={maxStock}
+                            onLiveWeightChange={handleLiveWeightChange}
+                            onCommitWeight={handleCommitWeight}
+                            isMobile={true}
+                          />
                         </div>
 
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: '11px', color: '#c9b4a6', textTransform: 'uppercase', fontWeight: '600' }}>Subtotal</div>
-                          <div style={{ fontSize: '16px', fontWeight: '800', color: '#fbbf24' }}>₱{itemSubtotal.toFixed(2)}</div>
+                          <div style={{ fontSize: '16px', fontWeight: '800', color: '#fbbf24' }}>
+                            {isRowValid ? `₱${itemSubtotal.toFixed(2)}` : <span style={{ color: '#c9b4a6' }}>—</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -811,28 +1070,34 @@ const CustomerCart = () => {
                   fontWeight: '800',
                   fontSize: '14px',
                   padding: '12px',
-                  background: (loading || selectedCount === 0)
+                  background: (loading || selectedCount === 0 || isAnySelectedInvalid)
                     ? 'rgba(246, 235, 221, 0.1)'
                     : 'linear-gradient(135deg, #E5384A 0%, #C1121F 100%)',
-                  color: (loading || selectedCount === 0) ? 'rgba(246, 235, 221, 0.35)' : '#ffffff',
-                  border: (loading || selectedCount === 0) ? '1px solid rgba(246, 235, 221, 0.15)' : 'none',
-                  boxShadow: (loading || selectedCount === 0) ? 'none' : '0 4px 14px rgba(193, 18, 31, 0.4)',
-                  cursor: (loading || selectedCount === 0) ? 'not-allowed' : 'pointer',
+                  color: (loading || selectedCount === 0 || isAnySelectedInvalid) ? 'rgba(246, 235, 221, 0.35)' : '#ffffff',
+                  border: (loading || selectedCount === 0 || isAnySelectedInvalid) ? '1px solid rgba(246, 235, 221, 0.15)' : 'none',
+                  boxShadow: (loading || selectedCount === 0 || isAnySelectedInvalid) ? 'none' : '0 4px 14px rgba(193, 18, 31, 0.4)',
+                  cursor: (loading || selectedCount === 0 || isAnySelectedInvalid) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   transition: 'all 0.15s ease'
                 }}
                 onClick={handlePlaceOrder}
-                disabled={loading || selectedCount === 0}
+                disabled={loading || selectedCount === 0 || isAnySelectedInvalid}
               >
-                {loading ? <Loader2 className="spin" size={18} /> : <CheckCircle size={18} />}
+                {loading ? (
+                  <Loader2 className="spin" size={18} />
+                ) : (
+                  <CheckCircle size={18} />
+                )}
                 <span>
                   {loading
                     ? 'Placing Pre-Order...'
                     : selectedCount === 0
                       ? 'Select items to checkout'
-                      : `Place Pre-Order (${selectedCount})`}
+                      : isAnySelectedInvalid
+                        ? 'Enter valid weight'
+                        : `Place Pre-Order (${selectedCount})`}
                 </span>
               </button>
             </div>
