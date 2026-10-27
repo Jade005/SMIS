@@ -467,6 +467,9 @@ const ProductMgmt = () => {
                     onChange={(e) => setFormData({ ...formData, price_per_kg: e.target.value })}
                     required
                   />
+                  <span style={{ fontSize: '11px', color: '#C9B4A6', marginTop: '3px', display: 'block' }}>
+                    New price applies to new orders only. Existing orders keep their agreed price.
+                  </span>
                 </div>
                 <div className="form-group">
                   <label style={{ fontWeight: '600', fontSize: '12px', color: '#F6EBDD' }}>

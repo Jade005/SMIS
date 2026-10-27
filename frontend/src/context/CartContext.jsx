@@ -151,15 +151,36 @@ export const CartProvider = ({ children }) => {
         continue;
       }
 
+      // Use the locked unit price agreed when placing the pre-order (never overwrite from live products catalog)
+      const lockedUnitPrice = Number(
+        item.unit_price !== undefined && item.unit_price !== null && Number(item.unit_price) > 0
+          ? item.unit_price
+          : item.price_at_order !== undefined && item.price_at_order !== null && Number(item.price_at_order) > 0
+          ? item.price_at_order
+          : item.price_per_kg !== undefined && item.price_per_kg !== null && Number(item.price_per_kg) > 0
+          ? item.price_per_kg
+          : (Number(item.subtotal || item.line_total || 0) > 0 && Number(item.weight_kg || 0) > 0)
+          ? Number(item.subtotal || item.line_total) / Number(item.weight_kg)
+          : (batch.product_price_per_kg ?? batch.price_per_kg)
+      );
+
+      const orderedWeight = Number(item.weight_kg || 1);
+      const availableStock = Number(batch.available_stock_kg);
+      const initialWeight = Math.min(availableStock, orderedWeight);
+
       newCartItems.push({
         cart_item_id: `preorder-${item.id || item.product_id}-${Date.now()}`,
         inventory_id: batch.id,
         product_id: item.product_id,
         product_name: item.product_name || batch.product_name,
         meat_cut: item.meat_cut || batch.meat_cut,
-        price_per_kg: Number(item.price_per_kg || batch.price_per_kg),
-        available_stock_kg: Number(batch.available_stock_kg),
-        weight_kg: Math.min(Number(batch.available_stock_kg), Number(item.weight_kg || 1)),
+        price_per_kg: lockedUnitPrice,
+        unit_price: lockedUnitPrice,
+        price_at_order: lockedUnitPrice,
+        available_stock_kg: availableStock,
+        weight_kg: initialWeight,
+        ordered_weight_kg: orderedWeight,
+        ordered_price_per_kg: lockedUnitPrice,
         source: 'preorder'
       });
     }
@@ -172,7 +193,8 @@ export const CartProvider = ({ children }) => {
       orderNo: orderDetails.order_no,
       customerId: orderDetails.customer_id,
       customerName: orderDetails.customer_name,
-      customerPhone: orderDetails.customer_phone || null
+      customerPhone: orderDetails.customer_phone || null,
+      original_order_total: Number(orderDetails.total_amount)
     });
 
     return unresolved; // caller can warn cashier if any items couldn't be resolved
@@ -189,6 +211,9 @@ export const CartProvider = ({ children }) => {
   };
 
   const updateWeight = (cartItemIdOrInventoryId, weight) => {
+    const num = Number(weight);
+    if (isNaN(num) || num <= 0) return;
+
     updateAndPersistCart((prev) =>
       prev.map((item) => {
         if (
@@ -197,7 +222,7 @@ export const CartProvider = ({ children }) => {
           item.product_id === cartItemIdOrInventoryId
         ) {
           const maxAllowed = Number(item.available_stock_kg ?? item.total_available_stock_kg) || 0;
-          let clampedWeight = Number(Math.max(0.1, weight).toFixed(3));
+          let clampedWeight = Number(Math.max(0.001, num).toFixed(3));
           if (maxAllowed > 0 && clampedWeight > maxAllowed) {
             clampedWeight = maxAllowed;
           }

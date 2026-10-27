@@ -5,6 +5,7 @@ import {
   AlertTriangle, Trash2, Tag, UserCheck, ArrowRight
 } from 'lucide-react';
 import { getDisplayName } from '../../utils/nameHelper';
+import QuantityInput from '../common/QuantityInput';
 
 /**
  * BillingPanel (Order Summary Panel)
@@ -21,6 +22,7 @@ const BillingPanel = ({
   onProceedToPayment
 }) => {
   const [pendingSearch, setPendingSearch] = useState('');
+  const [invalidLineIds, setInvalidLineIds] = useState(new Set());
 
   const {
     cart,
@@ -53,8 +55,9 @@ const BillingPanel = ({
       )
     : orders;
 
-  // Disabled if cart is empty (cannot proceed with 0 items)
-  const isProceedDisabled = cart.length === 0;
+  const hasInvalidLines = invalidLineIds.size > 0;
+  // Disabled if cart is empty or if any line has an invalid/empty/exceeded weight being typed
+  const isProceedDisabled = cart.length === 0 || hasInvalidLines;
 
   return (
     <div className="card" style={{ padding: '20px', marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -284,80 +287,142 @@ const BillingPanel = ({
             Cart Line Items ({cart.length})
           </span>
           <span style={{ fontSize: '11px', color: '#C9B4A6' }}>
-            Total Weight: {cart.reduce((sum, item) => sum + (Number(item.weight_kg) || 0), 0).toFixed(2)} kg
+            Total Weight: {cart.reduce((sum, item) => sum + (Number(item.weight_kg) || 0), 0).toFixed(3)} kg
           </span>
         </div>
 
-        <div style={{ maxHeight: '220px', overflowY: 'auto', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', paddingRight: '4px' }}>
-          {cart.map((item) => (
-            <div
-              key={item.cart_item_id}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '9px 0', borderBottom: '1px solid #f1f5f9'
-              }}
-            >
-              <div style={{ flex: 1, paddingRight: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: '700', fontSize: '13px', color: '#FFFFFF' }}>{item.product_name}</span>
-                  {item.source === 'preorder' && (
-                    <span style={{
-                      fontSize: '9px', fontWeight: '700', padding: '1px 5px',
-                      borderRadius: '4px', background: '#fed7aa', color: '#c2410c',
-                      display: 'inline-flex', alignItems: 'center', gap: '2px'
-                    }}>
-                      <Tag size={8} /> Pre-order
-                    </span>
-                  )}
-                  {item.source === 'walkin' && activeOrder && (
-                    <span style={{
-                      fontSize: '9px', fontWeight: '700', padding: '1px 5px',
-                      borderRadius: '4px', background: '#d1fae5', color: '#065f46',
-                      display: 'inline-flex', alignItems: 'center', gap: '2px'
-                    }}>
-                      + Added
-                    </span>
-                  )}
+        <div style={{ maxHeight: '250px', overflowY: 'auto', borderTop: '1px solid rgba(246, 235, 221, 0.12)', borderBottom: '1px solid rgba(246, 235, 221, 0.12)', paddingRight: '4px' }}>
+          {cart.map((item) => {
+            const isPreorder = item.source === 'preorder';
+            const orderedKg = item.ordered_weight_kg !== undefined ? Number(item.ordered_weight_kg) : null;
+            const currentKg = Number(item.weight_kg) || 0;
+            const isWeightDiff = isPreorder && orderedKg !== null && Math.abs(currentKg - orderedKg) > 0.0005;
+
+            return (
+              <div
+                key={item.cart_item_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: isWeightDiff ? '8px 10px' : '9px 4px',
+                  margin: isWeightDiff ? '4px 0' : '0',
+                  borderRadius: isWeightDiff ? '8px' : '0',
+                  background: isWeightDiff ? 'rgba(245, 158, 11, 0.09)' : 'transparent',
+                  border: isWeightDiff ? '1px solid #f59e0b' : 'none',
+                  borderBottom: isWeightDiff ? '1px solid #f59e0b' : '1px solid rgba(246, 235, 221, 0.08)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0, paddingRight: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: '700', fontSize: '13px', color: '#FFFFFF' }}>{item.product_name}</span>
+                    {isPreorder && (
+                      <span style={{
+                        fontSize: '9px', fontWeight: '700', padding: '1px 5px',
+                        borderRadius: '4px', background: '#fed7aa', color: '#c2410c',
+                        display: 'inline-flex', alignItems: 'center', gap: '2px'
+                      }}>
+                        <Tag size={8} /> Pre-order
+                      </span>
+                    )}
+                    {isWeightDiff && (
+                      <span style={{
+                        fontSize: '9px', fontWeight: '700', padding: '1px 5px',
+                        borderRadius: '4px', background: 'rgba(245, 158, 11, 0.25)', color: '#fbbf24',
+                        border: '1px solid rgba(245, 158, 11, 0.5)'
+                      }}>
+                        ⚖️ Weighed Differs
+                      </span>
+                    )}
+                    {item.source === 'walkin' && activeOrder && (
+                      <span style={{
+                        fontSize: '9px', fontWeight: '700', padding: '1px 5px',
+                        borderRadius: '4px', background: '#d1fae5', color: '#065f46',
+                        display: 'inline-flex', alignItems: 'center', gap: '2px'
+                      }}>
+                        + Added
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#C9B4A6', marginTop: '2px' }}>
+                    {item.meat_cut} · ₱{Number(item.price_per_kg).toFixed(2)}/kg
+                    <strong style={{ marginLeft: '6px', color: '#F6EBDD' }}>
+                      ₱{((Number(item.price_per_kg) || 0) * currentKg).toFixed(2)}
+                    </strong>
+                    {isPreorder && orderedKg !== null && (
+                      <span style={{
+                        marginLeft: '8px',
+                        color: isWeightDiff ? '#fbbf24' : '#C9B4A6',
+                        fontWeight: isWeightDiff ? '700' : '500',
+                        fontSize: '10.5px'
+                      }}>
+                        (Ordered: {orderedKg.toFixed(3)} kg)
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: '11px', color: '#C9B4A6' }}>
-                  {item.meat_cut} · ₱{Number(item.price_per_kg).toFixed(2)}/kg
-                  <strong style={{ marginLeft: '6px', color: '#F6EBDD' }}>
-                    ₱{((Number(item.price_per_kg) || 0) * (Number(item.weight_kg) || 0)).toFixed(2)}
-                  </strong>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  <QuantityInput
+                    value={item.weight_kg}
+                    maxStock={Number(item.available_stock_kg) || 0}
+                    minAllowed={0.001}
+                    decimals={3}
+                    unit="kg"
+                    compact={true}
+                    allowQuickPills={true}
+                    hasScale={true}
+                    onChange={(numericVal, isValid, isAboveMax) => {
+                      if (isValid && numericVal !== null) {
+                        setInvalidLineIds((prev) => {
+                          if (!prev.has(item.cart_item_id)) return prev;
+                          const next = new Set(prev);
+                          next.delete(item.cart_item_id);
+                          return next;
+                        });
+                        updateWeight(item.cart_item_id, numericVal);
+                      } else {
+                        setInvalidLineIds((prev) => {
+                          if (prev.has(item.cart_item_id)) return prev;
+                          const next = new Set(prev);
+                          next.add(item.cart_item_id);
+                          return next;
+                        });
+                      }
+                    }}
+                    onCommit={(finalVal) => {
+                      setInvalidLineIds((prev) => {
+                        if (!prev.has(item.cart_item_id)) return prev;
+                        const next = new Set(prev);
+                        next.delete(item.cart_item_id);
+                        return next;
+                      });
+                      updateWeight(item.cart_item_id, finalVal);
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    style={{ color: 'var(--danger)', padding: '5px 7px', borderColor: 'rgba(239, 68, 68, 0.35)' }}
+                    onClick={() => {
+                      setInvalidLineIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(item.cart_item_id);
+                        return next;
+                      });
+                      removeFromCart(item.cart_item_id);
+                    }}
+                    title="Remove item"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  max={item.available_stock_kg || 9999}
-                  className="form-control"
-                  style={{ width: '64px', padding: '4px 6px', textAlign: 'center', fontSize: '12px', fontWeight: '800' }}
-                  value={item.weight_kg}
-                  onChange={(e) => {
-                    const parsed = parseFloat(e.target.value) || 0.1;
-                    const max = Number(item.available_stock_kg) || 0;
-                    if (max > 0 && parsed > max) {
-                      updateWeight(item.cart_item_id, max);
-                    } else {
-                      updateWeight(item.cart_item_id, parsed);
-                    }
-                  }}
-                />
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#C9B4A6' }}>kg</span>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  style={{ color: 'var(--danger)', padding: '5px 7px' }}
-                  onClick={() => removeFromCart(item.cart_item_id)}
-                  title="Remove item"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {cart.length === 0 && (
             <div style={{ textAlign: 'center', padding: '24px 16px', color: '#C9B4A6', fontSize: '12px' }}>
               {activeOrder
@@ -423,11 +488,15 @@ const BillingPanel = ({
         <ArrowRight size={18} />
       </button>
 
-      {isProceedDisabled && (
+      {hasInvalidLines ? (
+        <div style={{ textAlign: 'center', fontSize: '11px', color: '#fbbf24', marginTop: '-8px', fontWeight: '600' }}>
+          Please enter valid weights within stock limits before proceeding
+        </div>
+      ) : cart.length === 0 ? (
         <div style={{ textAlign: 'center', fontSize: '11px', color: '#C9B4A6', marginTop: '-8px' }}>
           Add at least one item to proceed to payment
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

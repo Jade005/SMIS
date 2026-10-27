@@ -5,6 +5,7 @@ import { getProductImage } from '../../utils/meatImages';
 import { ShoppingCart, Search, Plus, Minus, Check, AlertTriangle, XCircle, Sparkles, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PageLoader from '../../components/common/PageLoader';
+import QuantityInput from '../../components/common/QuantityInput';
 
 // Product Card with independent quantity state and input handling
 const ProductCard = ({ product: p, isAdded, onAddToCart }) => {
@@ -252,83 +253,25 @@ const ProductCard = ({ product: p, isAdded, onAddToCart }) => {
         {/* ── Quantity Stepper & Add to Cart Container ─────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           
-          {/* Stepper Controls */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#1a0a0c',
-            borderRadius: '10px',
-            border: '1px solid rgba(246, 235, 221, 0.15)',
-            padding: '4px'
-          }}>
-            <button
-              type="button"
-              onClick={handleDecrement}
-              disabled={!canDecrement}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                border: 'none',
-                background: !canDecrement ? 'transparent' : 'rgba(246, 235, 221, 0.08)',
-                color: !canDecrement ? 'rgba(246, 235, 221, 0.2)' : '#F6EBDD',
-                boxShadow: 'none',
-                cursor: !canDecrement ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease'
+          {/* Quantity Input Controls */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <QuantityInput
+              value={qtyInput}
+              maxStock={stock}
+              minAllowed={minQty}
+              decimals={2}
+              unit="kg"
+              placeholder="1"
+              disabled={isOutOfStock}
+              style={{ width: '100%', alignItems: 'center' }}
+              inputStyle={{ width: '54px' }}
+              onChange={(val) => {
+                setQtyInput(val !== null ? String(val) : '');
               }}
-            >
-              <Minus size={14} />
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <input
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                disabled={isOutOfStock}
-                value={qtyInput}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-                onFocus={(e) => e.target.select()}
-                style={{
-                  width: '54px',
-                  textAlign: 'center',
-                  fontWeight: '800',
-                  fontSize: '14px',
-                  color: '#F6EBDD',
-                  border: 'none',
-                  background: 'transparent',
-                  outline: 'none'
-                }}
-              />
-              <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700' }}>kg</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleIncrement}
-              disabled={!canIncrement}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                border: 'none',
-                background: !canIncrement ? 'transparent' : 'rgba(246, 235, 221, 0.08)',
-                color: !canIncrement ? 'rgba(246, 235, 221, 0.2)' : '#F6EBDD',
-                boxShadow: 'none',
-                cursor: !canIncrement ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s ease'
+              onCommit={(val) => {
+                setQtyInput(String(val));
               }}
-            >
-              <Plus size={14} />
-            </button>
+            />
           </div>
 
           {/* Quick Add Buttons (+0.5, +1, +5 kg) */}

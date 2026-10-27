@@ -166,7 +166,8 @@ const POSPage = () => {
       const salePayload = {
         items: cart.map((i) => ({
           inventory_id: i.inventory_id,
-          weight_kg: i.weight_kg
+          weight_kg: i.weight_kg,
+          price_per_kg: Number(i.price_per_kg)
         })),
         discount: Number(discount),
         payment_method: 'cash',

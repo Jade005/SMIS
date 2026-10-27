@@ -6,8 +6,7 @@ import {
   toggleUserStatusApi,
   deactivateUserApi,
   activateUserApi,
-  deleteUserApi,
-  resetPasswordApi
+  deleteUserApi
 } from '../../api/userApi';
 import {
   Plus,
@@ -28,8 +27,7 @@ import {
   Pencil,
   Trash2,
   Ban,
-  Power,
-  KeyRound
+  Power
 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -53,8 +51,7 @@ const UserMgmt = () => {
     username: '',
     email: '',
     role: 'customer',
-    is_active: true,
-    password: ''
+    is_active: true
   });
   const [editNoMiddleName, setEditNoMiddleName] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -77,10 +74,8 @@ const UserMgmt = () => {
   const [deleteError, setDeleteError] = useState('');
   const [deleteHasHistory, setDeleteHasHistory] = useState(false);
 
-  // Reset Password Modal state
-  const [resetModalUser, setResetModalUser] = useState(null);
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetError, setResetError] = useState('');
+  // Password reveal state for temporary passwords
+  const [revealedPasswords, setRevealedPasswords] = useState({});
 
   const [copiedKey, setCopiedKey] = useState(null);
   const [createdCredentials, setCreatedCredentials] = useState(null);
@@ -161,41 +156,8 @@ const UserMgmt = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
 
-  const handleOpenResetPassword = (user) => {
-    setResetModalUser(user);
-    setResetError('');
-  };
-
-  const handleConfirmResetPassword = async () => {
-    if (!resetModalUser) return;
-    setResetLoading(true);
-    setResetError('');
-    try {
-      const res = await resetPasswordApi(resetModalUser.id);
-      const tempPassword = res.data?.temp_password;
-      const targetUser = resetModalUser;
-      setResetModalUser(null);
-
-      setCreatedCredentials({
-        fullName: getDisplayName(targetUser),
-        username: targetUser.username,
-        email: targetUser.email,
-        role: targetUser.role,
-        tempPassword: tempPassword,
-        isReset: true
-      });
-
-      setToast({
-        message: `Temporary password generated for ${getDisplayName(targetUser)}.`,
-        type: 'success'
-      });
-      await loadUsers();
-    } catch (err) {
-      console.error('Failed to reset password:', err);
-      setResetError(err.response?.data?.message || 'Failed to reset password.');
-    } finally {
-      setResetLoading(false);
-    }
+  const toggleReveal = (userId) => {
+    setRevealedPasswords((prev) => ({ ...prev, [userId]: !prev[userId] }));
   };
 
   const handleCopy = (text, key) => {
@@ -399,8 +361,7 @@ const UserMgmt = () => {
       username: user.username || '',
       email: user.email || '',
       role: user.role === 'customer' ? 'customer' : user.role,
-      is_active: Boolean(user.is_active),
-      password: ''
+      is_active: Boolean(user.is_active)
     });
     setEditError('');
     setShowEditModal(true);
@@ -689,35 +650,49 @@ const UserMgmt = () => {
                         </span>
                       </td>
                       <td style={{ verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                           <span
                             className={`badge ${Boolean(u.is_active) && u.status !== 'deactivated' ? 'badge-success' : 'badge-danger'}`}
                             style={{ letterSpacing: '0.04em' }}
                           >
                             {Boolean(u.is_active) && u.status !== 'deactivated' ? 'ACTIVE' : 'DEACTIVATED'}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenResetPassword(u)}
-                            style={{
+                          {Boolean(u.is_temp_password && u.temp_password_plain) && (
+                            <div style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
-                              background: 'rgba(245, 158, 11, 0.1)',
-                              border: '1px solid rgba(245, 158, 11, 0.35)',
+                              background: '#fffbeb',
+                              border: '1px solid #fde68a',
                               borderRadius: '6px',
-                              padding: '3px 8px',
-                              color: '#fbbf24',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease'
-                            }}
-                            title={`Reset password for ${getDisplayName(u)}`}
-                          >
-                            <KeyRound size={12} />
-                            <span>Reset Password</span>
-                          </button>
+                              padding: '3px 7px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                            }}>
+                              <span style={{ fontSize: '11px', color: '#b45309', fontWeight: '700', fontFamily: 'monospace' }}>
+                                ⚡ {revealedPasswords[u.id] ? u.temp_password_plain : '••••••••'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleReveal(u.id)}
+                                title={revealedPasswords[u.id] ? "Hide password" : "View temporary password"}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center' }}
+                              >
+                                {revealedPasswords[u.id] ? <EyeOff size={13} /> : <Eye size={13} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(u.temp_password_plain, `user-${u.id}`)}
+                                title="Copy temporary password"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#b45309', display: 'flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                {copiedKey === `user-${u.id}` ? (
+                                  <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '10px' }}>Copied</span>
+                                ) : (
+                                  <Copy size={13} />
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{new Date(u.created_at).toLocaleDateString()}</td>
@@ -1398,21 +1373,6 @@ const UserMgmt = () => {
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label style={{ fontWeight: '600', fontSize: '12px' }}>Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  placeholder="Enter new password (optional)"
-                  value={editFormData.password}
-                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
-                  autoComplete="new-password"
-                />
-                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                  Leave blank to keep the current password
-                </span>
-              </div>
-
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
@@ -1572,94 +1532,6 @@ const UserMgmt = () => {
               >
                 {activateLoading ? <Loader2 className="spin" size={16} /> : null}
                 <span>{activateLoading ? 'Activating...' : 'Yes, Activate'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---- Reset Temporary Password Confirmation Modal ---- */}
-      {resetModalUser && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '480px', borderRadius: '12px', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--fat)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <KeyRound size={20} color="#f59e0b" />
-                Reset Temporary Password?
-              </h3>
-              <button
-                type="button"
-                onClick={() => { setResetModalUser(null); setResetError(''); }}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                title="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {resetError && (
-              <div style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                marginBottom: '16px',
-                fontSize: '12px',
-                color: '#f87171',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <AlertCircle size={16} style={{ flexShrink: 0 }} />
-                <span>{resetError}</span>
-              </div>
-            )}
-
-            <p style={{ fontSize: '14px', color: 'var(--mute)', lineHeight: '1.6', marginBottom: '16px' }}>
-              Generate a new temporary password for <strong style={{ color: 'var(--fat)' }}>{getDisplayName(resetModalUser)}</strong> (<code style={{ color: '#FFD76B', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px' }}>{resetModalUser.username}</code>)?
-            </p>
-
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px dashed rgba(245, 158, 11, 0.35)',
-              borderRadius: '8px',
-              padding: '12px 14px',
-              marginBottom: '20px',
-              fontSize: '12px',
-              color: '#fde68a',
-              lineHeight: '1.5'
-            }}>
-              <strong>Security Protocol:</strong> The temporary password will be generated securely and shown <strong>ONCE</strong> in a modal with a Copy button so you can provide it to the customer. Plaintext passwords are never stored in the database.
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => { setResetModalUser(null); setResetError(''); }}
-                disabled={resetLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={handleConfirmResetPassword}
-                disabled={resetLoading}
-                style={{
-                  background: 'linear-gradient(135deg, #d97706, #b45309)',
-                  color: '#fff',
-                  border: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: '700',
-                  padding: '10px 18px',
-                  borderRadius: '8px'
-                }}
-              >
-                {resetLoading ? <Loader2 className="spin" size={16} /> : <KeyRound size={16} />}
-                <span>{resetLoading ? 'Generating...' : 'Generate New Password'}</span>
               </button>
             </div>
           </div>

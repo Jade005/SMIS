@@ -8,7 +8,6 @@ export const toggleUserStatusApi = (id, is_active) => api.patch(`/users/${id}/st
 export const deactivateUserApi = (id) => api.patch(`/users/${id}/deactivate`);
 export const activateUserApi = (id) => api.patch(`/users/${id}/activate`);
 export const deleteUserApi = (id) => api.delete(`/users/${id}`);
-export const resetPasswordApi = (id, data = {}) => api.patch(`/users/${id}/password`, data);
 export const getPendingRegistrationsApi = () => api.get('/users/pending');
 export const approveRegistrationApi = (id) => api.patch(`/users/registrations/${id}/approve`);
 export const rejectRegistrationApi = (id, data = {}) => api.patch(`/users/registrations/${id}/reject`, data);

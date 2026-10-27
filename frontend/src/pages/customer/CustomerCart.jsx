@@ -7,6 +7,7 @@ import { getDisplayName } from '../../utils/nameHelper';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, ShoppingCart, Trash2, CheckCircle, ArrowLeft, Plus, Minus, Loader2 } from 'lucide-react';
 import Toast from '../../components/common/Toast';
+import QuantityInput from '../../components/common/QuantityInput';
 
 /**
  * Independent weight controller for each cart row.
@@ -21,303 +22,29 @@ const CartWeightControl = ({
   onCommitWeight,
   isMobile = false
 }) => {
-  const [typedValue, setTypedValue] = useState(String(weight));
-  const [inputWarning, setInputWarning] = useState(null);
-  const debounceTimerRef = useRef(null);
-  const lastValidWeightRef = useRef(weight);
-  const isFocusedRef = useRef(false);
-
-  // Sync prop changes into local state only when not actively typing/focused
-  useEffect(() => {
-    if (!isFocusedRef.current) {
-      setTypedValue(String(weight));
-      lastValidWeightRef.current = weight;
-      setInputWarning(null);
-    }
-  }, [weight]);
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
-  const commitAndClamp = useCallback(() => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-
-    let num = parseFloat(typedValue);
-    const minAllowed = 0.5;
-
-    if (isNaN(num) || num <= 0) {
-      num = lastValidWeightRef.current || 1;
-    }
-
-    if (num < minAllowed) {
-      num = minAllowed;
-    }
-
-    if (maxStock > 0 && num > maxStock) {
-      num = maxStock;
-    }
-
-    const rounded = Math.round(num * 100) / 100;
-    setTypedValue(String(rounded));
-    setInputWarning(null);
-    lastValidWeightRef.current = rounded;
-    onLiveWeightChange(itemKey, rounded, true, false);
-    onCommitWeight(itemKey, rounded);
-  }, [typedValue, maxStock, itemKey, onLiveWeightChange, onCommitWeight]);
-
-  const handleInputChange = (e) => {
-    const raw = e.target.value;
-
-    // Allow empty string so user can clear and type freely
-    if (raw === '') {
-      setTypedValue('');
-      setInputWarning(null);
-      onLiveWeightChange(itemKey, null, false, false);
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      return;
-    }
-
-    // Only allow digits and at most one decimal point, up to 2 decimal places
-    if (!/^\d*\.?\d{0,2}$/.test(raw)) {
-      return;
-    }
-
-    setTypedValue(raw);
-
-    const parsed = parseFloat(raw);
-    if (isNaN(parsed) || parsed <= 0) {
-      setInputWarning(null);
-      onLiveWeightChange(itemKey, null, false, false);
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    } else {
-      if (maxStock > 0 && parsed > maxStock) {
-        setInputWarning(`Max ${maxStock.toFixed(1)} kg`);
-        onLiveWeightChange(itemKey, parsed, false, true);
-        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      } else {
-        setInputWarning(null);
-        lastValidWeightRef.current = parsed;
-        onLiveWeightChange(itemKey, parsed, true, false);
-
-        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = setTimeout(() => {
-          onCommitWeight(itemKey, parsed);
-        }, 400);
-      }
-    }
-  };
-
-  const handleBlur = () => {
-    isFocusedRef.current = false;
-    commitAndClamp();
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      e.currentTarget.blur();
-    }
-  };
-
-  const handleFocus = (e) => {
-    isFocusedRef.current = true;
-    e.target.select();
-  };
-
-  const handleStep = (direction) => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    let current = parseFloat(typedValue);
-    if (isNaN(current) || current <= 0) {
-      current = lastValidWeightRef.current || 1;
-    }
-
-    let next;
-    if (direction < 0) {
-      const step = current <= 1 ? 0.5 : 1;
-      next = Math.max(0.5, Math.round((current - step) * 100) / 100);
-    } else {
-      const step = current < 1 ? 0.5 : 1;
-      next = Math.round((current + step) * 100) / 100;
-      if (maxStock > 0 && next > maxStock) next = maxStock;
-    }
-
-    setTypedValue(String(next));
-    setInputWarning(null);
-    lastValidWeightRef.current = next;
-    onLiveWeightChange(itemKey, next, true, false);
-    onCommitWeight(itemKey, next);
-  };
-
-  const handleQuickAdd = (addAmount) => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    let current = parseFloat(typedValue);
-    if (isNaN(current) || current <= 0) {
-      current = lastValidWeightRef.current || 1;
-    }
-    let next = Math.round((current + addAmount) * 100) / 100;
-    if (maxStock > 0 && next > maxStock) next = maxStock;
-
-    setTypedValue(String(next));
-    setInputWarning(null);
-    lastValidWeightRef.current = next;
-    onLiveWeightChange(itemKey, next, true, false);
-    onCommitWeight(itemKey, next);
-  };
-
-  const currentNumeric = parseFloat(typedValue) || lastValidWeightRef.current || weight;
-  const isAtMin = currentNumeric <= 0.5;
-  const isAtMax = maxStock > 0 && currentNumeric >= maxStock;
-
   return (
     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '3px',
-          background: '#1a0a0c',
-          padding: '3px 6px',
-          borderRadius: '8px',
-          border: inputWarning
-            ? '1px solid #ef4444'
-            : isFocusedRef.current
-            ? '1px solid #E5384A'
-            : '1px solid rgba(246, 235, 221, 0.15)',
-          boxShadow: isFocusedRef.current ? '0 0 0 2px rgba(229, 56, 74, 0.25)' : 'none',
-          transition: 'all 0.15s ease'
+      <QuantityInput
+        value={weight}
+        maxStock={maxStock}
+        minAllowed={0.5}
+        decimals={2}
+        unit="kg"
+        placeholder="1"
+        allowQuickPills={true}
+        onChange={(num, isValid, isAboveMax) => {
+          onLiveWeightChange(itemKey, num, isValid, isAboveMax);
         }}
-      >
-        <button
-          type="button"
-          onClick={() => handleStep(-1)}
-          disabled={isAtMin}
-          style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '5px',
-            border: '1px solid rgba(246, 235, 221, 0.18)',
-            background: isAtMin ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
-            cursor: isAtMin ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isAtMin ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-            transition: 'all 0.15s ease'
-          }}
-          title={isAtMin ? "Minimum 0.5 kg" : "Decrease weight"}
-          aria-label="Decrease weight"
-        >
-          <Minus size={12} />
-        </button>
-
-        <input
-          type="text"
-          inputMode="decimal"
-          value={typedValue}
-          onChange={handleInputChange}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          placeholder="1"
-          style={{
-            width: '46px',
-            padding: '2px 0',
-            textAlign: 'center',
-            fontWeight: '800',
-            fontSize: '13px',
-            borderRadius: '4px',
-            border: 'none',
-            background: 'transparent',
-            color: inputWarning ? '#fbbf24' : '#fdf2e3',
-            outline: 'none'
-          }}
-          aria-label="Weight in kilograms"
-        />
-
-        <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '700', userSelect: 'none', marginRight: '2px' }}>
-          kg
-        </span>
-
-        <button
-          type="button"
-          onClick={() => handleStep(1)}
-          disabled={isAtMax}
-          style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '5px',
-            border: '1px solid rgba(246, 235, 221, 0.18)',
-            background: isAtMax ? 'transparent' : 'rgba(246, 235, 221, 0.06)',
-            cursor: isAtMax ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isAtMax ? 'rgba(246, 235, 221, 0.2)' : '#fdf2e3',
-            transition: 'all 0.15s ease'
-          }}
-          title={isAtMax ? `Max available stock (${maxStock} kg) reached` : "Increase weight"}
-          aria-label="Increase weight"
-        >
-          <Plus size={12} />
-        </button>
-      </div>
-
-      {/* Quick Add Pills: +0.5, +1, +5 kg */}
-      <div style={{ display: 'flex', gap: '3px', marginTop: '4px', justifyContent: 'center' }}>
-        {[0.5, 1, 5].map((amt) => {
-          const wouldExceed = maxStock > 0 && (currentNumeric + amt > maxStock);
-          return (
-            <button
-              key={amt}
-              type="button"
-              onClick={() => handleQuickAdd(amt)}
-              disabled={wouldExceed}
-              style={{
-                fontSize: '9.5px',
-                fontWeight: '700',
-                padding: '1px 5px',
-                borderRadius: '4px',
-                background: 'rgba(246, 235, 221, 0.05)',
-                border: '1px solid rgba(246, 235, 221, 0.12)',
-                color: wouldExceed ? 'rgba(246, 235, 221, 0.2)' : '#d9c7b5',
-                cursor: wouldExceed ? 'not-allowed' : 'pointer',
-                lineHeight: '1.2',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (!wouldExceed) {
-                  e.currentTarget.style.background = 'rgba(229, 56, 74, 0.2)';
-                  e.currentTarget.style.borderColor = '#E5384A';
-                  e.currentTarget.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(246, 235, 221, 0.05)';
-                e.currentTarget.style.borderColor = 'rgba(246, 235, 221, 0.12)';
-                e.currentTarget.style.color = wouldExceed ? 'rgba(246, 235, 221, 0.2)' : '#d9c7b5';
-              }}
-              title={wouldExceed ? `Exceeds stock` : `Add ${amt} kg`}
-            >
-              +{amt}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Warning or Stock Hint */}
-      {inputWarning ? (
-        <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '3px', fontWeight: '700' }}>
-          {inputWarning}
+        onCommit={(finalVal) => {
+          onLiveWeightChange(itemKey, finalVal, true, false);
+          onCommitWeight(itemKey, finalVal);
+        }}
+      />
+      {maxStock > 0 && (
+        <div style={{ fontSize: '10px', color: '#c9b4a6', marginTop: '3px', fontWeight: '600' }}>
+          Stock: {Number(maxStock).toFixed(1)} kg
         </div>
-      ) : maxStock > 0 ? (
-        <div style={{ fontSize: '10px', color: isAtMax ? '#fbbf24' : '#c9b4a6', marginTop: '3px', fontWeight: '600' }}>
-          Stock: {maxStock.toFixed(1)} kg
-        </div>
-      ) : null}
+      )}
     </div>
   );
 };
