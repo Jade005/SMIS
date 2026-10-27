@@ -447,8 +447,6 @@ const LandingPage = () => {
           .feature-grid{grid-template-columns:1fr 1fr !important}
           .stat-row{grid-template-columns:1fr 1fr !important}
           .footer-contact{grid-template-columns:1fr !important}
-          .hero-btns{flex-direction:column;align-items:stretch}
-          .hero-btns .btn{justify-content:center}
           .scale-grid{grid-template-columns:1fr !important}
         }
         @media (max-width:600px){
@@ -552,12 +550,9 @@ const LandingPage = () => {
             Manage livestock batches, enforce first-in-first-out rotation, and ring up kilogram-based sales — all from one system, for every role in the shop.
           </p>
 
-          <div className="h-4 hero-btns" style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 64, flexWrap: 'wrap' }}>
+          <div className="h-4 hero-btns" style={{ display: 'flex', justifyContent: 'center', marginBottom: 64 }}>
             <button className="btn btn-primary" style={{ padding: '15px 30px', fontSize: 15 }} onClick={() => goTo('portals')}>
               Choose your portal <ArrowRight size={16} className="arr" />
-            </button>
-            <button className="btn btn-ghost" style={{ padding: '15px 30px', fontSize: 15 }} onClick={() => navigate('/customer/login')}>
-              Registered account
             </button>
           </div>
 
