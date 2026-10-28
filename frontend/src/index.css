@@ -926,3 +926,77 @@ select.form-control option {
   }
 }
 
+
+/* ════════════════════════════════════════════════════════
+   REPORTS & ANALYTICS SHARED FILTER BAR & SELECT CONTROLS
+   ════════════════════════════════════════════════════════ */
+.report-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  background: rgba(42, 12, 16, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 24px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.report-filter-viewby {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.report-filter-presets {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.report-filter-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.report-filter-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  background: rgba(20, 5, 8, 0.85);
+  color: #fdf2e3;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  color-scheme: dark;
+}
+
+.report-filter-select:focus,
+.report-filter-select:focus-visible {
+  outline: none !important;
+  border-color: var(--primary-admin, #be123c) !important;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.45);
+}
+
+.report-filter-select option {
+  background: #1B0709;
+  color: #ffffff;
+}
+
+.report-filter-select option:checked {
+  background: var(--primary-admin, #be123c);
+  color: #ffffff;
+}

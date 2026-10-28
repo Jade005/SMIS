@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   getSalesReportApi,
   getInventoryReportApi,
@@ -15,10 +15,7 @@ import {
   Truck,
   DollarSign,
   Receipt,
-  Calendar,
-  Trash2,
-  ChevronLeft,
-  ChevronRight
+  Trash2
 } from 'lucide-react';
 
 const formatDateYMD = (d) => {
@@ -30,24 +27,14 @@ const formatDateYMD = (d) => {
 
 const getTodayStr = () => formatDateYMD(new Date());
 
-const getCurrentMonthStr = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
-
-const getLastMonthStr = () => {
-  const now = new Date();
-  let prevM = now.getMonth();
-  let prevY = now.getFullYear();
-  if (prevM === 0) {
-    prevM = 12;
-    prevY -= 1;
-  }
-  return `${prevY}-${String(prevM).padStart(2, '0')}`;
-};
-
 const getCurrentYearNum = () => new Date().getFullYear();
 const getCurrentMonthNum = () => new Date().getMonth() + 1;
+
+const VIEW_BY_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' }
+];
 
 const MONTH_OPTIONS = [
   { value: 'all', label: 'All Months' },
@@ -77,6 +64,144 @@ const getYearOptions = () => {
 
 const YEAR_OPTIONS = getYearOptions();
 
+const YEAR_SELECT_OPTIONS = [
+  { value: 'all', label: 'All Years' },
+  ...YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))
+];
+
+const buildYearlyOverviewFromReport = (rawReport) => {
+  if (!rawReport) return null;
+  const startY = YEAR_OPTIONS[YEAR_OPTIONS.length - 1] || 2023;
+  const endY = YEAR_OPTIONS[0] || getCurrentYearNum();
+  const years = [];
+  for (let y = startY; y <= endY; y++) {
+    years.push(y);
+  }
+
+  const rawBuckets = Array.isArray(rawReport.chartData) ? rawReport.chartData : [];
+  const yearMap = {};
+  for (const y of years) {
+    yearMap[String(y)] = { revenue: 0, volume_kg: 0, transactions_count: 0 };
+  }
+
+  for (const b of rawBuckets) {
+    const keyStr = String(b.key || b.bucket_key || b.label || '');
+    const yMatch = keyStr.match(/^(\d{4})/);
+    if (yMatch) {
+      const yKey = yMatch[1];
+      if (!yearMap[yKey]) {
+        yearMap[yKey] = { revenue: 0, volume_kg: 0, transactions_count: 0 };
+      }
+      yearMap[yKey].revenue += Number(b.revenue) || 0;
+      yearMap[yKey].volume_kg += Number(b.volume_kg) || 0;
+      yearMap[yKey].transactions_count += Number(b.transactions_count) || 0;
+    }
+  }
+
+  // Fallback to transactions list if chartData had no transaction counts
+  if (
+    Array.isArray(rawReport.transactions) &&
+    Object.values(yearMap).every((v) => v.transactions_count === 0) &&
+    rawReport.transactions.length > 0
+  ) {
+    for (const t of rawReport.transactions) {
+      if (!t.created_at) continue;
+      const yKey = String(new Date(t.created_at).getFullYear());
+      if (yearMap[yKey]) {
+        yearMap[yKey].transactions_count += 1;
+      }
+    }
+  }
+
+  const chartData = years.map((y) => {
+    const yKey = String(y);
+    const entry = yearMap[yKey] || { revenue: 0, volume_kg: 0, transactions_count: 0 };
+    return {
+      key: yKey,
+      label: yKey,
+      revenue: entry.revenue,
+      volume_kg: entry.volume_kg,
+      transactions_count: entry.transactions_count
+    };
+  });
+
+  const yearComparison = chartData.map((b, idx) => {
+    const rev = Number(b.revenue) || 0;
+    const tx = Number(b.transactions_count) || 0;
+    const vol = Number(b.volume_kg) || 0;
+    const avg = tx > 0 ? rev / tx : 0;
+    let growth_percent = null;
+    if (idx > 0) {
+      const prevRev = Number(chartData[idx - 1].revenue) || 0;
+      if (prevRev > 0) {
+        growth_percent = ((rev - prevRev) / prevRev) * 100;
+      } else if (rev > 0) {
+        growth_percent = 100;
+      } else {
+        growth_percent = null;
+      }
+    }
+    return {
+      year: Number(b.key),
+      label: b.label,
+      total_revenue: rev,
+      total_transactions: tx,
+      average_transaction_value: avg,
+      total_volume_kg: vol,
+      growth_percent
+    };
+  });
+
+  return {
+    ...rawReport,
+    granularity: 'yearly',
+    chartData,
+    yearComparison
+  };
+};
+
+const buildYearlyBucketsGeneric = (rawReport, metricKeys = []) => {
+  if (!rawReport || !Array.isArray(rawReport.chartData)) return rawReport;
+  const startY = YEAR_OPTIONS[YEAR_OPTIONS.length - 1] || 2023;
+  const endY = YEAR_OPTIONS[0] || getCurrentYearNum();
+  const years = [];
+  for (let y = startY; y <= endY; y++) {
+    years.push(y);
+  }
+
+  const yearMap = {};
+  for (const y of years) {
+    const initObj = {};
+    for (const k of metricKeys) initObj[k] = 0;
+    yearMap[String(y)] = initObj;
+  }
+
+  for (const b of rawReport.chartData) {
+    const keyStr = String(b.key || b.bucket_key || b.label || '');
+    const yMatch = keyStr.match(/^(\d{4})/);
+    if (yMatch && yearMap[yMatch[1]]) {
+      for (const k of metricKeys) {
+        yearMap[yMatch[1]][k] += Number(b[k]) || 0;
+      }
+    }
+  }
+
+  const chartData = years.map((y) => {
+    const yKey = String(y);
+    return {
+      key: yKey,
+      label: yKey,
+      ...yearMap[yKey]
+    };
+  });
+
+  return {
+    ...rawReport,
+    granularity: 'yearly',
+    chartData
+  };
+};
+
 const getDailyPresetRange = (preset) => {
   const now = new Date();
   const toStr = formatDateYMD(now);
@@ -105,33 +230,6 @@ const getDailyPresetRange = (preset) => {
   return { from: toStr, to: toStr };
 };
 
-const getMonthRange = (yearMonthStr) => {
-  const now = new Date();
-  const currentY = now.getFullYear();
-  const currentM = now.getMonth() + 1;
-  const currentD = now.getDate();
-
-  const [y, m] = yearMonthStr.split('-').map(Number);
-  const from = `${y}-${String(m).padStart(2, '0')}-01`;
-  const lastDay = new Date(y, m, 0).getDate();
-
-  let endDay = lastDay;
-  if (y === currentY && m === currentM) {
-    endDay = Math.min(lastDay, currentD);
-  }
-  const to = `${y}-${String(m).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
-  return { from, to };
-};
-
-const getYearRange = (yearNum) => {
-  const now = new Date();
-  const currentY = now.getFullYear();
-  const y = Number(yearNum);
-  const from = `${y}-01-01`;
-  const to = y === currentY ? formatDateYMD(now) : `${y}-12-31`;
-  return { from, to };
-};
-
 const formatPeso = (val) =>
   `₱${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -140,31 +238,29 @@ const formatWeight = (val, decimals = 2) =>
 
 /**
  * Merged Reports & Analytics Page
- * Contains 4 tabs: Sales Report, Inventory Report, Expiry Report, Suppliers Report.
- * Each tab contains exactly ONE bar graph and follows the shared date filter.
+ * Contains 5 tabs: Sales Report, Inventory Report, Expiry Report, Suppliers Report, Disposed / Wasted Stock.
+ * Each report tab follows the shared date filter.
  */
 const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('sales');
 
   // Shared Date Filter State
+  // viewBy controls the "View by" dropdown ('daily' | 'monthly' | 'yearly')
+  // granularity controls the API bucket grouping ('daily' | 'monthly' | 'yearly')
+  const [viewBy, setViewBy] = useState('daily');
   const [granularity, setGranularity] = useState('daily');
   const initialDaily = getDailyPresetRange('last14');
   const [fromDate, setFromDate] = useState(initialDaily.from);
   const [toDate, setToDate] = useState(initialDaily.to);
 
-  // Active preset state: 'today' | 'yesterday' | 'last7' | 'last14' | 'last30' | 'custom'
-  // Requirement 7: "Default on page load: Last 14 Days preset active, with the Custom dropdowns showing the current month and year but not applied until the admin changes them."
+  // Active preset state: 'today' | 'yesterday' | 'last7' | 'last14' | 'last30' | 'custom' | null
+  // Default on page load: Last 14 Days preset active, with the Custom dropdowns showing the current month and year.
   const [activePreset, setActivePreset] = useState('last14');
 
   // Custom month & year dropdown states: default to current month and year (e.g. October 2026)
+  // When in All Years overview, customYear is 'all' and customMonth is 'all'.
   const [customMonth, setCustomMonth] = useState(() => String(getCurrentMonthNum()));
-  const [customYear, setCustomYear] = useState(() => getCurrentYearNum());
-
-  // Month state for Monthly view
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthStr);
-
-  // Year state for Yearly view
-  const [selectedYear, setSelectedYear] = useState(getCurrentYearNum);
+  const [customYear, setCustomYear] = useState(() => String(getCurrentYearNum()));
 
   // Sales metric toggle: 'revenue' | 'volume'
   const [salesMetric, setSalesMetric] = useState('revenue');
@@ -177,26 +273,42 @@ const ReportsPage = () => {
   const [supplierReport, setSupplierReport] = useState({ summary: {}, chartData: [], suppliers: [] });
   const [disposals, setDisposals] = useState([]);
 
+  const earliestYear = YEAR_OPTIONS[YEAR_OPTIONS.length - 1] || 2023;
+  const latestYear = YEAR_OPTIONS[0] || getCurrentYearNum();
+  const allYearsRangeLabel = `(${earliestYear} - ${latestYear})`;
+
+  const isYearlyOverview = granularity === 'yearly' && customYear === 'all';
+  const isSingleYearDetail = customYear !== 'all' && customMonth === 'all' && activePreset === 'custom';
+
   // Helper to compute date range & granularity from Custom Month + Year selection
   const getCustomRange = (mVal, yVal) => {
-    const y = Number(yVal);
     const nowDate = new Date();
     const curY = nowDate.getFullYear();
     const curM = nowDate.getMonth() + 1;
     const curD = nowDate.getDate();
 
+    if (yVal === 'all') {
+      const startYear = YEAR_OPTIONS[YEAR_OPTIONS.length - 1] || 2023;
+      return {
+        from: `${startYear}-01-01`,
+        to: formatDateYMD(nowDate),
+        granularity: 'yearly'
+      };
+    }
+
+    const y = Number(yVal);
     if (mVal === 'all') {
-      // "All Months" + Year selected: range = Jan 1 to Dec 31 (or today if current year)
-      // Granularity = 'yearly' -> groups by month ('%Y-%m'), 1 bar per month (Jan-Dec) with empty bars for zero sales
+      // "All Months" + single Year selected: range = Jan 1 to Dec 31 (or today if current year)
+      // Granularity = 'monthly' -> groups by month ('%Y-%m'), 1 bar per month (Jan-Dec)
       const from = `${y}-01-01`;
       const to = y === curY ? formatDateYMD(nowDate) : `${y}-12-31`;
       return {
         from,
         to,
-        granularity: 'yearly'
+        granularity: 'monthly'
       };
     } else {
-      // Month + Year selected: range = 1st to last day of that month (or today if current month)
+      // Specific Month + single Year selected: range = 1st to last day of that month (or today if current month)
       // Granularity = 'daily' -> groups by day, 1 bar per day in that month
       const m = Number(mVal);
       const from = `${y}-${String(m).padStart(2, '0')}-01`;
@@ -214,120 +326,100 @@ const ReportsPage = () => {
     }
   };
 
-  // Granularity change: auto-set defaults
-  // Daily -> Last 14 days, Monthly -> current month, Yearly -> current year
+  // Granularity ("View by") change handler:
+  // - Daily: one bar per day (defaults to Last 14 Days preset & current month/year in Custom)
+  // - Monthly: one bar per month for the selected year (or current year if All Years was active)
+  // - Yearly: All Years overview (one bar per year: 2023..currentYear, Custom Year = All Years, Month = All Months disabled)
   const handleGranularityChange = (newGran) => {
-    setGranularity(newGran);
+    setViewBy(newGran);
     if (newGran === 'daily') {
+      setGranularity('daily');
       setActivePreset('last14');
       setCustomMonth(String(getCurrentMonthNum()));
-      setCustomYear(getCurrentYearNum());
+      setCustomYear(String(getCurrentYearNum()));
       const r = getDailyPresetRange('last14');
       setFromDate(r.from);
       setToDate(r.to);
     } else if (newGran === 'monthly') {
-      setActivePreset(null);
-      const curM = getCurrentMonthStr();
-      setSelectedMonth(curM);
-      const r = getMonthRange(curM);
+      const targetYear =
+        customYear === 'all' ? String(getCurrentYearNum()) : String(customYear);
+      setGranularity('monthly');
+      setActivePreset('custom');
+      setCustomMonth('all');
+      setCustomYear(targetYear);
+      const r = getCustomRange('all', targetYear);
       setFromDate(r.from);
       setToDate(r.to);
     } else if (newGran === 'yearly') {
-      setActivePreset(null);
-      const curY = getCurrentYearNum();
-      setSelectedYear(curY);
-      const r = getYearRange(curY);
-      setFromDate(r.from);
-      setToDate(r.to);
+      setGranularity('yearly');
+      setActivePreset('custom');
+      setCustomMonth('all');
+      setCustomYear('all');
+      const startYear = YEAR_OPTIONS[YEAR_OPTIONS.length - 1] || 2023;
+      setFromDate(`${startYear}-01-01`);
+      setToDate(getTodayStr());
     }
   };
 
   const handleDailyPreset = (preset) => {
     setActivePreset(preset);
+    setViewBy('daily');
     setGranularity('daily');
     const r = getDailyPresetRange(preset);
     setFromDate(r.from);
     setToDate(r.to);
     // Reset custom dropdowns to their default state (current month & year)
     setCustomMonth(String(getCurrentMonthNum()));
-    setCustomYear(getCurrentYearNum());
+    setCustomYear(String(getCurrentYearNum()));
+  };
+
+  // Drill into a single year (from clicking a year bar, a Year Comparison table row, or the Year dropdown)
+  const handleSelectSingleYear = (yearVal) => {
+    const yStr = String(yearVal);
+    setActivePreset('custom');
+    setCustomYear(yStr);
+    setCustomMonth('all');
+    const r = getCustomRange('all', yStr);
+    setGranularity(r.granularity);
+    setFromDate(r.from);
+    setToDate(r.to);
+  };
+
+  const handleReturnToAllYears = () => {
+    handleGranularityChange('yearly');
   };
 
   const handleCustomMonthChange = (newMonth) => {
+    if (customYear === 'all') return;
     setActivePreset('custom');
     setCustomMonth(newMonth);
     const r = getCustomRange(newMonth, customYear);
     setGranularity(r.granularity);
+    if (newMonth !== 'all') {
+      setViewBy('daily');
+    } else if (viewBy === 'daily') {
+      setViewBy('monthly');
+    }
     setFromDate(r.from);
     setToDate(r.to);
   };
 
   const handleCustomYearChange = (newYear) => {
-    const y = Number(newYear);
+    if (newYear === 'all') {
+      handleGranularityChange('yearly');
+      return;
+    }
+    const yStr = String(newYear);
     setActivePreset('custom');
-    setCustomYear(y);
+    setCustomYear(yStr);
 
-    const r = getCustomRange(customMonth, y);
+    // If coming from All Years overview (or All Months), show monthly chart for that single year
+    const effectiveMonth = customYear === 'all' ? 'all' : customMonth;
+    setCustomMonth(effectiveMonth);
+    const r = getCustomRange(effectiveMonth, yStr);
     setGranularity(r.granularity);
     setFromDate(r.from);
     setToDate(r.to);
-  };
-
-  const handleSelectMonth = (mStr) => {
-    if (!mStr) return;
-    const curMStr = getCurrentMonthStr();
-    const finalMStr = mStr > curMStr ? curMStr : mStr;
-    setSelectedMonth(finalMStr);
-    const r = getMonthRange(finalMStr);
-    setFromDate(r.from);
-    setToDate(r.to);
-  };
-
-  const handlePrevMonth = () => {
-    const [y, m] = selectedMonth.split('-').map(Number);
-    let prevY = y;
-    let prevM = m - 1;
-    if (prevM < 1) {
-      prevM = 12;
-      prevY -= 1;
-    }
-    const newMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
-    handleSelectMonth(newMonthStr);
-  };
-
-  const handleNextMonth = () => {
-    const curMStr = getCurrentMonthStr();
-    if (selectedMonth >= curMStr) return;
-    const [y, m] = selectedMonth.split('-').map(Number);
-    let nextY = y;
-    let nextM = m + 1;
-    if (nextM > 12) {
-      nextM = 1;
-      nextY += 1;
-    }
-    const newMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
-    if (newMonthStr > curMStr) return;
-    handleSelectMonth(newMonthStr);
-  };
-
-  const handleSelectYear = (yNum) => {
-    const curY = getCurrentYearNum();
-    const y = Math.min(Number(yNum), curY);
-    setSelectedYear(y);
-    const r = getYearRange(y);
-    setFromDate(r.from);
-    setToDate(r.to);
-  };
-
-  const handlePrevYear = () => {
-    if (selectedYear <= 2020) return;
-    handleSelectYear(selectedYear - 1);
-  };
-
-  const handleNextYear = () => {
-    const curY = getCurrentYearNum();
-    if (selectedYear >= curY) return;
-    handleSelectYear(selectedYear + 1);
   };
 
   // Fetch report for the currently active tab and filter
@@ -341,24 +433,58 @@ const ReportsPage = () => {
       end_date: toDate
     };
 
+    // Pass explicit year & month when a single custom year is selected so backend scopes strictly to that year
+    if (activePreset === 'custom' && customYear !== 'all') {
+      params.year = customYear;
+      params.month = customMonth;
+    }
+
     if (activeTab === 'sales') {
       getSalesReportApi(params)
-        .then((res) => setSalesReport(res.data || null))
+        .then((res) => {
+          const data = res.data || null;
+          if (data && granularity === 'yearly' && customYear === 'all') {
+            setSalesReport(buildYearlyOverviewFromReport(data));
+          } else {
+            setSalesReport(data);
+          }
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'inventory') {
       getInventoryReportApi(params)
-        .then((res) => setInventoryReport(res.data || { summary: {}, chartData: [], batches: [] }))
+        .then((res) => {
+          const data = res.data || { summary: {}, chartData: [], batches: [] };
+          setInventoryReport(
+            granularity === 'yearly' && customYear === 'all'
+              ? buildYearlyBucketsGeneric(data, ['received_kg', 'batches_count'])
+              : data
+          );
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'expiry') {
       getExpiryReportApi(params)
-        .then((res) => setExpiryReport(res.data || { summary: {}, chartData: [], batches: [] }))
+        .then((res) => {
+          const data = res.data || { summary: {}, chartData: [], batches: [] };
+          setExpiryReport(
+            granularity === 'yearly' && customYear === 'all'
+              ? buildYearlyBucketsGeneric(data, ['expired', 'expiring_7d', 'expiring_30d', 'safe', 'total_batches'])
+              : data
+          );
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'suppliers') {
       getSupplierReportApi(params)
-        .then((res) => setSupplierReport(res.data || { summary: {}, chartData: [], suppliers: [] }))
+        .then((res) => {
+          const data = res.data || { summary: {}, chartData: [], suppliers: [] };
+          setSupplierReport(
+            granularity === 'yearly' && customYear === 'all'
+              ? buildYearlyBucketsGeneric(data, ['supply_volume_kg', 'batches_count'])
+              : data
+          );
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     } else if (activeTab === 'disposals') {
@@ -367,7 +493,7 @@ const ReportsPage = () => {
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [activeTab, granularity, fromDate, toDate]);
+  }, [activeTab, granularity, fromDate, toDate, activePreset, customYear, customMonth]);
 
   useEffect(() => {
     fetchReportData();
@@ -428,417 +554,170 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      {/* ── Shared Filter Bar (All 4 Tabs) ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px',
-          background: 'rgba(42, 12, 16, 0.85)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '10px',
-          padding: '12px 18px',
-          marginBottom: '24px'
-        }}
-      >
-        {/* View By Toggle: Daily / Monthly / Yearly */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '700' }}>
-            View by:
-          </span>
-          <div
+      {/* ── Shared Filter Bar (All Report Tabs) ── */}
+      <div className="report-filter-bar">
+        {/* View By Dropdown: Daily / Monthly / Yearly */}
+        <div className="report-filter-viewby">
+          <span
             style={{
-              display: 'inline-flex',
-              background: 'rgba(20, 5, 8, 0.65)',
-              borderRadius: '8px',
-              padding: '3px',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
+              fontSize: '13px',
+              color: '#e5d5c3',
+              fontWeight: '700',
+              whiteSpace: 'nowrap'
             }}
           >
+            View by:
+          </span>
+          <select
+            aria-label="View by"
+            value={viewBy}
+            onChange={(e) => handleGranularityChange(e.target.value)}
+            autoComplete="off"
+            className="report-filter-select"
+          >
+            {VIEW_BY_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                style={{
+                  background: '#1B0709',
+                  color: '#ffffff'
+                }}
+              >
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Quick Presets (Hidden when View by = Yearly so they never conflict with the year view) */}
+        {viewBy !== 'yearly' && (
+          <div className="report-filter-presets">
             {[
-              { id: 'daily', label: 'Daily' },
-              { id: 'monthly', label: 'Monthly' },
-              { id: 'yearly', label: 'Yearly' }
-            ].map((g) => {
-              const isSelected = granularity === g.id;
+              { id: 'today', label: 'Today' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'last7', label: 'Last 7 Days' },
+              { id: 'last14', label: 'Last 14 Days' },
+              { id: 'last30', label: 'Last 30 Days' }
+            ].map((p) => {
+              const isSelected = activePreset === p.id;
               return (
                 <button
-                  key={g.id}
+                  key={p.id}
                   type="button"
+                  onClick={() => handleDailyPreset(p.id)}
                   style={{
-                    border: 'none',
-                    background: isSelected ? 'var(--primary-admin, #be123c)' : 'transparent',
+                    border: isSelected
+                      ? '1px solid var(--primary-admin, #be123c)'
+                      : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isSelected
+                      ? 'var(--primary-admin, #be123c)'
+                      : 'rgba(20, 5, 8, 0.65)',
                     color: isSelected ? '#ffffff' : '#d9c7b5',
                     fontWeight: '700',
-                    fontSize: '12px',
-                    padding: '6px 14px',
+                    fontSize: '11px',
+                    padding: '5px 10px',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 0 10px rgba(190, 18, 60, 0.4)' : 'none'
                   }}
-                  onClick={() => handleGranularityChange(g.id)}
                 >
-                  {g.label}
+                  {p.label}
                 </button>
               );
             })}
           </div>
-        </div>
+        )}
 
-        {/* Date Filter Controls based on Granularity */}
-        {granularity === 'daily' && (
-          <div
+        {/* Custom Month + Year Dropdowns */}
+        <div
+          className="report-filter-custom"
+          style={{
+            border: activePreset === 'custom'
+              ? '1px solid var(--primary-admin, #be123c)'
+              : '1px solid rgba(255, 255, 255, 0.12)',
+            background: activePreset === 'custom'
+              ? 'rgba(190, 18, 60, 0.28)'
+              : 'rgba(20, 5, 8, 0.65)',
+            boxShadow: activePreset === 'custom'
+              ? '0 0 12px rgba(190, 18, 60, 0.35)'
+              : 'none'
+          }}
+        >
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              flexWrap: 'wrap',
-              rowGap: '10px'
+              fontSize: '11px',
+              fontWeight: '700',
+              color: activePreset === 'custom' ? '#ffffff' : '#e5d5c3',
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap'
             }}
           >
-            {/* Quick Presets */}
-            <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap' }}>
-              {[
-                { id: 'today', label: 'Today' },
-                { id: 'yesterday', label: 'Yesterday' },
-                { id: 'last7', label: 'Last 7 Days' },
-                { id: 'last14', label: 'Last 14 Days' },
-                { id: 'last30', label: 'Last 30 Days' }
-              ].map((p) => {
-                const isSelected = activePreset === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleDailyPreset(p.id)}
-                    style={{
-                      border: isSelected
-                        ? '1px solid var(--primary-admin, #be123c)'
-                        : '1px solid rgba(255, 255, 255, 0.12)',
-                      background: isSelected
-                        ? 'var(--primary-admin, #be123c)'
-                        : 'rgba(20, 5, 8, 0.65)',
-                      color: isSelected ? '#ffffff' : '#d9c7b5',
-                      fontWeight: '700',
-                      fontSize: '11px',
-                      padding: '5px 10px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 0 10px rgba(190, 18, 60, 0.4)' : 'none'
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
+            Custom:
+          </span>
 
-            {/* Custom Month + Year Dropdowns */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '3px 8px',
-                borderRadius: '8px',
-                border: activePreset === 'custom'
-                  ? '1px solid var(--primary-admin, #be123c)'
-                  : '1px solid rgba(255, 255, 255, 0.12)',
-                background: activePreset === 'custom'
-                  ? 'rgba(190, 18, 60, 0.28)'
-                  : 'rgba(20, 5, 8, 0.65)',
-                boxShadow: activePreset === 'custom'
-                  ? '0 0 12px rgba(190, 18, 60, 0.35)'
-                  : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span
+          {/* Month Dropdown (Disabled when Year = All Years) */}
+          <select
+            value={customMonth}
+            onChange={(e) => handleCustomMonthChange(e.target.value)}
+            disabled={customYear === 'all'}
+            autoComplete="off"
+            className="report-filter-select"
+            style={{
+              color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
+              borderColor: activePreset === 'custom'
+                ? 'rgba(225, 29, 72, 0.6)'
+                : 'rgba(255, 255, 255, 0.15)',
+              opacity: customYear === 'all' ? 0.45 : 1,
+              cursor: customYear === 'all' ? 'not-allowed' : 'pointer'
+            }}
+            aria-label="Select custom month"
+            title={
+              customYear === 'all'
+                ? 'Select a specific year first to filter by month'
+                : 'Select custom month'
+            }
+          >
+            {MONTH_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
                 style={{
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: activePreset === 'custom' ? '#ffffff' : '#e5d5c3',
-                  letterSpacing: '0.02em',
-                  whiteSpace: 'nowrap'
+                  background: '#1B0709',
+                  color: '#ffffff'
                 }}
               >
-                Custom:
-              </span>
+                {opt.label}
+              </option>
+            ))}
+          </select>
 
-              {/* Month Dropdown */}
-              <select
-                value={customMonth}
-                onChange={(e) => handleCustomMonthChange(e.target.value)}
-                autoComplete="off"
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  background: 'rgba(20, 5, 8, 0.85)',
-                  color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
-                  border: activePreset === 'custom'
-                    ? '1px solid rgba(225, 29, 72, 0.6)'
-                    : '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'all 0.15s ease'
-                }}
-                aria-label="Select custom month"
+          {/* Year Dropdown (Includes "All Years" at the top) */}
+          <select
+            value={String(customYear)}
+            onChange={(e) => handleCustomYearChange(e.target.value)}
+            autoComplete="off"
+            className="report-filter-select"
+            style={{
+              color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
+              borderColor: activePreset === 'custom'
+                ? 'rgba(225, 29, 72, 0.6)'
+                : 'rgba(255, 255, 255, 0.15)'
+            }}
+            aria-label="Select custom year"
+          >
+            {YEAR_SELECT_OPTIONS.map((opt) => (
+              <option
+                key={opt.value}
+                value={opt.value}
+                style={{ background: '#1B0709', color: '#ffffff' }}
               >
-                {MONTH_OPTIONS.map((opt) => (
-                  <option
-                    key={opt.value}
-                    value={opt.value}
-                    style={{
-                      background: '#1B0709',
-                      color: '#ffffff'
-                    }}
-                  >
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* Year Dropdown */}
-              <select
-                value={customYear}
-                onChange={(e) => handleCustomYearChange(e.target.value)}
-                autoComplete="off"
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  background: 'rgba(20, 5, 8, 0.85)',
-                  color: activePreset === 'custom' ? '#ffffff' : '#fdf2e3',
-                  border: activePreset === 'custom'
-                    ? '1px solid rgba(225, 29, 72, 0.6)'
-                    : '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'all 0.15s ease'
-                }}
-                aria-label="Select custom year"
-              >
-                {YEAR_OPTIONS.map((y) => (
-                  <option key={y} value={y} style={{ background: '#1B0709', color: '#ffffff' }}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {granularity === 'monthly' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            {/* Monthly Presets */}
-            <div style={{ display: 'inline-flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => handleSelectMonth(getCurrentMonthStr())}
-                style={{
-                  border: selectedMonth === getCurrentMonthStr() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: selectedMonth === getCurrentMonthStr() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
-                  color: selectedMonth === getCurrentMonthStr() ? '#ffffff' : '#d9c7b5',
-                  fontWeight: '700',
-                  fontSize: '11px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                This Month
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectMonth(getLastMonthStr())}
-                style={{
-                  border: selectedMonth === getLastMonthStr() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: selectedMonth === getLastMonthStr() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
-                  color: selectedMonth === getLastMonthStr() ? '#ffffff' : '#d9c7b5',
-                  fontWeight: '700',
-                  fontSize: '11px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Last Month
-              </button>
-            </div>
-
-            {/* Prev / Month Picker / Next */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                title="Previous Month"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(20, 5, 8, 0.7)',
-                  color: '#fdf2e3',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <input
-                type="month"
-                max={getCurrentMonthStr()}
-                value={selectedMonth}
-                onChange={(e) => handleSelectMonth(e.target.value)}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  background: 'rgba(20, 5, 8, 0.7)',
-                  color: '#fdf2e3',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                disabled={selectedMonth >= getCurrentMonthStr()}
-                title="Next Month"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: selectedMonth >= getCurrentMonthStr() ? 'rgba(20, 5, 8, 0.3)' : 'rgba(20, 5, 8, 0.7)',
-                  color: selectedMonth >= getCurrentMonthStr() ? 'rgba(255, 255, 255, 0.2)' : '#fdf2e3',
-                  cursor: selectedMonth >= getCurrentMonthStr() ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {granularity === 'yearly' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            {/* This Year Preset */}
-            <div style={{ display: 'inline-flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => handleSelectYear(getCurrentYearNum())}
-                style={{
-                  border: selectedYear === getCurrentYearNum() ? '1px solid var(--primary-admin, #be123c)' : '1px solid rgba(255, 255, 255, 0.12)',
-                  background: selectedYear === getCurrentYearNum() ? 'var(--primary-admin, #be123c)' : 'rgba(20, 5, 8, 0.65)',
-                  color: selectedYear === getCurrentYearNum() ? '#ffffff' : '#d9c7b5',
-                  fontWeight: '700',
-                  fontSize: '11px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                This Year
-              </button>
-            </div>
-
-            {/* Prev / Year Dropdown / Next */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={handlePrevYear}
-                title="Previous Year"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(20, 5, 8, 0.7)',
-                  color: '#fdf2e3',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <select
-                value={selectedYear}
-                onChange={(e) => handleSelectYear(Number(e.target.value))}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  background: 'rgba(20, 5, 8, 0.85)',
-                  color: '#fdf2e3',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                {(() => {
-                  const curY = getCurrentYearNum();
-                  const opts = [];
-                  for (let y = curY; y >= 2023; y--) {
-                    opts.push(y);
-                  }
-                  return opts.map((y) => (
-                    <option key={y} value={y} style={{ background: '#1a0a0c', color: '#fdf2e3' }}>
-                      {y}
-                    </option>
-                  ));
-                })()}
-              </select>
-
-              <button
-                type="button"
-                onClick={handleNextYear}
-                disabled={selectedYear >= getCurrentYearNum()}
-                title="Next Year"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: selectedYear >= getCurrentYearNum() ? 'rgba(20, 5, 8, 0.3)' : 'rgba(20, 5, 8, 0.7)',
-                  color: selectedYear >= getCurrentYearNum() ? 'rgba(255, 255, 255, 0.2)' : '#fdf2e3',
-                  cursor: selectedYear >= getCurrentYearNum() ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -849,19 +728,40 @@ const ReportsPage = () => {
           {/* 1. Summary KPI Cards */}
           <div className="kpi-grid">
             <div className="kpi-card">
-              <div className="kpi-label">TOTAL REVENUE</div>
+              <div className="kpi-label">
+                TOTAL REVENUE
+                {isYearlyOverview
+                  ? ` ${allYearsRangeLabel}`
+                  : isSingleYearDetail
+                    ? ` (${customYear})`
+                    : ''}
+              </div>
               <div className="kpi-value" style={{ color: 'var(--primary-admin, #f43f5e)' }}>
                 {formatPeso(salesReport?.summary?.total_revenue)}
               </div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">TOTAL TRANSACTIONS</div>
+              <div className="kpi-label">
+                TOTAL TRANSACTIONS
+                {isYearlyOverview
+                  ? ` ${allYearsRangeLabel}`
+                  : isSingleYearDetail
+                    ? ` (${customYear})`
+                    : ''}
+              </div>
               <div className="kpi-value">
                 {salesReport?.summary?.total_transactions || 0}
               </div>
             </div>
             <div className="kpi-card">
-              <div className="kpi-label">AVG TRANSACTION VALUE</div>
+              <div className="kpi-label">
+                AVG TRANSACTION VALUE
+                {isYearlyOverview
+                  ? ` ${allYearsRangeLabel}`
+                  : isSingleYearDetail
+                    ? ` (${customYear})`
+                    : ''}
+              </div>
               <div className="kpi-value">
                 {formatPeso(salesReport?.summary?.average_transaction_value)}
               </div>
@@ -870,6 +770,45 @@ const ReportsPage = () => {
 
           {/* 2. ONE Single Bar Graph: Sales Over Time */}
           <div className="card" style={{ marginBottom: 0, width: '100%' }}>
+            {/* Single-Year Breadcrumb ("All Years > 2026") */}
+            {isSingleYearDetail && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  marginBottom: '10px',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  background: 'rgba(20, 5, 8, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  width: 'fit-content'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleReturnToAllYears}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary-admin, #f43f5e)',
+                    fontWeight: '700',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px'
+                  }}
+                >
+                  All Years
+                </button>
+                <span style={{ color: '#a89886' }}>&gt;</span>
+                <span style={{ color: '#fdf2e3' }}>{customYear}</span>
+              </div>
+            )}
+
             <div
               className="card-header"
               style={{
@@ -885,6 +824,11 @@ const ReportsPage = () => {
                 <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <TrendingUp size={18} color="var(--primary-admin, #f43f5e)" />
                   Sales Volume &amp; Revenue Over Time
+                  {isYearlyOverview
+                    ? ` ${allYearsRangeLabel}`
+                    : isSingleYearDetail
+                      ? ` (${customYear})`
+                      : ''}
                 </span>
                 <div style={{ fontSize: '13px', color: '#e5d5c3', fontWeight: '600', marginTop: '3px' }}>
                   Total {salesMetric === 'revenue' ? 'Revenue' : 'Volume'}:{' '}
@@ -957,8 +901,92 @@ const ReportsPage = () => {
                 salesMetric === 'revenue' ? formatPeso(val) : formatWeight(val)
               }
               height={280}
+              noRotateLabels={granularity === 'yearly' || granularity === 'monthly'}
+              showZeroAxis={granularity === 'yearly' || granularity === 'monthly'}
+              onBarClick={
+                isYearlyOverview
+                  ? (item) => handleSelectSingleYear(item.key || item.label)
+                  : null
+              }
             />
           </div>
+
+          {/* 2b. Year Comparison Table (Shown under the chart in Yearly Overview) */}
+          {isYearlyOverview && (
+            <div className="card" style={{ marginBottom: 0 }}>
+              <div
+                className="card-header"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={18} color="var(--primary-admin, #f43f5e)" />
+                  Year Comparison
+                </span>
+                <span style={{ fontSize: '11px', color: '#c9b4a6', fontWeight: '600' }}>
+                  Click a year row or bar to view monthly details
+                </span>
+              </div>
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>YEAR</th>
+                      <th>TOTAL REVENUE</th>
+                      <th>TOTAL TRANSACTIONS</th>
+                      <th>AVG TRANSACTION VALUE</th>
+                      <th>VOLUME (KG)</th>
+                      <th>GROWTH %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(salesReport?.yearComparison || []).map((row, idx) => {
+                      const isFirst = idx === 0;
+                      const g = row.growth_percent;
+                      return (
+                        <tr
+                          key={row.year}
+                          onClick={() => handleSelectSingleYear(row.year)}
+                          style={{ cursor: 'pointer' }}
+                          title={`Click to view ${row.year} monthly breakdown`}
+                        >
+                          <td>
+                            <strong style={{ color: '#fdf2e3' }}>{row.year}</strong>
+                          </td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--primary-admin, #f43f5e)' }}>
+                            {formatPeso(row.total_revenue)}
+                          </td>
+                          <td>{row.total_transactions}</td>
+                          <td>{formatPeso(row.average_transaction_value)}</td>
+                          <td>{formatWeight(row.total_volume_kg, 2)}</td>
+                          <td>
+                            {isFirst || g === null || g === undefined ? (
+                              <span style={{ color: '#a89886' }}>-</span>
+                            ) : g > 0 ? (
+                              <span style={{ color: '#10b981', fontWeight: '700' }}>
+                                ▲ +{g.toFixed(1)}%
+                              </span>
+                            ) : g < 0 ? (
+                              <span style={{ color: '#ef4444', fontWeight: '700' }}>
+                                ▼ {g.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span style={{ color: '#a89886', fontWeight: '600' }}>0.0%</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* 3. Top Selling Meat Cuts Table */}
           <div className="card" style={{ marginBottom: 0 }}>
@@ -966,6 +994,11 @@ const ReportsPage = () => {
               <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Trophy size={18} color="var(--warning, #eab308)" />
                 Top Selling Meat Cuts Summary
+                {isYearlyOverview
+                  ? ` ${allYearsRangeLabel}`
+                  : isSingleYearDetail
+                    ? ` (${customYear})`
+                    : ''}
               </span>
             </div>
             <div className="table-responsive">
@@ -1077,6 +1110,8 @@ const ReportsPage = () => {
               emptyMessage="No data for the selected period."
               formatValue={(val) => formatWeight(val)}
               height={280}
+              noRotateLabels={granularity === 'yearly' || granularity === 'monthly'}
+              showZeroAxis={granularity === 'yearly' || granularity === 'monthly'}
             />
           </div>
 
@@ -1158,6 +1193,8 @@ const ReportsPage = () => {
               emptyMessage="No data for the selected period."
               formatValue={(val) => `${val} batch${val !== 1 ? 'es' : ''}`}
               height={280}
+              noRotateLabels={granularity === 'yearly' || granularity === 'monthly'}
+              showZeroAxis={granularity === 'yearly' || granularity === 'monthly'}
             />
           </div>
 
@@ -1242,6 +1279,8 @@ const ReportsPage = () => {
               emptyMessage="No data for the selected period."
               formatValue={(val) => formatWeight(val)}
               height={280}
+              noRotateLabels={granularity === 'yearly' || granularity === 'monthly'}
+              showZeroAxis={granularity === 'yearly' || granularity === 'monthly'}
             />
           </div>
 
